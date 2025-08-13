@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-const apiUrl = 'http://192.168.1.2:8080/users';
+const apiUrl = 'http://192.168.100.140:8080/users';
 
 Future<void> addUser(String name, String email) async {
   final response = await http.post(

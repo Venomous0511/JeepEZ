@@ -1,3 +1,6 @@
-int calculate() {
-  return 6 * 7;
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+
+String hashPassword(String password) {
+  return sha256.convert(utf8.encode(password)).toString();
 }

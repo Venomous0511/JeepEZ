@@ -1,39 +1,19 @@
 import 'package:flutter/material.dart';
-import 'services/api_service.dart';
+import 'screens/login.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const JeepEZApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class JeepEZApp extends StatelessWidget {
+  const JeepEZApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'MongoDB Flutter Demo',
-      home: Scaffold(
-        appBar: AppBar(title: const Text('Users')),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton(
-                onPressed: () {
-                  addUser("John Doe", "john@example.com");
-                },
-                child: const Text("Add User"),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  fetchUsers();
-                },
-                child: const Text("Fetch Users"),
-              ),
-            ],
-          ),
-        ),
-      ),
+      title: 'JeepEZ',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: const LoginScreen(),
     );
   }
 }
