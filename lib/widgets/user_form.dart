@@ -30,6 +30,7 @@ class _UserFormState extends State<UserForm> {
           value: _role,
           items: [
             "super_admin",
+            "legalofficer",
             "admin",
             "driver",
             "conductor",

@@ -8,7 +8,8 @@ class AuthService {
 
   Future<AppUser?> login(String email, String password) async {
     final cred = await _auth.signInWithEmailAndPassword(
-      email: email, password: password,
+      email: email,
+      password: password,
     );
     final uid = cred.user!.uid;
 

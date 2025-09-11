@@ -19,60 +19,131 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Jeepez Login")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(
-              controller: emailCtrl,
-              decoration: const InputDecoration(labelText: "Email"),
+      backgroundColor: Colors.white,
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            color: Colors.blue[800],
+            child: Column(
+              children: const [
+                Icon(Icons.directions_bus, size: 60, color: Colors.white),
+                SizedBox(height: 10),
+                Text(
+                  "JeepEZ",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-            TextField(
-              controller: passCtrl,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: "Password"),
-            ),
-            const SizedBox(height: 20),
-            if (loading) const CircularProgressIndicator(),
-            if (!loading)
-              ElevatedButton(
-                onPressed: () async {
-                  setState(() {
-                    loading = true;
-                    error = "";
-                  });
-                  try {
-                    AppUser? user = await AuthService().login(
-                      emailCtrl.text.trim(),
-                      passCtrl.text.trim(),
-                    );
-                    if (user != null && context.mounted) {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => RoleBasedDashboard(user: user),
+          ),
+
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32.0),
+              child: Center(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: emailCtrl,
+                        decoration: const InputDecoration(
+                          labelText: "Employee ID",
+                          border: OutlineInputBorder(),
                         ),
-                      );
-                    } else {
-                      setState(() => error = "User not found");
-                    }
-                  } catch (e) {
-                    setState(() => error = e.toString());
-                  } finally {
-                    setState(() => loading = false);
-                  }
-                },
-                child: const Text("Login"),
+                      ),
+                      const SizedBox(height: 16),
+
+                      TextField(
+                        controller: passCtrl,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: "Password",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      if (loading)
+                        const CircularProgressIndicator()
+                      else
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue[800],
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            onPressed: () async {
+                              setState(() {
+                                loading = true;
+                                error = "";
+                              });
+
+                              // Don't Change Anything
+                              try {
+                                AppUser? user = await AuthService().login(
+                                  emailCtrl.text.trim(),
+                                  passCtrl.text.trim(),
+                                );
+                                if (user != null && context.mounted) {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          RoleBasedDashboard(user: user),
+                                    ),
+                                  );
+                                } else {
+                                  setState(() => error = "User not found");
+                                }
+                              } catch (e) {
+                                setState(() => error = e.toString());
+                              } finally {
+                                setState(() => loading = false);
+                              }
+                            },
+                            child: const Text(
+                              "Login",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      if (error.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Text(
+                            error,
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
-            if (error.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(error, style: const TextStyle(color: Colors.red)),
+            ),
+          ),
+
+          const Padding(
+            padding: EdgeInsets.only(bottom: 20),
+            child: Text(
+              "JeepEZ",
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
               ),
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
