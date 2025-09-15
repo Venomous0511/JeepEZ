@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../models/app_user.dart';
 
 class AttendanceScreen extends StatelessWidget {
-  const AttendanceScreen({super.key});
+  final AppUser user;
+  const AttendanceScreen({super.key, required this.user});
 
   final List<Map<String, String>> attendanceData = const [
     {'name': '', 'unit': '', 'in': '', 'out': ''},

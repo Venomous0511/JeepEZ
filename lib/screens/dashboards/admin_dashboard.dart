@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
+import '../../services/auth_service.dart';
 import '../admin/employeelist.dart';
 import '../admin/attendanceRecord.dart';
 import '../admin/leavemanagement.dart';
@@ -15,6 +16,7 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   int _selectedIndex = 0;
+  bool _isLoggingOut = false;
 
   final List<Widget> _screens = [];
 
@@ -51,13 +53,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // Add this missing method
   Future<void> _signOut() async {
+    if (_isLoggingOut) return;
+    setState(() => _isLoggingOut = true);
+
     try {
-      // Navigate to login screen or root
-      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+      await Future.delayed(const Duration(milliseconds: 3000));
+
+      await AuthService().logout();
     } catch (e) {
-      print('Error signing out: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to sign out: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoggingOut = false);
     }
   }
 
@@ -105,12 +115,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 border: Border(top: BorderSide(color: Colors.grey.shade300)),
               ),
               child: ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text(
-                  'Logout',
-                  style: TextStyle(color: Colors.red),
+                leading: const Icon(Icons.logout, color: Color(0xFF0D2364)),
+                title: Text(
+                  _isLoggingOut ? 'Logging out...' : 'Logout',
+                  style: const TextStyle(color: Color(0xFF0D2364)),
                 ),
-                onTap: _signOut,
+                trailing: _isLoggingOut
+                    ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+                    : null,
+                onTap: _isLoggingOut ? null : _signOut,
               ),
             ),
           ],

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../models/app_user.dart';
 
 class LeaveManagementScreen extends StatefulWidget {
-  const LeaveManagementScreen({super.key});
+  final AppUser user;
+  const LeaveManagementScreen({super.key, required this.user});
 
   @override
   State<LeaveManagementScreen> createState() => _LeaveManagementScreenState();
