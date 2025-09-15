@@ -4,7 +4,7 @@ import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboards/admin_dashboard.dart';
 import 'screens/dashboards/super_admin_dashboard.dart';
-import 'screens/dashboards/legaloffecer_dashboard.dart';
+import 'screens/dashboards/legal_offecer_dashboard.dart';
 import 'screens/dashboards/driver_dashboard.dart';
 import 'screens/dashboards/conductor_dashboard.dart';
 import 'screens/dashboards/inspector_dashboard.dart';
@@ -40,7 +40,7 @@ class RoleBasedDashboard extends StatelessWidget {
     switch (user.role) {
       case "super_admin":
         return SuperAdminDashboard(user: user);
-      case "legalofficer":
+      case "legal_officer":
         return LegalOfficerDashboardScreen(user: user);
       case "admin":
         return AdminDashboard(user: user);

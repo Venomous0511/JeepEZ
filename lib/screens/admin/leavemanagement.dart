@@ -111,7 +111,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withAlpha(128),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -189,7 +189,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
+            color: color.withAlpha(128),
             shape: BoxShape.circle,
           ),
           child: Center(
@@ -228,7 +228,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withAlpha(128),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
@@ -300,7 +300,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                         _buildActionCell(context, index),
                       ],
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
@@ -376,10 +376,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: status == 'Pending'
-              ? Colors.orange.withOpacity(0.2)
+              ? Colors.orange.withAlpha(128)
               : status == 'Approved'
-              ? Colors.green.withOpacity(0.2)
-              : Colors.red.withOpacity(0.2),
+              ? Colors.green.withAlpha(128)
+              : Colors.red.withAlpha(128),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
@@ -428,7 +428,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     final request = _leaveRequests[index];
     DateTime now = DateTime.now();
     DateTime firstDay = DateTime(now.year, now.month, 1);
-    DateTime lastDay = DateTime(now.year, now.month + 1, 0);
 
     return AlertDialog(
       title: Row(
@@ -473,7 +472,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                 return Container(
                   decoration: BoxDecoration(
                     color: isLeaveDay
-                        ? Colors.blue.withOpacity(0.2)
+                        ? Colors.blue.withAlpha(128)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(

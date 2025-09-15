@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
 import '../admin/employeelist.dart';
-import '../admin/attendanceRecord.dart';
+import '../admin/attendance_record.dart';
 import '../admin/leavemanagement.dart';
 import '../admin/hiringmanagement.dart';
+import 'dart:developer';
 
 class AdminDashboard extends StatefulWidget {
   final AppUser user;
@@ -45,19 +46,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildHiringManagementScreen() {
-    return const Center(
-      child: Text('Hiring Management Screen', style: TextStyle(fontSize: 24)),
-    );
-  }
-
   // Add this missing method
   Future<void> _signOut() async {
     try {
       // Navigate to login screen or root
       Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
     } catch (e) {
-      print('Error signing out: $e');
+      log('Error signing out: $e');
     }
   }
 

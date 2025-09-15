@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import '../SuperAdminScreen/employee_list.dart'; // Your existing screen
+import '../SuperAdminScreen/employee_list.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

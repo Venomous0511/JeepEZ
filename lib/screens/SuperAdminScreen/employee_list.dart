@@ -62,9 +62,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
                       columnSpacing: 16,
-                      headingRowColor: MaterialStateProperty.all(
-                        Colors.blue[50],
-                      ),
+                      headingRowColor: WidgetStateProperty.all(Colors.blue[50]),
                       columns: const [
                         DataColumn(label: Text("Employee's Name")),
                         DataColumn(label: Text('Joining Date')),

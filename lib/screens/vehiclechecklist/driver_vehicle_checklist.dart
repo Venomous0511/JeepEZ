@@ -124,7 +124,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                         ],
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),

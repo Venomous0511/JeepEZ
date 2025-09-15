@@ -85,7 +85,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: _selectedLeaveType,
+                initialValue: _selectedLeaveType,
                 decoration: const InputDecoration(border: OutlineInputBorder()),
                 items: _leaveTypes.map((String value) {
                   return DropdownMenuItem<String>(

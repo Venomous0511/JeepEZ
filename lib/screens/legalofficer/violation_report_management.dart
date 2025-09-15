@@ -174,31 +174,26 @@ class _UserItem extends StatelessWidget {
                 const Divider(),
 
                 // Violations List
-                ...violations
-                    .map(
-                      (violation) => Column(
+                ...violations.map(
+                  (violation) => Column(
+                    children: [
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: Text(violation['date']!),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(violation['violation']!),
-                              ),
-                              Expanded(
-                                flex: 1,
-                                child: Text(violation['severity']!),
-                              ),
-                            ],
+                          Expanded(flex: 2, child: Text(violation['date']!)),
+                          Expanded(
+                            flex: 2,
+                            child: Text(violation['violation']!),
                           ),
-                          const Divider(),
+                          Expanded(
+                            flex: 1,
+                            child: Text(violation['severity']!),
+                          ),
                         ],
                       ),
-                    )
-                    .toList(),
+                      const Divider(),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

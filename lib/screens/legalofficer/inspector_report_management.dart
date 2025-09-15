@@ -130,78 +130,100 @@ class IncidentReportManagementScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Incidents Table Header
-            const Row(
-              children: [
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    'UNIT',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Date',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Type',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Reporter',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Priority',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Status',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    'Actions',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Divider(),
-
-            // Incidents List
+            // Incidents Table
             Expanded(
-              child: ListView(
-                children: incidents
-                    .map(
-                      (incident) => _IncidentItem(
-                        unit: incident['unit'],
-                        date: incident['date'],
-                        type: incident['type'],
-                        reporter: incident['reporter'],
-                        priority: incident['priority'],
-                        status: incident['status'],
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Container(
+                  constraints: BoxConstraints(
+                    minWidth: MediaQuery.of(context).size.width,
+                  ),
+                  child: DataTable(
+                    columnSpacing: 20,
+                    headingRowColor: WidgetStateProperty.all(
+                      Colors.grey.shade200,
+                    ),
+                    columns: const [
+                      DataColumn(
+                        label: Text(
+                          'UNIT',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
-                    )
-                    .toList(),
+                      DataColumn(
+                        label: Text(
+                          'Date',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Type',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Reporter',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Priority',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Status',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          'Actions',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                    rows: incidents.map((incident) {
+                      return DataRow(
+                        cells: [
+                          DataCell(Text(incident['unit'])),
+                          DataCell(Text(incident['date'])),
+                          DataCell(Text(incident['type'])),
+                          DataCell(Text(incident['reporter'])),
+                          DataCell(
+                            Text(
+                              incident['priority'],
+                              style: TextStyle(
+                                color: _getPriorityColor(incident['priority']),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              incident['status'],
+                              style: TextStyle(
+                                color: _getStatusColor(incident['status']),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            IconButton(
+                              icon: const Icon(Icons.more_vert, size: 20),
+                              onPressed: () =>
+                                  _showIncidentDetails(context, incident),
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
               ),
             ),
           ],
@@ -214,6 +236,78 @@ class IncidentReportManagementScreen extends StatelessWidget {
         backgroundColor: Colors.indigo,
         child: const Icon(Icons.add, color: Colors.white),
       ),
+    );
+  }
+
+  static Color _getPriorityColor(String priority) {
+    switch (priority) {
+      case 'Critical':
+        return Colors.red;
+      case 'High':
+        return Colors.orange;
+      case 'Medium':
+        return Colors.amber;
+      case 'Low':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  static Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Open':
+        return Colors.blue;
+      case 'Under Investigation':
+        return Colors.orange;
+      case 'Resolved':
+        return Colors.green;
+      case 'Closed':
+        return Colors.grey;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  void _showIncidentDetails(
+    BuildContext context,
+    Map<String, dynamic> incident,
+  ) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Incident Details - ${incident['unit']}'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _DetailRow(title: 'UNIT:', value: incident['unit']),
+                _DetailRow(title: 'Date:', value: incident['date']),
+                _DetailRow(title: 'Type:', value: incident['type']),
+                _DetailRow(title: 'Reporter:', value: incident['reporter']),
+                _DetailRow(title: 'Priority:', value: incident['priority']),
+                _DetailRow(title: 'Status:', value: incident['status']),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+            TextButton(
+              onPressed: () {
+                // Edit incident functionality
+                Navigator.pop(context);
+              },
+              child: const Text('Edit'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -249,137 +343,6 @@ class _StatCard extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _IncidentItem extends StatelessWidget {
-  const _IncidentItem({
-    required this.unit,
-    required this.date,
-    required this.type,
-    required this.reporter,
-    required this.priority,
-    required this.status,
-  });
-
-  final String unit;
-  final String date;
-  final String type;
-  final String reporter;
-  final String priority;
-  final String status;
-
-  void _showIncidentDetails(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Incident Details - $unit'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _DetailRow(title: 'UNIT:', value: unit),
-                _DetailRow(title: 'Date:', value: date),
-                _DetailRow(title: 'Type:', value: type),
-                _DetailRow(title: 'Reporter:', value: reporter),
-                _DetailRow(title: 'Priority:', value: priority),
-                _DetailRow(title: 'Status:', value: status),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-            TextButton(
-              onPressed: () {
-                // Edit incident functionality
-                Navigator.pop(context);
-              },
-              child: const Text('Edit'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(flex: 1, child: Text(unit)),
-            Expanded(flex: 2, child: Text(date)),
-            Expanded(flex: 2, child: Text(type)),
-            Expanded(flex: 2, child: Text(reporter)),
-            Expanded(
-              flex: 2,
-              child: Text(
-                priority,
-                style: TextStyle(
-                  color: _getPriorityColor(priority),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                status,
-                style: TextStyle(
-                  color: _getStatusColor(status),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 1,
-              child: IconButton(
-                icon: const Icon(Icons.more_vert, size: 20),
-                onPressed: () => _showIncidentDetails(context),
-              ),
-            ),
-          ],
-        ),
-        const Divider(),
-      ],
-    );
-  }
-
-  Color _getPriorityColor(String priority) {
-    switch (priority) {
-      case 'Critical':
-        return Colors.red;
-      case 'High':
-        return Colors.orange;
-      case 'Medium':
-        return Colors.amber;
-      case 'Low':
-        return Colors.green;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Open':
-        return Colors.blue;
-      case 'Under Investigation':
-        return Colors.orange;
-      case 'Resolved':
-        return Colors.green;
-      case 'Closed':
-        return Colors.grey;
-      default:
-        return Colors.grey;
-    }
   }
 }
 
