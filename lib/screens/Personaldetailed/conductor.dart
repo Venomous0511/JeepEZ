@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/app_user.dart';
+import 'dart:developer';
 
 class PersonalDetails extends StatefulWidget {
   final AppUser user;
@@ -19,12 +20,16 @@ class _PersonalDetailsState extends State<PersonalDetails> {
     try {
       await _auth.signOut();
       // Navigate to login screen and remove all previous routes
-      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+      }
     } catch (e) {
-      print('Error signing out: $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error signing out: $e")));
+      log('Error signing out: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error signing out: $e")));
+      }
     }
   }
 

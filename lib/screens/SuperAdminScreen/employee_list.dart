@@ -128,6 +128,41 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                 final nameCtrl = TextEditingController(text: data['name']);
                                 String role = data['role'] ?? "driver";
 
+                return SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      columnSpacing: 16,
+                      headingRowColor: WidgetStateProperty.all(Colors.blue[50]),
+                      columns: const [
+                        DataColumn(label: Text("Employee's Name")),
+                        DataColumn(label: Text('Joining Date')),
+                        DataColumn(label: Text('Email')),
+                        DataColumn(label: Text('Status')),
+                      ],
+                      rows: employeeDocs.map((doc) {
+                        final emp = doc.data()! as Map<String, dynamic>;
+                        return DataRow(
+                          cells: [
+                            DataCell(Text(emp['name'] ?? '')),
+                            DataCell(Text(emp['joining'] ?? '')),
+                            DataCell(Text(emp['email'] ?? '')),
+                            DataCell(Text(emp['status'] ?? '')),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
                                 final updated = await showDialog<bool>(
                                   context: context,
                                   builder: (context) => StatefulBuilder(

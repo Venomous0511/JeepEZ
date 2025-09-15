@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
 import '../admin/employeelist.dart';
-import '../admin/attendanceRecord.dart';
+import '../admin/attendance_record.dart';
 import '../admin/leavemanagement.dart';
 import '../admin/hiringmanagement.dart';
 
@@ -47,12 +47,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildHiringManagementScreen() {
-    return const Center(
-      child: Text('Hiring Management Screen', style: TextStyle(fontSize: 24)),
-    );
-  }
-
+  // Add this missing method
   Future<void> _signOut() async {
     if (_isLoggingOut) return;
     setState(() => _isLoggingOut = true);

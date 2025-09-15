@@ -63,7 +63,7 @@ class EmployeeListScreen extends StatelessWidget {
                       ),
                       child: DataTable(
                         columnSpacing: 16,
-                        headingRowColor: MaterialStateProperty.all(
+                        headingRowColor: WidgetStateProperty.all(
                           Colors.blue[50],
                         ),
                         columns: const [

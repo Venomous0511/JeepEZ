@@ -287,7 +287,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
     ];
 
     return DataTable(
-      headingRowColor: MaterialStateProperty.all(Colors.grey.shade300),
+      headingRowColor: WidgetStateProperty.all(Colors.grey.shade300),
       columnSpacing: 12,
       columns: const [
         DataColumn(

@@ -35,7 +35,7 @@ class AttendanceScreen extends StatelessWidget {
                 constraints: BoxConstraints(minWidth: constraints.maxWidth),
                 child: DataTable(
                   columnSpacing: 16,
-                  headingRowColor: MaterialStateProperty.all(Colors.blue[50]),
+                  headingRowColor: WidgetStateProperty.all(Colors.blue[50]),
                   columns: const [
                     DataColumn(label: Text("Employee's Name")),
                     DataColumn(label: Text('Vehicle Unit')),
