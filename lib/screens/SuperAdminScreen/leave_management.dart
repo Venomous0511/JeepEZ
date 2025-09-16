@@ -430,7 +430,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     final request = _leaveRequests[index];
     DateTime now = DateTime.now();
     DateTime firstDay = DateTime(now.year, now.month, 1);
-    DateTime lastDay = DateTime(now.year, now.month + 1, 0);
 
     return AlertDialog(
       title: Row(
