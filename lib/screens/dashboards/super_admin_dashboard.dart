@@ -35,7 +35,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     super.initState();
     _screens = [
       _buildHomeScreen(),
-      _buildSettingsScreen(),
     ];
   }
 
@@ -178,7 +177,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                   items:
                       const [
                         'admin',
-                        'legalofficer',
+                        'legal_officer',
                         'driver',
                         'conductor',
                         'inspector',
@@ -223,12 +222,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSettingsScreen() {
-    return const Center(
-      child: Text('Settings Screen', style: TextStyle(fontSize: 24)),
     );
   }
 
@@ -386,15 +379,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
         ),
       ),
       body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Monitor'),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF0D2364),
-        onTap: _onItemTapped,
-      ),
     );
   }
 }
