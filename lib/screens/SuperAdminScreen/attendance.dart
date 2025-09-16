@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
 
-class AttendanceScreen extends StatelessWidget {
+class AttendanceScreen extends StatefulWidget {
   final AppUser user;
   const AttendanceScreen({super.key, required this.user});
 
@@ -11,16 +11,11 @@ class AttendanceScreen extends StatelessWidget {
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
   final List<Map<String, String>> attendanceData = const [
-    {'name': '', 'unit': '', 'in': '', 'out': ''},
-    {'name': '', 'unit': '', 'in': '', 'out': ''},
-    {'name': '', 'unit': '', 'in': '', 'out': ''},
-    {'name': '', 'unit': '', 'in': '', 'out': ''},
-    {'name': '', 'unit': '', 'in': '', 'out': ''},
-    {'name': '', 'unit': '', 'in': '', 'out': ''},
-    {'name': '', 'unit': '', 'in': '', 'out': ''},
-    {'name': '', 'unit': '', 'in': '', 'out': ''},
-    {'name': '', 'unit': '', 'in': '', 'out': ''},
-    {'name': '', 'unit': '', 'in': '', 'out': ''},
+    {'name': 'Juan Dela Cruz', 'unit': 'Jeep 101', 'in': '08:00 AM', 'out': '05:00 PM'},
+    {'name': 'Maria Santos', 'unit': 'Jeep 102', 'in': '09:00 AM', 'out': '06:00 PM'},
+    {'name': 'Pedro Lopez', 'unit': 'Jeep 103', 'in': '07:30 AM', 'out': '04:30 PM'},
+    {'name': 'Ana Reyes', 'unit': 'Jeep 104', 'in': '08:15 AM', 'out': '05:15 PM'},
+    {'name': 'Jose Garcia', 'unit': 'Jeep 105', 'in': '07:45 AM', 'out': '04:45 PM'},
   ];
 
   @override
@@ -32,13 +27,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       ),
       body: GestureDetector(
         onHorizontalDragEnd: (details) {
-          // Swipe functionality - you can add navigation logic here if needed
+          // Swipe functionality - optional for navigation
           if (details.primaryVelocity! > 0) {
-            // Swipe right
-            print('Swiped right');
+            debugPrint('Swiped right');
           } else if (details.primaryVelocity! < 0) {
-            // Swipe left
-            print('Swiped left');
+            debugPrint('Swiped left');
           }
         },
         child: SingleChildScrollView(
@@ -93,44 +86,31 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 ),
                 // Table Rows
                 ...attendanceData.map((record) {
+                  int index = attendanceData.indexOf(record);
                   return TableRow(
                     decoration: BoxDecoration(
-                      color: attendanceData.indexOf(record) % 2 == 0
-                          ? Colors.white
-                          : Colors.grey[50],
+                      color: index % 2 == 0 ? Colors.white : Colors.grey[50],
                     ),
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(12.0),
-                        child: Text(
-                          record['name'] ?? '',
-                          textAlign: TextAlign.center,
-                        ),
+                        child: Text(record['name'] ?? '', textAlign: TextAlign.center),
                       ),
                       Padding(
                         padding: const EdgeInsets.all(12.0),
-                        child: Text(
-                          record['unit'] ?? '',
-                          textAlign: TextAlign.center,
-                        ),
+                        child: Text(record['unit'] ?? '', textAlign: TextAlign.center),
                       ),
                       Padding(
                         padding: const EdgeInsets.all(12.0),
-                        child: Text(
-                          record['in'] ?? '',
-                          textAlign: TextAlign.center,
-                        ),
+                        child: Text(record['in'] ?? '', textAlign: TextAlign.center),
                       ),
                       Padding(
                         padding: const EdgeInsets.all(12.0),
-                        child: Text(
-                          record['out'] ?? '',
-                          textAlign: TextAlign.center,
-                        ),
+                        child: Text(record['out'] ?? '', textAlign: TextAlign.center),
                       ),
                     ],
                   );
-                }).toList(),
+                })
               ],
             ),
           ),

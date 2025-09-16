@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
-import '../legalofficer/IRH.dart';
-import '../legalofficer/VRM.dart';
-import '../legalofficer/ELV.dart';
-import '../legalofficer/IRM.dart';
+import '../legalofficer/inspector_report_history.dart';
+import '../legalofficer/violation_report_management.dart';
+import '../legalofficer/employee_list_view.dart';
+import '../legalofficer/inspector_report_management.dart';
 
 class LegalOfficerDashboardScreen extends StatelessWidget {
   const LegalOfficerDashboardScreen({super.key, required this.user});

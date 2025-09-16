@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
 import '../SuperAdminScreen/monitor.dart';
 import '../SuperAdminScreen/employee_list.dart';
 import '../SuperAdminScreen/attendance.dart';
-import '../SuperAdminScreen/leave_management.dart';
 
 class SuperAdminDashboard extends StatefulWidget {
   final AppUser user;
@@ -18,17 +18,27 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   int _selectedIndex = 0;
   bool _isLoggingOut = false;
 
+  // Form Controllers
+  final nameCtrl = TextEditingController();
+  final emailCtrl = TextEditingController();
+  final passCtrl = TextEditingController();
+
+  String role = "driver";
+  bool loading = false;
+
   // For dropdown in drawer
   bool showUserManagementOptions = false;
 
-  final List<Widget> _screens = [];
+  late List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
-    _screens.add(_buildHomeScreen());
-    _screens.add(MonitorScreen(user: widget.user));
-    _screens.add(_buildSettingsScreen());
+    _screens = [
+      _buildHomeScreen(),
+      MonitorScreen(user: widget.user),
+      _buildSettingsScreen(),
+    ];
   }
 
   void _onItemTapped(int index) {
@@ -37,12 +47,56 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     });
   }
 
+  /// ---------------- CREATE USER FUNCTION ----------------
+  Future<void> _createUser() async {
+    if (emailCtrl.text.isEmpty || passCtrl.text.length < 6) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Enter email and password (6+ chars)")),
+      );
+      return;
+    }
+
+    setState(() => loading = true);
+
+    try {
+      final newUser = {
+        "name": nameCtrl.text.trim(),
+        "email": emailCtrl.text.trim(),
+        "role": role,
+        "createdAt": FieldValue.serverTimestamp(),
+        "createdBy": widget.user.email,
+      };
+
+      await FirebaseFirestore.instance.collection("users").add(newUser);
+
+      if (!mounted) return; // ✅ prevent invalid context
+
+      nameCtrl.clear();
+      emailCtrl.clear();
+      passCtrl.clear();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("User created successfully")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => loading = false);
+      }
+    }
+  }
+
+  /// ---------------- HOME SCREEN ----------------
   Widget _buildHomeScreen() {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: ListView(
         children: [
-
           // Bordered Create User Form with Box Shadow
           Container(
             padding: const EdgeInsets.all(20.0),
@@ -51,16 +105,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
               borderRadius: BorderRadius.circular(12.0),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
+                  color: Colors.grey.withAlpha(2),
                   spreadRadius: 1,
                   blurRadius: 10,
                   offset: const Offset(0, 4),
-                ),
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  spreadRadius: 1,
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
                 ),
               ],
             ),
@@ -81,10 +129,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                   decoration: const InputDecoration(
                     labelText: 'Name',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -93,10 +137,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                   decoration: const InputDecoration(
                     labelText: 'Email',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -106,10 +146,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                   decoration: const InputDecoration(
                     labelText: 'Password',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -118,59 +154,44 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                   decoration: const InputDecoration(
                     labelText: 'Role',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
                   ),
-                  items:
-                      const [
-                        'admin',
-                        'legalofficer',
-                        'driver',
-                        'conductor',
-                        'inspector',
-                      ].map((String role) {
-                        return DropdownMenuItem<String>(
-                          value: role,
-                          child: Text(role),
-                        );
-                      }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      role = newValue!;
-                    });
-                  },
+                  items: const [
+                    'admin',
+                    'legal_officer',
+                    'driver',
+                    'conductor',
+                    'inspector',
+                  ].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                  onChanged: (value) => setState(() => role = value ?? "driver"),
                 ),
                 const SizedBox(height: 20),
                 loading
                     ? const Center(child: CircularProgressIndicator())
                     : SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _createUser,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0D2364),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text(
-                            'Create User',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _createUser,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0D2364),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
+                    ),
+                    child: const Text(
+                      'Create User',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
 
-          // End of Bordered Create User Form
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 8),
@@ -193,11 +214,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                 return const Center(child: CircularProgressIndicator());
               }
               if (!snap.hasData || snap.data!.docs.isEmpty) {
-                return const Text('No users yet.');
+                return const Text("No users yet.");
               }
+
               return Column(
-                children: snap.data!.docs.map((d) {
-                  final data = d.data() as Map<String, dynamic>;
+                children: snap.data!.docs.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
                   return Card(
                     elevation: 2,
                     margin: const EdgeInsets.symmetric(vertical: 6),
@@ -209,10 +231,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                       subtitle: Text(
                         '${data['name'] ?? ''} • ${data['role'] ?? ''}',
                       ),
-                      trailing: const Icon(
-                        Icons.person,
-                        color: Color(0xFF0D2364),
-                      ),
+                      trailing: const Icon(Icons.person, color: Color(0xFF0D2364)),
                     ),
                   );
                 }).toList(),
@@ -235,8 +254,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     setState(() => _isLoggingOut = true);
 
     try {
-      await Future.delayed(const Duration(milliseconds: 3000));
-
       await AuthService().logout();
     } catch (e) {
       if (!mounted) return;
@@ -249,13 +266,20 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   }
 
   @override
+  void dispose() {
+    nameCtrl.dispose();
+    emailCtrl.dispose();
+    passCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Super Admin Dashboard'),
         backgroundColor: const Color(0xFF0D2364),
         foregroundColor: Colors.white,
-        elevation: 0,
       ),
       drawer: Drawer(
         child: Column(
@@ -280,61 +304,44 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                       Navigator.pop(context);
                     },
                   ),
-                  // User Management Expansion Tile
                   ExpansionTile(
                     leading: const Icon(Icons.people, color: Color(0xFF0D2364)),
                     title: const Text('User Management'),
                     initiallyExpanded: showUserManagementOptions,
-                    onExpansionChanged: (expanded) {
-                      setState(() {
-                        showUserManagementOptions = expanded;
-                      });
-                    },
+                    onExpansionChanged: (expanded) =>
+                        setState(() => showUserManagementOptions = expanded),
                     children: [
-                      // Add Account
                       ListTile(
-                        leading: const Icon(
-                          Icons.person_add,
-                          color: Color(0xFF0D2364),
-                        ),
+                        leading: const Icon(Icons.person_add, color: Color(0xFF0D2364)),
                         title: const Text('Add Account'),
                         onTap: () {
                           Navigator.pop(context);
-                          _onItemTapped(
-                            0,
-                          ); // Navigate to home screen where create user form is located
+                          _onItemTapped(0);
                         },
                       ),
-                      // Employee List
                       ListTile(
-                        leading: const Icon(
-                          Icons.list,
-                          color: Color(0xFF0D2364),
-                        ),
+                        leading: const Icon(Icons.list, color: Color(0xFF0D2364)),
                         title: const Text('Employee List'),
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const EmployeeListScreen(),
+                              builder: (context) =>
+                                  EmployeeListScreen(user: widget.user),
                             ),
                           );
                         },
                       ),
-                      // Attendance
                       ListTile(
-                        leading: const Icon(
-                          Icons.check_circle,
-                          color: Color(0xFF0D2364),
-                        ),
+                        leading: const Icon(Icons.check_circle, color: Color(0xFF0D2364)),
                         title: const Text('Attendance'),
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const AttendanceScreen(),
+                              builder: (context) => AttendanceScreen(user: widget.user),
                             ),
                           );
                         },
@@ -344,7 +351,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                 ],
               ),
             ),
-            // Logout button at the bottom with spacing
             Container(
               padding: const EdgeInsets.symmetric(vertical: 16.0),
               decoration: BoxDecoration(
@@ -376,7 +382,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
           BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Monitor'),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Color(0xFF0D2364),
+        selectedItemColor: const Color(0xFF0D2364),
         onTap: _onItemTapped,
       ),
     );

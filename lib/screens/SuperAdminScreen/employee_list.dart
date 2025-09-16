@@ -20,9 +20,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
   String role = 'driver';
   bool loading = false;
 
-  final CollectionReference employeesCollection = FirebaseFirestore.instance
-      .collection('employees');
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,14 +27,12 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         title: const Text('Employee List Management'),
         backgroundColor: const Color(0xFF1565C0),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Add Users
-            const SizedBox(height: 12),
+            /// ---------------- FORM ----------------
             TextField(
               controller: nameCtrl,
               decoration: const InputDecoration(labelText: 'Name'),
@@ -75,12 +70,11 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
               label: const Text('Add Account'),
             ),
 
-            // Divider
             const SizedBox(height: 24),
             const Divider(),
             const SizedBox(height: 8),
 
-            // Employees List View
+            /// ---------------- LIST ----------------
             const Text(
               'Existing Users',
               style: TextStyle(
@@ -89,7 +83,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 color: Color(0xFF0D2364),
               ),
             ),
-
             const SizedBox(height: 8),
 
             StreamBuilder<QuerySnapshot>(
@@ -104,169 +97,54 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 if (!snap.hasData || snap.data!.docs.isEmpty) {
                   return const Text('No users yet.');
                 }
-                return Column(
-                  children: snap.data!.docs.map((d) {
-                    final data = d.data() as Map<String, dynamic>;
-                    return Card(
-                      elevation: 2,
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      child: ListTile(
-                        title: Text(
-                          data['email'] ?? '',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(
-                          '${data['name'] ?? ''} • ${data['role'] ?? ''}',
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
+
+                final employeeDocs = snap.data!.docs;
+
+                // ✅ Wrap DataTable in horizontal scroll
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    columnSpacing: 16,
+                    headingRowColor:
+                    WidgetStateProperty.all(Colors.blue[50]),
+                    columns: const [
+                      DataColumn(label: Text("Name")),
+                      DataColumn(label: Text("Email")),
+                      DataColumn(label: Text("Role")),
+                      DataColumn(label: Text("Actions")),
+                    ],
+                    rows: employeeDocs.map((d) {
+                      final data = d.data() as Map<String, dynamic>;
+
+                      return DataRow(cells: [
+                        DataCell(Text(data['name'] ?? '')),
+                        DataCell(Text(data['email'] ?? '')),
+                        DataCell(Text(data['role'] ?? '')),
+                        DataCell(Row(
                           children: [
-                            // ✏️ UPDATE button
                             IconButton(
                               icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () async {
-                                final nameCtrl = TextEditingController(text: data['name']);
-                                String role = data['role'] ?? "driver";
-
-                return SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columnSpacing: 16,
-                      headingRowColor: WidgetStateProperty.all(Colors.blue[50]),
-                      columns: const [
-                        DataColumn(label: Text("Employee's Name")),
-                        DataColumn(label: Text('Joining Date')),
-                        DataColumn(label: Text('Email')),
-                        DataColumn(label: Text('Status')),
-                      ],
-                      rows: employeeDocs.map((doc) {
-                        final emp = doc.data()! as Map<String, dynamic>;
-                        return DataRow(
-                          cells: [
-                            DataCell(Text(emp['name'] ?? '')),
-                            DataCell(Text(emp['joining'] ?? '')),
-                            DataCell(Text(emp['email'] ?? '')),
-                            DataCell(Text(emp['status'] ?? '')),
+                              onPressed: () => _editUser(d.id, data),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _deleteUser(d.id, data),
+                            ),
                           ],
-                        );
-                      }).toList(),
-                    ),
+                        )),
+                      ]);
+                    }).toList(),
                   ),
                 );
               },
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-                                final updated = await showDialog<bool>(
-                                  context: context,
-                                  builder: (context) => StatefulBuilder(
-                                    builder: (context, setState) => AlertDialog(
-                                      title: const Text("Update User"),
-                                      content: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          TextField(
-                                            controller: nameCtrl,
-                                            decoration: const InputDecoration(labelText: "Name"),
-                                          ),
-                                          const SizedBox(height: 12),
-                                          DropdownButtonFormField<String>(
-                                            value: role,
-                                            items: const [
-                                              DropdownMenuItem(value: 'admin', child: Text('admin')),
-                                              DropdownMenuItem(value: 'legal_officer', child: Text('legal_officer')),
-                                              DropdownMenuItem(value: 'driver', child: Text('driver')),
-                                              DropdownMenuItem(value: 'conductor', child: Text('conductor')),
-                                              DropdownMenuItem(value: 'inspector', child: Text('inspector')),
-                                            ],
-                                            onChanged: (v) => setState(() => role = v ?? 'driver'),
-                                            decoration: const InputDecoration(labelText: 'Role'),
-                                          ),
-                                        ],
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () => Navigator.pop(context, false),
-                                          child: const Text(
-                                            "Cancel",
-                                            style: TextStyle(color: Color(0xFF0D2364)),
-                                          ),
-                                        ),
-                                        TextButton(
-                                          onPressed: () => Navigator.pop(context, true),
-                                          child: const Text(
-                                            "Update",
-                                            style: TextStyle(color: Color(0xFF0D2364)),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-
-                                if (updated == true) {
-                                  await FirebaseFirestore.instance
-                                      .collection('users')
-                                      .doc(d.id)
-                                      .update({
-                                    "name": nameCtrl.text.trim(),
-                                    "role": role,
-                                  });
-                                }
-                              },
-                            ),
-
-                            // 🗑 DELETE button
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: const Text("Delete User"),
-                                    content: Text(
-                                        "Are you sure you want to delete ${data['email']}?"),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context, false),
-                                        child: const Text("Cancel"),
-                                      ),
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context, true),
-                                        child: const Text("Delete", style: TextStyle(color: Colors.red)),
-                                      ),
-                                    ],
-                                  ),
-                                );
-
-                                if (confirm == true) {
-                                  await FirebaseFirestore.instance
-                                      .collection('users')
-                                      .doc(d.id)
-                                      .delete();
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
-            )
           ],
         ),
       ),
     );
   }
 
+  /// ---------------- CREATE USER ----------------
   Future<FirebaseApp> _getOrCreateSecondaryApp() async {
     try {
       return Firebase.app('adminSecondary');
@@ -287,8 +165,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     }
 
     setState(() => loading = true);
-
-    final messenger = ScaffoldMessenger.of(context); // ✅ capture early
+    final messenger = ScaffoldMessenger.of(context);
 
     try {
       final secondaryApp = await _getOrCreateSecondaryApp();
@@ -298,8 +175,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         email: emailCtrl.text.trim(),
         password: passCtrl.text.trim(),
       );
-      final newUid = newCred.user!.uid;
 
+      final newUid = newCred.user!.uid;
       await FirebaseFirestore.instance.collection('users').doc(newUid).set({
         'uid': newUid,
         'email': emailCtrl.text.trim(),
@@ -319,11 +196,88 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         SnackBar(content: Text('User created as $role')),
       );
     } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       if (mounted) setState(() => loading = false);
+    }
+  }
+
+  /// ---------------- UPDATE USER ----------------
+  Future<void> _editUser(String docId, Map<String, dynamic> data) async {
+    final nameCtrl = TextEditingController(text: data['name']);
+    String role = data['role'] ?? "driver";
+
+    final updated = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text("Update User"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: "Name"),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: role,
+                items: const [
+                  DropdownMenuItem(value: 'admin', child: Text('admin')),
+                  DropdownMenuItem(value: 'legal_officer', child: Text('legal_officer')),
+                  DropdownMenuItem(value: 'driver', child: Text('driver')),
+                  DropdownMenuItem(value: 'conductor', child: Text('conductor')),
+                  DropdownMenuItem(value: 'inspector', child: Text('inspector')),
+                ],
+                onChanged: (v) => setState(() => role = v ?? 'driver'),
+                decoration: const InputDecoration(labelText: 'Role'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Update"),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (updated == true) {
+      await FirebaseFirestore.instance.collection('users').doc(docId).update({
+        "name": nameCtrl.text.trim(),
+        "role": role,
+      });
+    }
+  }
+
+  /// ---------------- DELETE USER ----------------
+  Future<void> _deleteUser(String docId, Map<String, dynamic> data) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete User"),
+        content: Text("Are you sure you want to delete ${data['email']}?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await FirebaseFirestore.instance.collection('users').doc(docId).delete();
     }
   }
 
