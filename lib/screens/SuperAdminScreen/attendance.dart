@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:developer';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -30,13 +31,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       ),
       body: GestureDetector(
         onHorizontalDragEnd: (details) {
-          // Swipe functionality - you can add navigation logic here if needed
           if (details.primaryVelocity! > 0) {
-            // Swipe right
-            print('Swiped right');
+            log('Swiped right');
           } else if (details.primaryVelocity! < 0) {
-            // Swipe left
-            print('Swiped left');
+            log('Swiped left');
           }
         },
         child: SingleChildScrollView(
@@ -51,7 +49,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               border: TableBorder.all(color: Colors.grey.shade300, width: 1.0),
               defaultColumnWidth: const IntrinsicColumnWidth(),
               children: [
-                // Table Header
                 TableRow(
                   decoration: BoxDecoration(color: Colors.blue[50]),
                   children: const [
@@ -89,13 +86,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     ),
                   ],
                 ),
-                // Table Rows
                 ...attendanceData.map((record) {
+                  final index = attendanceData.indexOf(record);
                   return TableRow(
                     decoration: BoxDecoration(
-                      color: attendanceData.indexOf(record) % 2 == 0
-                          ? Colors.white
-                          : Colors.grey[50],
+                      color: index % 2 == 0 ? Colors.white : Colors.grey[50],
                     ),
                     children: [
                       Padding(
@@ -128,7 +123,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       ),
                     ],
                   );
-                }).toList(),
+                }),
               ],
             ),
           ),

@@ -42,8 +42,12 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Vehicle Checklist')),
-      body: Padding(
+      appBar: AppBar(
+        title: const Text('Vehicle Checklist'),
+        backgroundColor: const Color(0xFF0D2364), // Added the specified color
+        foregroundColor: Colors.white, // White text for better contrast
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,7 +159,9 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                 onPressed: _submitForm,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: const Color(0xFF0D47A1),
+                  backgroundColor: const Color(
+                    0xFF0D2364,
+                  ), // Changed to the specified color
                 ),
                 child: const Text(
                   'Save & Submit',

@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../firebase_options.dart';
 import '../../models/app_user.dart';
-import '../SuperAdminScreen/monitor.dart';
 import '../SuperAdminScreen/employee_list.dart';
 import '../SuperAdminScreen/attendance.dart';
 import 'dart:developer';
@@ -34,7 +33,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   void initState() {
     super.initState();
     _screens.add(_buildHomeScreen());
-    _screens.add(MonitorScreen(user: widget.user));
     _screens.add(_buildSettingsScreen());
   }
 
@@ -112,6 +110,15 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   }
 
   Widget _buildHomeScreen() {
+    return const Center(
+      child: Text(
+        'Super Admin Dashboard',
+        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildAddAccountScreen() {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: ListView(
@@ -124,13 +131,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
               borderRadius: BorderRadius.circular(12.0),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
+                  color: Colors.grey.withAlpha(128),
                   spreadRadius: 1,
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
+                  color: Colors.grey.withAlpha(128),
                   spreadRadius: 1,
                   blurRadius: 4,
                   offset: const Offset(0, 2),
@@ -187,7 +194,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: role,
+                  initialValue: role,
                   decoration: const InputDecoration(
                     labelText: 'Role',
                     border: OutlineInputBorder(),
@@ -375,9 +382,20 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                         title: const Text('Add Account'),
                         onTap: () {
                           Navigator.pop(context);
-                          _onItemTapped(
-                            0,
-                          ); // Navigate to home screen where create user form is located
+                          // Navigate to Add Account screen
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => Scaffold(
+                                appBar: AppBar(
+                                  title: const Text('Add Account'),
+                                  backgroundColor: const Color(0xFF0D2364),
+                                  foregroundColor: Colors.white,
+                                ),
+                                body: _buildAddAccountScreen(),
+                              ),
+                            ),
+                          );
                         },
                       ),
                       // Employee List
@@ -438,15 +456,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
         ),
       ),
       body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Monitor'),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Color(0xFF0D2364),
-        onTap: _onItemTapped,
-      ),
+      // Removed the BottomNavigationBar since it requires at least 2 items
     );
   }
 }

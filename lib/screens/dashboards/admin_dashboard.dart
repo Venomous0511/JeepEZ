@@ -119,23 +119,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return ListTile(
       leading: Icon(
         icon,
-        color: _selectedIndex == index
-            ? const Color(0xFF0D2364)
-            : const Color(0xFF0D2364),
+        color: Colors.black87, // Changed to always use the same color
       ),
       title: Text(
         title,
-        style: TextStyle(
-          fontWeight: _selectedIndex == index
-              ? FontWeight.bold
-              : FontWeight.normal,
-          color: _selectedIndex == index
-              ? const Color(0xFF0D2364)
-              : Colors.black87,
+        style: const TextStyle(
+          color: Colors.black87, // Changed to always use the same color
         ),
       ),
-      selected: _selectedIndex == index,
-      selectedTileColor: const Color(0xFF0D2364),
       onTap: () {
         Navigator.pop(context);
         _onItemTapped(index);
@@ -149,197 +140,8 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Welcome, Admin',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.blue,
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Dashboard Overview',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          // Moved grid calculation to build method to avoid MediaQuery error
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
-
-              return GridView.count(
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                children: const [
-                  StatCard(
-                    icon: Icons.people,
-                    value: '50',
-                    label: 'Employees',
-                    description: 'Total active employees',
-                  ),
-                  StatCard(
-                    icon: Icons.calendar_today,
-                    value: '98%',
-                    label: 'Attendance',
-                    description: 'Today\'s attendance rate',
-                  ),
-                  StatCard(
-                    icon: Icons.event_busy,
-                    value: '8',
-                    label: 'Leave Requests',
-                    description: 'Pending approval',
-                  ),
-                  StatCard(
-                    icon: Icons.work,
-                    value: '5',
-                    label: 'Open Positions',
-                    description: 'Currently hiring',
-                  ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          const RecentActivity(),
-        ],
-      ),
-    );
-  }
-}
-
-class StatCard extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final String label;
-  final String description;
-
-  const StatCard({
-    super.key,
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.description,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 40, color: const Color(0xFF0D2364)),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              description,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class RecentActivity extends StatelessWidget {
-  const RecentActivity({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Recent Activity',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            _buildActivityItem(
-              Icons.person_add,
-              'New employee added',
-              'John Doe joined the team',
-            ),
-            _buildActivityItem(
-              Icons.description,
-              'Leave request submitted',
-              'Jane Smith requested time off',
-            ),
-            _buildActivityItem(
-              Icons.check_circle,
-              'Attendance marked',
-              '95% of employees checked in today',
-            ),
-            _buildActivityItem(
-              Icons.directions,
-              'Route completed',
-              'Delivery route #245 finished',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActivityItem(IconData icon, String title, String subtitle) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE3F2FD),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(icon, color: const Color(0xFF0D2364), size: 20),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(color: Colors.grey, fontSize: 14),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return const Center(
+      child: Text('Welcome to Admin Dashboard', style: TextStyle(fontSize: 24)),
     );
   }
 }
