@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
 import '../SuperAdminScreen/monitor.dart';
@@ -48,48 +48,48 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   }
 
   /// ---------------- CREATE USER FUNCTION ----------------
-  Future<void> _createUser() async {
-    if (emailCtrl.text.isEmpty || passCtrl.text.length < 6) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Enter email and password (6+ chars)")),
-      );
-      return;
-    }
-
-    setState(() => loading = true);
-
-    try {
-      final newUser = {
-        "name": nameCtrl.text.trim(),
-        "email": emailCtrl.text.trim(),
-        "role": role,
-        "createdAt": FieldValue.serverTimestamp(),
-        "createdBy": widget.user.email,
-      };
-
-      await FirebaseFirestore.instance.collection("users").add(newUser);
-
-      if (!mounted) return; // ✅ prevent invalid context
-
-      nameCtrl.clear();
-      emailCtrl.clear();
-      passCtrl.clear();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("User created successfully")),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => loading = false);
-      }
-    }
-  }
+  // Future<void> _createUser() async {
+  //   if (emailCtrl.text.isEmpty || passCtrl.text.length < 6) {
+  //     if (!mounted) return;
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text("Enter email and password (6+ chars)")),
+  //     );
+  //     return;
+  //   }
+  //
+  //   setState(() => loading = true);
+  //
+  //   try {
+  //     final newUser = {
+  //       "name": nameCtrl.text.trim(),
+  //       "email": emailCtrl.text.trim(),
+  //       "role": role,
+  //       "createdAt": FieldValue.serverTimestamp(),
+  //       "createdBy": widget.user.email,
+  //     };
+  //
+  //     await FirebaseFirestore.instance.collection("users").add(newUser);
+  //
+  //     if (!mounted) return; // ✅ prevent invalid context
+  //
+  //     nameCtrl.clear();
+  //     emailCtrl.clear();
+  //     passCtrl.clear();
+  //
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text("User created successfully")),
+  //     );
+  //   } catch (e) {
+  //     if (!mounted) return;
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text("Error: $e")),
+  //     );
+  //   } finally {
+  //     if (mounted) {
+  //       setState(() => loading = false);
+  //     }
+  //   }
+  // }
 
   /// ---------------- HOME SCREEN ----------------
   Widget _buildHomeScreen() {
@@ -129,14 +129,16 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     setState(() => _isLoggingOut = true);
 
     try {
-      await AuthService().logout();
+      // show loading for 3 seconds before signing out
+      await Future.delayed(const Duration(seconds: 3));
+
+      await AuthService().logout(); // triggers authStateChanges -> back to login
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to sign out: $e')),
       );
-    } finally {
-      if (mounted) setState(() => _isLoggingOut = false);
+      setState(() => _isLoggingOut = false); // reset only if error
     }
   }
 
@@ -159,13 +161,23 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
       drawer: Drawer(
         child: Column(
           children: [
-            const DrawerHeader(
+            UserAccountsDrawerHeader(
               decoration: BoxDecoration(color: Color(0xFF0D2364)),
-              child: Text(
-                'Super Admin Menu',
-                style: TextStyle(color: Colors.white, fontSize: 20),
+              accountName: Text(
+                widget.user.name ?? 'Super Admin',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              accountEmail: Text(
+                widget.user.email,
+                style: TextStyle(fontSize: 14),
+              ),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Icon(Icons.admin_panel_settings, color: Color(0xFF0D2364)),
               ),
             ),
+
+            // Expanded ListView for menu items
             Expanded(
               child: ListView(
                 padding: EdgeInsets.zero,
@@ -202,8 +214,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  EmployeeListScreen(user: widget.user),
+                              builder: (context) => EmployeeListScreen(user: widget.user),
                             ),
                           );
                         },
@@ -226,27 +237,26 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: Colors.grey.shade300)),
+
+            const Divider(height: 1),
+
+            // Logout pinned at bottom
+            ListTile(
+              leading: const Icon(Icons.logout, color: Color(0xFF0D2364)),
+              title: Text(
+                _isLoggingOut ? 'Logging out...' : 'Logout',
+                style: const TextStyle(color: Color(0xFF0D2364)),
               ),
-              child: ListTile(
-                leading: const Icon(Icons.logout, color: Color(0xFF0D2364)),
-                title: Text(
-                  _isLoggingOut ? 'Logging out...' : 'Logout',
-                  style: const TextStyle(color: Color(0xFF0D2364)),
-                ),
-                trailing: _isLoggingOut
-                    ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-                    : null,
-                onTap: _isLoggingOut ? null : _signOut,
-              ),
+              trailing: _isLoggingOut
+                  ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+                  : null,
+              onTap: _isLoggingOut ? null : _signOut,
             ),
+            const SizedBox(height: 12), // spacing at bottom
           ],
         ),
       ),
