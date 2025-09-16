@@ -25,7 +25,13 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Incident Report')),
+      appBar: AppBar(
+        title: const Text(
+          'Incident Report',
+          style: TextStyle(color: Colors.white), // White text
+        ),
+        backgroundColor: const Color(0xFF0D2364), // Changed to specified color
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -75,13 +81,26 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
 
               ElevatedButton(
                 onPressed: _submitForm,
-                child: const Text('Save & Submit Form'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(
+                    0xFF0D2364,
+                  ), // Changed to specified color
+                ),
+                child: const Text(
+                  'Save & Submit Form',
+                  style: TextStyle(color: Colors.white), // White text
+                ),
               ),
               const SizedBox(height: 16),
 
               TextButton(
                 onPressed: () {},
-                child: const Text('View Submitted Form'),
+                child: const Text(
+                  'View Submitted Form',
+                  style: TextStyle(
+                    color: Color(0xFF0D2364), // Changed to specified color
+                  ),
+                ),
               ),
             ],
           ),

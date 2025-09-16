@@ -60,8 +60,13 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Leave Application'),
-        backgroundColor: const Color(0xFF0D47A1),
+        title: const Text(
+          'Leave Application',
+          style: TextStyle(color: Colors.white), // Changed text color to white
+        ),
+        backgroundColor: const Color(
+          0xFF0D2364,
+        ), // Changed to the specified color
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -155,7 +160,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(width: 8),
-                  Text(_formatDate(DateTime.now())), // Fixed line 154
+                  Text(_formatDate(DateTime.now())),
                 ],
               ),
               const SizedBox(height: 8),
@@ -198,7 +203,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
 
               Center(
                 child: Text(
-                  '${_formatDate(_startDate)}-${_formatDate(_endDate)}', // Fixed line 195
+                  '${_formatDate(_startDate)}-${_formatDate(_endDate)}',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -221,7 +226,9 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                 child: ElevatedButton(
                   onPressed: _submitForm,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D47A1),
+                    backgroundColor: const Color(
+                      0xFF0D2364,
+                    ), // Changed to the specified color
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: const Text(
@@ -242,7 +249,9 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                   child: const Text(
                     'View submitted form',
                     style: TextStyle(
-                      color: Color(0xFF0D47A1),
+                      color: Color(
+                        0xFF0D2364,
+                      ), // Changed to the specified color
                       decoration: TextDecoration.underline,
                     ),
                   ),

@@ -42,10 +42,13 @@ class _PersonalDetailsState extends State<PersonalDetails> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Personal Details'),
-        backgroundColor: const Color(0xFF0D47A1),
+        title: const Text(
+          'Personal Details',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: const Color(0xFF0D2364),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -148,8 +151,8 @@ class _PersonalDetailsState extends State<PersonalDetails> {
             ),
             const SizedBox(height: 24),
 
+            // FIXED: Buttons are now properly side by side
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 Expanded(
                   child: OutlinedButton(
@@ -159,7 +162,7 @@ class _PersonalDetailsState extends State<PersonalDetails> {
                     child: const Text("Cancel"),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 10),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
@@ -180,7 +183,7 @@ class _PersonalDetailsState extends State<PersonalDetails> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D47A1),
+                      backgroundColor: const Color(0xFF0D2364),
                     ),
                     child: const Text(
                       "Change Password",

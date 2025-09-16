@@ -25,7 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 40),
-            color: Colors.blue[800],
+            color: Color(0xFF0D2364),
             child: Column(
               children: const [
                 Icon(Icons.directions_bus, size: 60, color: Colors.white),
@@ -75,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           width: double.infinity,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[800],
+                              backgroundColor: Color(0xFF0D2364),
                               padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
                             onPressed: () async {
