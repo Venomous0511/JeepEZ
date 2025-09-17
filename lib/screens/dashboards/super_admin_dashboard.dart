@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
 import '../SuperAdminScreen/employee_list.dart';
-import '../SuperAdminScreen/attendance.dart';
+import '../SuperAdminScreen/deactivated_account.dart';
 import '../SuperAdminScreen/add_account.dart';
+import '../SuperAdminScreen/system_management.dart';
 
+// Main SuperAdminDashboard Class
 class SuperAdminDashboard extends StatefulWidget {
   final AppUser user;
   const SuperAdminDashboard({super.key, required this.user});
@@ -20,14 +22,36 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   // For dropdown in drawer
   bool showUserManagementOptions = false;
 
+  // Sample notifications data
+  final List<Map<String, String>> _notifications = [
+    {
+      'title': 'System Update Available',
+      'message': 'Version 2.0.0 is now available for download',
+      'time': '2 hours ago',
+    },
+    {
+      'title': 'New Employee Registered',
+      'message': 'John Doe has been added to the system',
+      'time': '5 hours ago',
+    },
+    {
+      'title': 'Maintenance Scheduled',
+      'message': 'System maintenance scheduled for tomorrow at 2:00 AM',
+      'time': '1 day ago',
+    },
+    {
+      'title': 'Backup Completed',
+      'message': 'System backup was completed successfully',
+      'time': '2 days ago',
+    },
+  ];
+
   late List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
-    _screens = [
-      _buildHomeScreen(),
-    ];
+    _screens = [_buildHomeScreen()];
   }
 
   void _onItemTapped(int index) {
@@ -40,9 +64,70 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   Widget _buildHomeScreen() {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: ListView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
+          const Text(
+            'Notifications',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0D2364),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: _notifications.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No notifications',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _notifications.length,
+                    itemBuilder: (context, index) {
+                      final notification = _notifications[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(16),
+                          leading: const Icon(
+                            Icons.notifications,
+                            color: Color(0xFF0D2364),
+                          ),
+                          title: Text(
+                            notification['title']!,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 4),
+                              Text(notification['message']!),
+                              const SizedBox(height: 4),
+                              Text(
+                                notification['time']!,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            onPressed: () {
+                              setState(() {
+                                _notifications.removeAt(index);
+                              });
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
         ],
       ),
     );
@@ -55,13 +140,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     try {
       // show loading for 3 seconds before signing out
       await Future.delayed(const Duration(seconds: 3));
-
-      await AuthService().logout(); // triggers authStateChanges -> back to login
+      await AuthService()
+          .logout(); // triggers authStateChanges -> back to login
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to sign out: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to sign out: $e')));
       setState(() => _isLoggingOut = false); // reset only if error
     }
   }
@@ -78,16 +163,19 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
         child: Column(
           children: [
             UserAccountsDrawerHeader(
-              decoration: BoxDecoration(color: Color(0xFF0D2364)),
+              decoration: const BoxDecoration(color: Color(0xFF0D2364)),
               accountName: Text(
                 widget.user.name ?? 'Super Admin',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               accountEmail: Text(
                 widget.user.email,
-                style: TextStyle(fontSize: 14),
+                style: const TextStyle(fontSize: 14),
               ),
-              currentAccountPicture: CircleAvatar(
+              currentAccountPicture: const CircleAvatar(
                 backgroundColor: Colors.white,
                 child: Icon(
                   Icons.admin_panel_settings,
@@ -110,6 +198,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                       Navigator.pop(context);
                     },
                   ),
+
                   // User Management Expansion Tile
                   ExpansionTile(
                     leading: const Icon(Icons.people, color: Color(0xFF0D2364)),
@@ -127,7 +216,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                         title: const Text('Add Account'),
                         onTap: () {
                           Navigator.pop(context);
-                          // Navigate to Add Account screen
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -155,13 +243,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                           );
                         },
                       ),
-                      // Attendance
+                      // Deactivated Account
                       ListTile(
                         leading: const Icon(
-                          Icons.check_circle,
+                          Icons.person_off,
                           color: Color(0xFF0D2364),
                         ),
-                        title: const Text('Attendance'),
+                        title: const Text('Deactivated Account'),
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.push(
@@ -174,6 +262,25 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                         },
                       ),
                     ],
+                  ),
+
+                  // System Management Button
+                  ListTile(
+                    leading: const Icon(
+                      Icons.settings,
+                      color: Color(0xFF0D2364),
+                    ),
+                    title: const Text('System Management'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              SystemManagementScreen(user: widget.user),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -202,7 +309,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
         ),
       ),
       body: _screens[_selectedIndex],
-      // Tinanggal na ang BottomNavigationBar
     );
   }
 }

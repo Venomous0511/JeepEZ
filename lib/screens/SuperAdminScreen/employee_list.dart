@@ -102,8 +102,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
                     columnSpacing: 16,
-                    headingRowColor:
-                    WidgetStateProperty.all(Colors.blue[50]),
+                    headingRowColor: WidgetStateProperty.all(Colors.blue[50]),
                     columns: const [
                       DataColumn(label: Text("Name")),
                       DataColumn(label: Text("Email")),
@@ -113,23 +112,33 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     rows: employeeDocs.map((d) {
                       final data = d.data() as Map<String, dynamic>;
 
-                      return DataRow(cells: [
-                        DataCell(Text(data['name'] ?? '')),
-                        DataCell(Text(data['email'] ?? '')),
-                        DataCell(Text(data['role'] ?? '')),
-                        DataCell(Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => _editUser(d.id, data),
+                      return DataRow(
+                        cells: [
+                          DataCell(Text(data['name'] ?? '')),
+                          DataCell(Text(data['email'] ?? '')),
+                          DataCell(Text(data['role'] ?? '')),
+                          DataCell(
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit,
+                                    color: Colors.blue,
+                                  ),
+                                  onPressed: () => _editUser(d.id, data),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () => _deleteUser(d.id, data),
+                                ),
+                              ],
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteUser(d.id, data),
-                            ),
-                          ],
-                        )),
-                      ]);
+                          ),
+                        ],
+                      );
                     }).toList(),
                   ),
                 );
@@ -175,9 +184,9 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
     } finally {
       if (mounted) {
         setState(() => loading = false);
@@ -207,10 +216,19 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 value: role,
                 items: const [
                   DropdownMenuItem(value: 'admin', child: Text('admin')),
-                  DropdownMenuItem(value: 'legal_officer', child: Text('legal_officer')),
+                  DropdownMenuItem(
+                    value: 'legal_officer',
+                    child: Text('legal_officer'),
+                  ),
                   DropdownMenuItem(value: 'driver', child: Text('driver')),
-                  DropdownMenuItem(value: 'conductor', child: Text('conductor')),
-                  DropdownMenuItem(value: 'inspector', child: Text('inspector')),
+                  DropdownMenuItem(
+                    value: 'conductor',
+                    child: Text('conductor'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'inspector',
+                    child: Text('inspector'),
+                  ),
                 ],
                 onChanged: (v) => setState(() => role = v ?? 'driver'),
                 decoration: const InputDecoration(labelText: 'Role'),

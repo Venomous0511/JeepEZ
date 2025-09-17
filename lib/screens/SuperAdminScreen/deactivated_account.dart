@@ -11,11 +11,36 @@ class AttendanceScreen extends StatefulWidget {
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
   final List<Map<String, String>> attendanceData = const [
-    {'name': 'Juan Dela Cruz', 'unit': 'Jeep 101', 'in': '08:00 AM', 'out': '05:00 PM'},
-    {'name': 'Maria Santos', 'unit': 'Jeep 102', 'in': '09:00 AM', 'out': '06:00 PM'},
-    {'name': 'Pedro Lopez', 'unit': 'Jeep 103', 'in': '07:30 AM', 'out': '04:30 PM'},
-    {'name': 'Ana Reyes', 'unit': 'Jeep 104', 'in': '08:15 AM', 'out': '05:15 PM'},
-    {'name': 'Jose Garcia', 'unit': 'Jeep 105', 'in': '07:45 AM', 'out': '04:45 PM'},
+    {
+      'name': 'Juan Dela Cruz',
+      'unit': 'Jeep 101',
+      'in': '08:00 AM',
+      'out': '05:00 PM',
+    },
+    {
+      'name': 'Maria Santos',
+      'unit': 'Jeep 102',
+      'in': '09:00 AM',
+      'out': '06:00 PM',
+    },
+    {
+      'name': 'Pedro Lopez',
+      'unit': 'Jeep 103',
+      'in': '07:30 AM',
+      'out': '04:30 PM',
+    },
+    {
+      'name': 'Ana Reyes',
+      'unit': 'Jeep 104',
+      'in': '08:15 AM',
+      'out': '05:15 PM',
+    },
+    {
+      'name': 'Jose Garcia',
+      'unit': 'Jeep 105',
+      'in': '07:45 AM',
+      'out': '04:45 PM',
+    },
   ];
 
   @override
@@ -94,23 +119,35 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(12.0),
-                        child: Text(record['name'] ?? '', textAlign: TextAlign.center),
+                        child: Text(
+                          record['name'] ?? '',
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                       Padding(
                         padding: const EdgeInsets.all(12.0),
-                        child: Text(record['unit'] ?? '', textAlign: TextAlign.center),
+                        child: Text(
+                          record['unit'] ?? '',
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                       Padding(
                         padding: const EdgeInsets.all(12.0),
-                        child: Text(record['in'] ?? '', textAlign: TextAlign.center),
+                        child: Text(
+                          record['in'] ?? '',
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                       Padding(
                         padding: const EdgeInsets.all(12.0),
-                        child: Text(record['out'] ?? '', textAlign: TextAlign.center),
+                        child: Text(
+                          record['out'] ?? '',
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ],
                   );
-                })
+                }),
               ],
             ),
           ),

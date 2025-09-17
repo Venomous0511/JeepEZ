@@ -6,7 +6,7 @@ import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboards/admin_dashboard.dart';
 import 'screens/dashboards/super_admin_dashboard.dart';
-import 'screens/dashboards/legalOfficer_dashboard.dart';
+import 'screens/dashboards/legal_officer_dashboard.dart';
 import 'screens/dashboards/driver_dashboard.dart';
 import 'screens/dashboards/conductor_dashboard.dart';
 import 'screens/dashboards/inspector_dashboard.dart';
@@ -28,38 +28,39 @@ class JeepezApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.blue),
       home: StreamBuilder(
-          stream: FirebaseAuth.instance.authStateChanges(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator(),),
-              );
-            }
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
 
-            if (snapshot.hasData) {
-              // Is User Logged In
-              return FutureBuilder(
-                  future: FirebaseFirestore.instance
-                      .collection("users")
-                      .doc(snapshot.data!.uid)
-                      .get(),
-                  builder: (context, userSnapshot) {
-                    if (!userSnapshot.hasData) {
-                      return const Scaffold(
-                        body: Center(child: CircularProgressIndicator()));
-                    }
+          if (snapshot.hasData) {
+            // Is User Logged In
+            return FutureBuilder(
+              future: FirebaseFirestore.instance
+                  .collection("users")
+                  .doc(snapshot.data!.uid)
+                  .get(),
+              builder: (context, userSnapshot) {
+                if (!userSnapshot.hasData) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
 
-                    var data = userSnapshot.data!.data() as Map<String, dynamic>;
+                var data = userSnapshot.data!.data() as Map<String, dynamic>;
 
-                    AppUser user = AppUser.fromMap(snapshot.data!.uid, data);
+                AppUser user = AppUser.fromMap(snapshot.data!.uid, data);
 
-                    return RoleBasedDashboard(user: user);
-                  },
-              );
-            }
+                return RoleBasedDashboard(user: user);
+              },
+            );
+          }
 
-            return const LoginScreen();
-          },
+          return const LoginScreen();
+        },
       ),
     );
   }
