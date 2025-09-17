@@ -1,10 +1,10 @@
 # 🚀 JeepEz
 
 <p align="center">
-![Flutter](https://img.shields.io/badge/Flutter-3.24-blue?logo=flutter)
-![Dart](https://img.shields.io/badge/Dart-3.5-blue?logo=dart)
-![GitHub stars](https://img.shields.io/github/stars/Venomous0511/JeepEZ?style=social)
-![GitHub forks](https://img.shields.io/github/forks/Venomous0511/JeepEZ?style=social)
+  <img src="https://img.shields.io/badge/Flutter-3.24-blue?logo=flutter" alt="Flutter" />
+  <img src="https://img.shields.io/badge/Dart-3.5-blue?logo=dart" alt="Dart" />
+  <img src="https://img.shields.io/github/stars/Venomous0511/JeepEZ?style=social" alt="GitHub Stars" />
+  <img src="https://img.shields.io/github/forks/Venomous0511/JeepEZ?style=social" alt="GitHub Forks" />
 </p>
 
 Jeep EZ is a Cross-Platform Management and Scheduling System with GPS Tracking designed to streamline the operations of the Sapang Palay Tungko Grotto Transport Service Cooperative (SPTGTSC).
