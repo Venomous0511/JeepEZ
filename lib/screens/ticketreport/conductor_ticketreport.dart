@@ -31,7 +31,13 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Ticket Report')),
+      appBar: AppBar(
+        title: const Text(
+          'Ticket Report',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: const Color(0xFF0D2364),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -291,7 +297,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF0D47A1),
+                              color: Color(0xFF0D2364),
                             ),
                           ),
                         ),
@@ -314,7 +320,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: const Color(0xFF0D47A1),
+                  backgroundColor: const Color(0xFF0D2364),
                 ),
                 child: const Text(
                   'Save Report',

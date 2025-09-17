@@ -15,7 +15,7 @@ class AppUser {
     return AppUser(
       uid: uid,
       email: data['email'] ?? '',
-      role: data['role'] ?? 'user',
+      role: data['role'] ?? '',
       name: data['name'],
     );
   }

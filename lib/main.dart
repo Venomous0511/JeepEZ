@@ -1,10 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboards/admin_dashboard.dart';
 import 'screens/dashboards/super_admin_dashboard.dart';
-import 'screens/dashboards/legal_offecer_dashboard.dart';
+import 'screens/dashboards/legal_officer_dashboard.dart';
 import 'screens/dashboards/driver_dashboard.dart';
 import 'screens/dashboards/conductor_dashboard.dart';
 import 'screens/dashboards/inspector_dashboard.dart';
@@ -25,7 +27,41 @@ class JeepezApp extends StatelessWidget {
       title: 'Jeepez',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const LoginScreen(),
+      home: StreamBuilder(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          if (snapshot.hasData) {
+            // Is User Logged In
+            return FutureBuilder(
+              future: FirebaseFirestore.instance
+                  .collection("users")
+                  .doc(snapshot.data!.uid)
+                  .get(),
+              builder: (context, userSnapshot) {
+                if (!userSnapshot.hasData) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                var data = userSnapshot.data!.data() as Map<String, dynamic>;
+
+                AppUser user = AppUser.fromMap(snapshot.data!.uid, data);
+
+                return RoleBasedDashboard(user: user);
+              },
+            );
+          }
+
+          return const LoginScreen();
+        },
+      ),
     );
   }
 }
@@ -40,10 +76,10 @@ class RoleBasedDashboard extends StatelessWidget {
     switch (user.role) {
       case "super_admin":
         return SuperAdminDashboard(user: user);
-      case "legal_officer":
-        return LegalOfficerDashboardScreen(user: user);
       case "admin":
         return AdminDashboard(user: user);
+      case "legal_officer":
+        return LegalOfficerDashboardScreen(user: user);
       case "driver":
         return DriverDashboard(user: user);
       case "conductor":

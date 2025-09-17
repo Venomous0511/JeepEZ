@@ -42,10 +42,13 @@ class _PersonalDetailsState extends State<PersonalDetails> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Personal Details'),
-        backgroundColor: const Color(0xFF0D47A1),
+        title: const Text(
+          'Personal Details',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: const Color(0xFF0D2364),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -148,47 +151,54 @@ class _PersonalDetailsState extends State<PersonalDetails> {
             ),
             const SizedBox(height: 24),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Text("Cancel"),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (_currentPasswordController.text.isNotEmpty &&
-                          _newPasswordController.text.isNotEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Password changed successfully!"),
-                          ),
-                        );
-                        Navigator.pop(context);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Please fill in all fields"),
-                          ),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D47A1),
+            // Fixed button layout - using IntrinsicWidth to prevent overflow
+            Center(
+              child: IntrinsicWidth(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text("Cancel"),
+                      ),
                     ),
-                    child: const Text(
-                      "Change Password",
-                      style: TextStyle(color: Colors.white),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (_currentPasswordController.text.isNotEmpty &&
+                              _newPasswordController.text.isNotEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Password changed successfully!"),
+                              ),
+                            );
+                            Navigator.pop(context);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Please fill in all fields"),
+                              ),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0D2364),
+                        ),
+                        child: const FittedBox(
+                          child: Text(
+                            "Change Password",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
 
             const SizedBox(height: 24),
@@ -214,8 +224,8 @@ class _PersonalDetailsState extends State<PersonalDetails> {
                           ),
                           TextButton(
                             onPressed: () {
-                              Navigator.pop(context); // Close the dialog
-                              _signOut(); // Perform the logout
+                              Navigator.pop(context);
+                              _signOut();
                             },
                             child: const Text(
                               "Log Out",

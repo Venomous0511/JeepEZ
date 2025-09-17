@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
+import '../../services/auth_service.dart';
 import '../admin/employeelist.dart';
 import '../admin/attendance_record.dart';
 import '../admin/leavemanagement.dart';
 import '../admin/hiringmanagement.dart';
-import 'dart:developer';
 
 class AdminDashboard extends StatefulWidget {
   final AppUser user;
@@ -16,6 +16,8 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   int _selectedIndex = 0;
+  bool _isLoggingOut = false;
+  int _notificationCount = 3; // Example notification count
 
   final List<Widget> _screens = [];
 
@@ -46,14 +48,80 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // Add this missing method
   Future<void> _signOut() async {
+    if (_isLoggingOut) return;
+    setState(() => _isLoggingOut = true);
+
     try {
-      // Navigate to login screen or root
-      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+      await Future.delayed(const Duration(milliseconds: 3000));
+
+      await AuthService().logout();
     } catch (e) {
-      log('Error signing out: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to sign out: $e')));
+    } finally {
+      if (mounted) setState(() => _isLoggingOut = false);
     }
+  }
+
+  void _showNotifications() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Notifications'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                _buildNotificationItem('New leave request from John Doe'),
+                _buildNotificationItem('Attendance alert: Late clock-in'),
+                _buildNotificationItem('New hiring application received'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _notificationCount = 0; // Mark all as read
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text(
+                'Mark all as read',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0D2364),
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildNotificationItem(String message) {
+    return ListTile(
+      leading: const Icon(Icons.notifications, color: Color(0xFF0D2364)),
+      title: Text(message),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: () {
+        // Handle individual notification tap
+        Navigator.of(context).pop();
+        // Add specific action for each notification here
+      },
+    );
   }
 
   @override
@@ -64,20 +132,58 @@ class _AdminDashboardState extends State<AdminDashboard> {
         backgroundColor: const Color(0xFF0D2364),
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications),
+                onPressed: _showNotifications,
+              ),
+              if (_notificationCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      _notificationCount > 9
+                          ? '9+'
+                          : _notificationCount.toString(),
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
       drawer: Drawer(
         child: Column(
           children: [
-            const DrawerHeader(
+            UserAccountsDrawerHeader(
               decoration: BoxDecoration(color: Color(0xFF0D2364)),
-              child: Center(
-                child: Text(
-                  'ADMIN MENU',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                  ),
+              accountName: Text(
+                widget.user.name ?? 'Admin',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              accountEmail: Text(
+                widget.user.email,
+                style: TextStyle(fontSize: 14),
+              ),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Icon(
+                  Icons.admin_panel_settings,
+                  color: Color(0xFF0D2364),
                 ),
               ),
             ),
@@ -85,61 +191,93 @@ class _AdminDashboardState extends State<AdminDashboard> {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  _buildMenuListItem(Icons.home, 'Home', 0),
-                  _buildMenuListItem(Icons.people, 'Employee List', 1),
-                  _buildMenuListItem(Icons.calendar_today, 'Attendance', 2),
-                  _buildMenuListItem(Icons.event_busy, 'Leave Management', 3),
-                  _buildMenuListItem(Icons.directions, 'Route Playback', 4),
-                  _buildMenuListItem(Icons.work, 'Hiring Management', 5),
+                  ListTile(
+                    leading: const Icon(Icons.home, color: Color(0xFF0D2364)),
+                    title: const Text('Home'),
+                    selected: _selectedIndex == 0,
+                    onTap: () {
+                      _onItemTapped(0);
+                      Navigator.pop(context);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.people, color: Color(0xFF0D2364)),
+                    title: const Text('Employee List'),
+                    selected: _selectedIndex == 1,
+                    onTap: () {
+                      _onItemTapped(1);
+                      Navigator.pop(context);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.calendar_today,
+                      color: Color(0xFF0D2364),
+                    ),
+                    title: const Text('Attendance'),
+                    selected: _selectedIndex == 2,
+                    onTap: () {
+                      _onItemTapped(2);
+                      Navigator.pop(context);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.event_busy,
+                      color: Color(0xFF0D2364),
+                    ),
+                    title: const Text('Leave Management'),
+                    selected: _selectedIndex == 3,
+                    onTap: () {
+                      _onItemTapped(3);
+                      Navigator.pop(context);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.directions,
+                      color: Color(0xFF0D2364),
+                    ),
+                    title: const Text('Route Playback'),
+                    selected: _selectedIndex == 4,
+                    onTap: () {
+                      _onItemTapped(4);
+                      Navigator.pop(context);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.work, color: Color(0xFF0D2364)),
+                    title: const Text('Hiring Management'),
+                    selected: _selectedIndex == 5,
+                    onTap: () {
+                      _onItemTapped(5);
+                      Navigator.pop(context);
+                    },
+                  ),
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: Colors.grey.shade300)),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Color(0xFF0D2364)),
+              title: Text(
+                _isLoggingOut ? 'Logging out...' : 'Logout',
+                style: const TextStyle(color: Color(0xFF0D2364)),
               ),
-              child: ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text(
-                  'Logout',
-                  style: TextStyle(color: Colors.red),
-                ),
-                onTap: _signOut,
-              ),
+              trailing: _isLoggingOut
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : null,
+              onTap: _isLoggingOut ? null : _signOut,
             ),
+            const SizedBox(height: 12),
           ],
         ),
       ),
       body: _screens[_selectedIndex],
-    );
-  }
-
-  Widget _buildMenuListItem(IconData icon, String title, int index) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: _selectedIndex == index
-            ? const Color(0xFF0D2364)
-            : const Color(0xFF0D2364),
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontWeight: _selectedIndex == index
-              ? FontWeight.bold
-              : FontWeight.normal,
-          color: _selectedIndex == index
-              ? const Color(0xFF0D2364)
-              : Colors.black87,
-        ),
-      ),
-      selected: _selectedIndex == index,
-      selectedTileColor: const Color(0xFF0D2364),
-      onTap: () {
-        Navigator.pop(context);
-        _onItemTapped(index);
-      },
     );
   }
 }
@@ -149,197 +287,8 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Welcome, Admin',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.blue,
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Dashboard Overview',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          // Moved grid calculation to build method to avoid MediaQuery error
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
-
-              return GridView.count(
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                children: const [
-                  StatCard(
-                    icon: Icons.people,
-                    value: '50',
-                    label: 'Employees',
-                    description: 'Total active employees',
-                  ),
-                  StatCard(
-                    icon: Icons.calendar_today,
-                    value: '98%',
-                    label: 'Attendance',
-                    description: 'Today\'s attendance rate',
-                  ),
-                  StatCard(
-                    icon: Icons.event_busy,
-                    value: '8',
-                    label: 'Leave Requests',
-                    description: 'Pending approval',
-                  ),
-                  StatCard(
-                    icon: Icons.work,
-                    value: '5',
-                    label: 'Open Positions',
-                    description: 'Currently hiring',
-                  ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          const RecentActivity(),
-        ],
-      ),
-    );
-  }
-}
-
-class StatCard extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final String label;
-  final String description;
-
-  const StatCard({
-    super.key,
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.description,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 40, color: const Color(0xFF0D2364)),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              description,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class RecentActivity extends StatelessWidget {
-  const RecentActivity({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Recent Activity',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            _buildActivityItem(
-              Icons.person_add,
-              'New employee added',
-              'John Doe joined the team',
-            ),
-            _buildActivityItem(
-              Icons.description,
-              'Leave request submitted',
-              'Jane Smith requested time off',
-            ),
-            _buildActivityItem(
-              Icons.check_circle,
-              'Attendance marked',
-              '95% of employees checked in today',
-            ),
-            _buildActivityItem(
-              Icons.directions,
-              'Route completed',
-              'Delivery route #245 finished',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActivityItem(IconData icon, String title, String subtitle) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE3F2FD),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(icon, color: const Color(0xFF0D2364), size: 20),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(color: Colors.grey, fontSize: 14),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return const Center(
+      child: Text('Welcome to Admin Dashboard', style: TextStyle(fontSize: 24)),
     );
   }
 }
