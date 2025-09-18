@@ -1,4 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
 import '../SuperAdminScreen/employee_list.dart';
@@ -21,30 +23,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
 
   // For dropdown in drawer
   bool showUserManagementOptions = false;
-
-  // Sample notifications data
-  final List<Map<String, String>> _notifications = [
-    {
-      'title': 'System Update Available',
-      'message': 'Version 2.0.0 is now available for download',
-      'time': '2 hours ago',
-    },
-    {
-      'title': 'New Employee Registered',
-      'message': 'John Doe has been added to the system',
-      'time': '5 hours ago',
-    },
-    {
-      'title': 'Maintenance Scheduled',
-      'message': 'System maintenance scheduled for tomorrow at 2:00 AM',
-      'time': '1 day ago',
-    },
-    {
-      'title': 'Backup Completed',
-      'message': 'System backup was completed successfully',
-      'time': '2 days ago',
-    },
-  ];
 
   late List<Widget> _screens;
 
@@ -75,39 +53,65 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
               color: Color(0xFF0D2364),
             ),
           ),
+
           const SizedBox(height: 16),
+
           Expanded(
-            child: _notifications.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No notifications',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: _notifications.length,
+            child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('notifications')
+                    .where('dismissed', isEqualTo: false)
+                    .orderBy('time', descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No notifications',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    );
+                  }
+
+                  final docs = snapshot.data!.docs;
+
+                  return ListView.builder(
+                    itemCount: docs.length,
                     itemBuilder: (context, index) {
-                      final notification = _notifications[index];
+                      final data = docs[index].data() as Map<String, dynamic>;
+
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
+
                         child: ListTile(
                           contentPadding: const EdgeInsets.all(16),
+
                           leading: const Icon(
                             Icons.notifications,
                             color: Color(0xFF0D2364),
                           ),
+
                           title: Text(
-                            notification['title']!,
+                            data['title'],
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
+
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const SizedBox(height: 4),
-                              Text(notification['message']!),
+
+                              Text(data['message']),
+
                               const SizedBox(height: 4),
+
                               Text(
-                                notification['time']!,
+                                DateFormat('MMM d, y hh:mm a').format((data['time'] as Timestamp).toDate()),
+
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey,
@@ -115,18 +119,18 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                               ),
                             ],
                           ),
+
                           trailing: IconButton(
                             icon: const Icon(Icons.close, size: 18),
-                            onPressed: () {
-                              setState(() {
-                                _notifications.removeAt(index);
-                              });
+                            onPressed: () async {
+                              await docs[index].reference.update({'dismissed': true});
                             },
                           ),
                         ),
                       );
                     },
-                  ),
+                  );
+                })
           ),
         ],
       ),
