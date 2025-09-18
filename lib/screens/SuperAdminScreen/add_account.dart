@@ -15,6 +15,7 @@ class AddAccountScreen extends StatefulWidget {
 
 class _AddAccountScreenState extends State<AddAccountScreen> {
   final nameCtrl = TextEditingController();
+  final employeeIDCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
   String role = 'driver';
@@ -56,6 +57,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       await FirebaseFirestore.instance.collection('users').doc(newUid).set({
         'uid': newUid,
         'email': emailCtrl.text.trim(),
+        'employeeID': employeeIDCtrl.text.trim(),
         'name': nameCtrl.text.trim(),
         'role': role,
         'createdAt': FieldValue.serverTimestamp(),
@@ -65,6 +67,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       await secondaryAuth.signOut();
 
       emailCtrl.clear();
+      employeeIDCtrl.clear();
       passCtrl.clear();
       nameCtrl.clear();
       setState(() => role = 'driver');
@@ -75,7 +78,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text('User created as $role')));
       }
-
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -146,6 +148,18 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                     controller: nameCtrl,
                     decoration: const InputDecoration(
                       labelText: 'Name',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: employeeIDCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Employee ID',
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 12,

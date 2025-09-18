@@ -11,14 +11,14 @@ class InspectorReportHistoryScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: Colors.indigo,
+        backgroundColor: Color(0xFF0D2364),
         title: const Text('Inspector Report History'),
       ),
       drawer: Drawer(
         child: Column(
           children: [
             DrawerHeader(
-              decoration: const BoxDecoration(color: Colors.indigo),
+              decoration: const BoxDecoration(color: Color(0xFF0D2364)),
               child: Row(
                 children: [
                   _buildJeepEZLogo(),
@@ -118,7 +118,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
         width: MediaQuery.of(context).size.width * 0.4,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.indigo,
+          color: Color(0xFF0D2364),
           borderRadius: BorderRadius.circular(8),
           boxShadow: const [
             BoxShadow(
@@ -191,7 +191,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
-                color: Colors.indigo,
+                color: Color(0xFF0D2364),
               ),
             ),
           ),
@@ -208,7 +208,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
         title,
         style: TextStyle(
           color: title == 'Inspector Report History'
-              ? Colors.indigo
+              ? Color(0xFF0D2364)
               : Colors.black87,
           fontWeight: FontWeight.bold,
         ),
