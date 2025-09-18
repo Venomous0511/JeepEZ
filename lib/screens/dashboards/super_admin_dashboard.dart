@@ -23,28 +23,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   bool showUserManagementOptions = false;
 
   // Sample notifications data
-  final List<Map<String, String>> _notifications = [
-    {
-      'title': 'System Update Available',
-      'message': 'Version 2.0.0 is now available for download',
-      'time': '2 hours ago',
-    },
-    {
-      'title': 'New Employee Registered',
-      'message': 'John Doe has been added to the system',
-      'time': '5 hours ago',
-    },
-    {
-      'title': 'Maintenance Scheduled',
-      'message': 'System maintenance scheduled for tomorrow at 2:00 AM',
-      'time': '1 day ago',
-    },
-    {
-      'title': 'Backup Completed',
-      'message': 'System backup was completed successfully',
-      'time': '2 days ago',
-    },
-  ];
+  final List<Map<String, String>> _notifications = [];
 
   late List<Widget> _screens;
 
@@ -58,6 +37,53 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  // Blank notification placeholder widget
+  Widget _buildNotificationPlaceholder(int index) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.notifications_none, size: 20, color: Colors.grey[600]),
+              const SizedBox(width: 8),
+              Text(
+                '', // Blank title
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[700],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '', // Blank message
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '', // Blank status
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[500],
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// ---------------- HOME SCREEN ----------------
@@ -76,12 +102,31 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
             ),
           ),
           const SizedBox(height: 16),
+          // placeholders
+          Column(
+            children: List.generate(
+              4,
+              (index) => _buildNotificationPlaceholder(index),
+            ),
+          ),
+          const SizedBox(height: 16),
           Expanded(
             child: _notifications.isEmpty
                 ? const Center(
-                    child: Text(
-                      'No notifications',
-                      style: TextStyle(color: Colors.grey),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.notifications_off,
+                          size: 48,
+                          color: Colors.grey,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'No notifications available',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ],
                     ),
                   )
                 : ListView.builder(
