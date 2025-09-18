@@ -18,7 +18,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   final employeeIDCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
-  String role = 'driver';
+  String role = 'conductor';
   bool loading = false;
 
   Future<FirebaseApp> _getOrCreateSecondaryApp() async {
@@ -33,10 +33,20 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   }
 
   Future<void> _createUser() async {
-    if (emailCtrl.text.trim().isEmpty || passCtrl.text.trim().length < 6) {
+    if (emailCtrl.text.trim().isEmpty || passCtrl.text.trim().length < 8) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Enter email and 6+ char password')),
+          const SnackBar(content: Text('Enter email and 8+ char password')),
+        );
+      }
+      return;
+    }
+
+
+    if (employeeIDCtrl.text.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Employee ID is required')),
         );
       }
       return;
@@ -45,6 +55,23 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     setState(() => loading = true);
 
     try {
+      final query = await FirebaseFirestore.instance
+          .collection('users')
+          .where('employeeID', isEqualTo: employeeIDCtrl.text.trim())
+          .limit(1)
+          .get();
+
+      if (query.docs.isNotEmpty) {
+        // ⚠️ Employee ID already exists
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Employee ID already exists')),
+          );
+        }
+        setState(() => loading = false);
+        return;
+      }
+
       final secondaryApp = await _getOrCreateSecondaryApp();
       final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
 
@@ -57,10 +84,19 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       await FirebaseFirestore.instance.collection('users').doc(newUid).set({
         'uid': newUid,
         'email': emailCtrl.text.trim(),
-        'employeeID': employeeIDCtrl.text.trim(),
+        'employee_id': employeeIDCtrl.text.trim(),
         'name': nameCtrl.text.trim(),
         'role': role,
         'createdAt': FieldValue.serverTimestamp(),
+        'createdBy': widget.user.email,
+      });
+
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'title': 'New Account Created',
+        'message': '${nameCtrl.text.trim()} has been added as $role',
+        'time': FieldValue.serverTimestamp(),
+        'dismissed': false,
+        'type': 'updates',
         'createdBy': widget.user.email,
       });
 
@@ -70,10 +106,9 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       employeeIDCtrl.clear();
       passCtrl.clear();
       nameCtrl.clear();
-      setState(() => role = 'driver');
+      setState(() => role = 'conductor');
 
       if (mounted) {
-        // Pwede palitan gawin toast
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('User created as $role')));
@@ -158,6 +193,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: employeeIDCtrl,
+                    keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
                       labelText: 'Employee ID',
                       border: OutlineInputBorder(),

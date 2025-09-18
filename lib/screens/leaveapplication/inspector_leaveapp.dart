@@ -58,8 +58,13 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Leave Application'),
-        backgroundColor: const Color(0xFF0D2364),
+        title: const Text(
+          'Leave Application',
+          style: TextStyle(color: Colors.white), // Changed text color to white
+        ),
+        backgroundColor: const Color(
+          0xFF0D2364,
+        ), // Changed to the specified color
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),

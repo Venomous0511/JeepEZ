@@ -81,8 +81,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
             ),
           ),
 
-          const SizedBox(height: 16),
-
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
                 stream: getNotificationsStream(widget.user.role),

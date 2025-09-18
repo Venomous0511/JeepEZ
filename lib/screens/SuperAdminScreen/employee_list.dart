@@ -27,6 +27,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           style: TextStyle(color: Colors.white), // 👈 Set text color to white
         ),
         backgroundColor: const Color(0xFF0D2364),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
 
       body: SingleChildScrollView(
