@@ -4,7 +4,18 @@ import '../../services/auth_service.dart';
 import '../admin/employeelist.dart';
 import '../admin/attendance_record.dart';
 import '../admin/leavemanagement.dart';
-import '../admin/hiringmanagement.dart';
+import '../admin/driver_and_conductor_management.dart';
+import '../admin/maintenance.dart';
+import '../admin/route_playback.dart';
+
+// Add this Notification class definition
+class Notification {
+  final String id;
+  final String message;
+  bool isRead;
+
+  Notification({required this.id, required this.message, this.isRead = false});
+}
 
 class AdminDashboard extends StatefulWidget {
   final AppUser user;
@@ -17,7 +28,16 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   int _selectedIndex = 0;
   bool _isLoggingOut = false;
-  int _notificationCount = 3; // Example notification count
+
+  // Replace _notificationCount with a list of notifications
+  List<Notification> notifications = [
+    Notification(id: '1', message: 'New leave request from John Doe'),
+    Notification(id: '2', message: 'Attendance alert: Late clock-in'),
+    Notification(id: '3', message: 'New hiring application received'),
+  ];
+
+  // Calculate unread count
+  int get unreadCount => notifications.where((n) => !n.isRead).length;
 
   final List<Widget> _screens = [];
 
@@ -28,8 +48,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     _screens.add(const EmployeeListScreen());
     _screens.add(const AttendanceScreen());
     _screens.add(const LeaveManagementScreen());
-    _screens.add(_buildRoutePlaybackScreen());
-    _screens.add(const HiringManagementScreen());
+    _screens.add(const DriverAndConductorManagementScreen());
+    _screens.add(const MaintenanceScreen());
+    _screens.add(const RoutePlaybackScreen());
   }
 
   void _onItemTapped(int index) {
@@ -42,19 +63,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return const HomeScreen();
   }
 
-  Widget _buildRoutePlaybackScreen() {
-    return const Center(
-      child: Text('Route Playback Screen', style: TextStyle(fontSize: 24)),
-    );
-  }
-
   Future<void> _signOut() async {
     if (_isLoggingOut) return;
     setState(() => _isLoggingOut = true);
 
     try {
       await Future.delayed(const Duration(milliseconds: 3000));
-
       await AuthService().logout();
     } catch (e) {
       if (!mounted) return;
@@ -66,6 +80,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
+  // Updated notification method
   void _showNotifications() {
     showDialog(
       context: context,
@@ -76,18 +91,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
             width: double.maxFinite,
             child: ListView(
               shrinkWrap: true,
-              children: [
-                _buildNotificationItem('New leave request from John Doe'),
-                _buildNotificationItem('Attendance alert: Late clock-in'),
-                _buildNotificationItem('New hiring application received'),
-              ],
+              children: notifications.map((notification) {
+                return _buildNotificationItem(notification);
+              }).toList(),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () {
                 setState(() {
-                  _notificationCount = 0; // Mark all as read
+                  // Mark all notifications as read
+                  for (var notification in notifications) {
+                    notification.isRead = true;
+                  }
                 });
                 Navigator.of(context).pop();
               },
@@ -111,15 +127,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildNotificationItem(String message) {
+  // Updated notification item builder
+  Widget _buildNotificationItem(Notification notification) {
     return ListTile(
-      leading: const Icon(Icons.notifications, color: Color(0xFF0D2364)),
-      title: Text(message),
+      leading: Icon(
+        Icons.notifications,
+        color: notification.isRead ? Colors.grey : const Color(0xFF0D2364),
+      ),
+      title: Text(
+        notification.message,
+        style: TextStyle(
+          fontWeight: notification.isRead ? FontWeight.normal : FontWeight.bold,
+          color: notification.isRead ? Colors.grey[700] : Colors.black,
+        ),
+      ),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: () {
-        // Handle individual notification tap
+        if (!notification.isRead) {
+          setState(() {
+            notification.isRead = true;
+          });
+        }
         Navigator.of(context).pop();
-        // Add specific action for each notification here
+        // You can add navigation logic here based on notification type
       },
     );
   }
@@ -139,7 +169,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 icon: const Icon(Icons.notifications),
                 onPressed: _showNotifications,
               ),
-              if (_notificationCount > 0)
+              if (unreadCount > 0)
                 Positioned(
                   right: 8,
                   top: 8,
@@ -154,9 +184,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       minHeight: 16,
                     ),
                     child: Text(
-                      _notificationCount > 9
-                          ? '9+'
-                          : _notificationCount.toString(),
+                      unreadCount > 9 ? '9+' : unreadCount.toString(),
                       style: const TextStyle(color: Colors.white, fontSize: 10),
                       textAlign: TextAlign.center,
                     ),
@@ -233,24 +261,36 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       Navigator.pop(context);
                     },
                   ),
+                  // ADDED: Driver & Conductor Management
                   ListTile(
                     leading: const Icon(
-                      Icons.directions,
+                      Icons.directions_car,
                       color: Color(0xFF0D2364),
                     ),
-                    title: const Text('Route Playback'),
+                    title: const Text('Driver & Conductor Management'),
                     selected: _selectedIndex == 4,
                     onTap: () {
                       _onItemTapped(4);
                       Navigator.pop(context);
                     },
                   ),
+                  // ADDED: Maintenance
                   ListTile(
-                    leading: const Icon(Icons.work, color: Color(0xFF0D2364)),
-                    title: const Text('Hiring Management'),
+                    leading: const Icon(Icons.build, color: Color(0xFF0D2364)),
+                    title: const Text('Maintenance'),
                     selected: _selectedIndex == 5,
                     onTap: () {
                       _onItemTapped(5);
+                      Navigator.pop(context);
+                    },
+                  ),
+                  // ADDED: Route Playback
+                  ListTile(
+                    leading: const Icon(Icons.map, color: Color(0xFF0D2364)),
+                    title: const Text('Route Playback'),
+                    selected: _selectedIndex == 6,
+                    onTap: () {
+                      _onItemTapped(6);
                       Navigator.pop(context);
                     },
                   ),

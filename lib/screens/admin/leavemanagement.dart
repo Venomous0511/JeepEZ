@@ -83,7 +83,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Leave Management'),
-        backgroundColor: const Color.fromARGB(255, 9, 60, 119),
+        backgroundColor: const Color(0xFF0D2364),
         // Removed the back icon button
       ),
       body: SingleChildScrollView(

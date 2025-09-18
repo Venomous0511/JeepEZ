@@ -22,7 +22,7 @@ class AttendanceScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Attendance Record'),
-        backgroundColor: const Color(0xFF1565C0),
+        backgroundColor: const Color(0xFF0D2364),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {

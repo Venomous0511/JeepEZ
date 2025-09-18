@@ -54,7 +54,7 @@ class IncidentReportManagementScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.indigo,
+        backgroundColor: Color(0xFF0D2364),
         title: const Text('Incident Report Management'),
       ),
       body: Padding(
@@ -233,7 +233,7 @@ class IncidentReportManagementScreen extends StatelessWidget {
         onPressed: () {
           // Add new incident functionality
         },
-        backgroundColor: Colors.indigo,
+        backgroundColor: Color(0xFF0D2364),
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
@@ -336,7 +336,7 @@ class _StatCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.indigo,
+                color: Color(0xFF0D2364),
               ),
             ),
           ],

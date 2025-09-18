@@ -22,7 +22,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Employee List Management'),
-        backgroundColor: const Color(0xFF1565C0),
+        backgroundColor: const Color(0xFF0D2364),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
