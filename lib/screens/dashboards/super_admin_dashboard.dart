@@ -39,6 +39,33 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   }
 
   /// ---------------- HOME SCREEN ----------------
+
+  IconData _getIconForType(String type) {
+    switch (type){
+      case 'system':
+        return Icons.system_update_alt;
+      case 'security':
+        return Icons.warning;
+      case 'updates':
+        return Icons.notifications_on;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  Color _getColorForType(String type) {
+    switch (type) {
+      case 'system':
+        return Colors.blue;
+      case 'security':
+        return Colors.red;
+      case 'updates':
+        return Colors.green;
+      default:
+        return Color(0xFF0D2364);
+    }
+  }
+
   Widget _buildHomeScreen() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -58,11 +85,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
 
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('notifications')
-                    .where('dismissed', isEqualTo: false)
-                    .orderBy('time', descending: true)
-                    .snapshots(),
+                stream: getNotificationsStream(widget.user.role),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
@@ -90,9 +113,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                         child: ListTile(
                           contentPadding: const EdgeInsets.all(16),
 
-                          leading: const Icon(
-                            Icons.notifications,
-                            color: Color(0xFF0D2364),
+                          leading: Icon(
+                              _getIconForType(data['type'] ?? ''),
+                              color: _getColorForType(data['type'] ?? ''),
                           ),
 
                           title: Text(
@@ -137,6 +160,27 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     );
   }
 
+  /// ---------------- FETCH FOR NOTIFICATION  ----------------
+  Stream<QuerySnapshot> getNotificationsStream(String role) {
+    final collection = FirebaseFirestore.instance.collection('notifications');
+
+    if (role == 'super_admin' || role == 'admin') {
+      // Super_Admin & Admin → See ALL (system + security)
+      return collection
+          .where('dismissed', isEqualTo: false)
+          .orderBy('time', descending: true)
+          .snapshots();
+    } else {
+      // Others → See only system notifications
+      return collection
+          .where('dismissed', isEqualTo: false)
+          .where('type', isEqualTo: 'system')
+          .orderBy('time', descending: true)
+          .snapshots();
+    }
+  }
+
+  /// ---------------- SIGN OUT  ----------------
   Future<void> _signOut() async {
     if (_isLoggingOut) return;
     setState(() => _isLoggingOut = true);
@@ -145,16 +189,17 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
       // show loading for 3 seconds before signing out
       await Future.delayed(const Duration(seconds: 3));
       await AuthService()
-          .logout(); // triggers authStateChanges -> back to login
+          .logout();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to sign out: $e')));
-      setState(() => _isLoggingOut = false); // reset only if error
+      setState(() => _isLoggingOut = false);
     }
   }
 
+  /// ---------------- SIDEBAR  ----------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -316,3 +361,57 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     );
   }
 }
+
+  /// ---------------- MANUAL NOTIFICATION  ----------------
+  Future<void> createSystemNotification(String title, String message, String role) async {
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(role).get();
+
+    if (userDoc.exists && userDoc['role'] == 'super_admin') {
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'title': title,
+        'message': message,
+        'time': FieldValue.serverTimestamp(),
+        'dismissed': false,
+        'type': 'system',
+        'createdBy': role
+      });
+    } else {
+      SnackBar(content: Text('Not authorized to create system notifications'));
+    }
+  }
+
+  /// ---------------- AUTOMATIC NOTIFICATION  ----------------
+  Future<void> addEmployee(String name, String email) async {
+    final usersRef = FirebaseFirestore.instance.collection('users');
+
+    // Create employee
+    await usersRef.add({
+      'name': name,
+      'email': email,
+      'role': 'employee',
+      'createdAt': FieldValue.serverTimestamp(),
+      'createdBy': name
+    });
+
+    // Create system notification
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'title': 'New Employee Registered',
+      'message': '$name has been added to the system',
+      'time': FieldValue.serverTimestamp(),
+      'dismissed': false,
+      'type': 'system',
+      'createdBy': 'system',
+    });
+  }
+
+  /// ---------------- AUTOMATIC SECURITY NOTIFICATION  ----------------
+  Future<void> logSecurityWarning(String message) async {
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'title': 'Security Warning',
+      'message': message,
+      'time': FieldValue.serverTimestamp(),
+      'dismissed': false,
+      'type': 'security',
+      'createdBy': 'system',
+    });
+  }

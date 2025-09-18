@@ -82,7 +82,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
                       return DataRow(
                         cells: [
-                          DataCell(Text(data['employee_id'].toString() ?? '')),
+                          DataCell(Text(data['employee_id'].toString())),
                           DataCell(
                               Text(
                                   data['status'] == true
@@ -222,7 +222,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+            child: const Text("Deactivate", style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
