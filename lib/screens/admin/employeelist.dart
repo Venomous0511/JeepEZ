@@ -21,18 +21,14 @@ class Employee {
   final String id;
   final String name;
   final String joiningDate;
-  final String dateOfBirth;
   final String email;
-  final String position;
   final String status;
 
   Employee({
     required this.id,
     required this.name,
     required this.joiningDate,
-    required this.dateOfBirth,
     required this.email,
-    required this.position,
     required this.status,
   });
 }
@@ -50,45 +46,35 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       id: 'EMP001',
       name: 'John Doe',
       joiningDate: '2023-01-15',
-      dateOfBirth: '1990-05-20',
       email: 'john.doe@company.com',
-      position: 'Developer',
       status: 'Active',
     ),
     Employee(
       id: 'EMP002',
       name: 'Jane Smith',
       joiningDate: '2022-08-10',
-      dateOfBirth: '1988-12-05',
       email: 'jane.smith@company.com',
-      position: 'Designer',
       status: 'Active',
     ),
     Employee(
       id: 'EMP003',
       name: 'Robert Johnson',
       joiningDate: '2021-03-22',
-      dateOfBirth: '1992-07-14',
       email: 'robert.j@company.com',
-      position: 'Manager',
       status: 'Active',
     ),
     Employee(
       id: 'EMP004',
       name: 'Sarah Williams',
       joiningDate: '2023-05-30',
-      dateOfBirth: '1995-02-18',
       email: 'sarah.w@company.com',
-      position: 'Analyst',
       status: 'Inactive',
     ),
     Employee(
       id: 'EMP005',
       name: 'Michael Brown',
       joiningDate: '2020-11-05',
-      dateOfBirth: '1987-09-30',
       email: 'michael.b@company.com',
-      position: 'Developer',
       status: 'Active',
     ),
   ];
@@ -118,7 +104,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         filteredEmployees = employees.where((employee) {
           return employee.name.toLowerCase().contains(query) ||
               employee.email.toLowerCase().contains(query) ||
-              employee.position.toLowerCase().contains(query) ||
               employee.id.toLowerCase().contains(query);
         }).toList();
       }
@@ -242,9 +227,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   DataColumn(label: Text('Employee ID')),
                   DataColumn(label: Text('Employee\'s Name')),
                   DataColumn(label: Text('Joining Date')),
-                  DataColumn(label: Text('Date of Birth')),
                   DataColumn(label: Text('Email')),
-                  DataColumn(label: Text('Position')),
                   DataColumn(label: Text('Status')),
                   DataColumn(label: Text('Actions')),
                 ],
@@ -254,9 +237,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       DataCell(Text(employee.id)),
                       DataCell(Text(employee.name)),
                       DataCell(Text(employee.joiningDate)),
-                      DataCell(Text(employee.dateOfBirth)),
                       DataCell(Text(employee.email)),
-                      DataCell(Text(employee.position)),
                       DataCell(
                         Text(
                           employee.status,
