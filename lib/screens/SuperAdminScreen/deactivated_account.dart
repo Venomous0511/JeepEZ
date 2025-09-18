@@ -28,6 +28,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           style: TextStyle(color: Colors.white),
         ),
         backgroundColor: const Color(0xFF0D2364),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
