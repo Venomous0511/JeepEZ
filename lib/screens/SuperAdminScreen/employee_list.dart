@@ -64,7 +64,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   return data['status'] == true;
                 }).toList();
 
-                // ✅ Wrap DataTable in horizontal scroll
+                // Wrap DataTable in horizontal scroll
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
@@ -236,10 +236,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
       await userRef.update({
         "status": false,
-        "employeeId": "",
-        "email": "",
         "name": "",
-        "role": "",
         "updatedAt": FieldValue.serverTimestamp(),
       });
 

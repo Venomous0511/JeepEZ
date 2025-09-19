@@ -8,7 +8,6 @@ import '../SuperAdminScreen/deactivated_account.dart';
 import '../SuperAdminScreen/add_account.dart';
 import '../SuperAdminScreen/system_management.dart';
 
-// TODO: Employee List Fixed the Update and Delete also Add Notification
 // TODO: Add a Deactivated Account View and add a Activate Account
 
 // Main SuperAdminDashboard Class
@@ -393,7 +392,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  AttendanceScreen(user: widget.user),
+                                  DeactivatedAccountScreen(user: widget.user),
                             ),
                           );
                         },
