@@ -28,6 +28,7 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   int _selectedIndex = 0;
   bool _isLoggingOut = false;
+  bool _isLoading = true;
 
   // Replace _notificationCount with a list of notifications
   List<Notification> notifications = [
@@ -44,23 +45,37 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   void initState() {
     super.initState();
-    _screens.add(_buildHomeScreen());
-    _screens.add(const EmployeeListScreen());
-    _screens.add(const AttendanceScreen());
-    _screens.add(const LeaveManagementScreen());
-    _screens.add(const DriverAndConductorManagementScreen());
-    _screens.add(const MaintenanceScreen());
-    _screens.add(const RoutePlaybackScreen());
+    _initializeScreens();
+  }
+
+  Future<void> _initializeScreens() async {
+    try {
+      // Initialize screens after HomeScreen is defined
+      _screens.addAll([
+        const HomeScreen(),
+        const EmployeeListScreen(),
+        const AttendanceScreen(),
+        const LeaveManagementScreen(),
+        const DriverConductorManagementScreen(),
+        const MaintenanceScreen(),
+        const RoutePlaybackScreen(),
+      ]);
+    } catch (e) {
+      // Handle any errors during initialization
+      debugPrint('Error initializing screens: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
-  }
-
-  Widget _buildHomeScreen() {
-    return const HomeScreen();
   }
 
   Future<void> _signOut() async {
@@ -72,9 +87,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
       await AuthService().logout();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to sign out: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to sign out: ${e.toString()}')),
+      );
     } finally {
       if (mounted) setState(() => _isLoggingOut = false);
     }
@@ -198,20 +213,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: Column(
           children: [
             UserAccountsDrawerHeader(
-              decoration: BoxDecoration(color: Color(0xFF0D2364)),
+              decoration: const BoxDecoration(color: Color(0xFF0D2364)),
               accountName: Text(
                 widget.user.name ?? 'Admin',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               accountEmail: Text(
                 widget.user.email,
-                style: TextStyle(fontSize: 14),
+                style: const TextStyle(fontSize: 14),
               ),
               currentAccountPicture: CircleAvatar(
                 backgroundColor: Colors.white,
                 child: Icon(
                   Icons.admin_panel_settings,
-                  color: Color(0xFF0D2364),
+                  color: const Color(0xFF0D2364),
                 ),
               ),
             ),
@@ -317,7 +335,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ],
         ),
       ),
-      body: _screens[_selectedIndex],
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : (_screens.isNotEmpty && _selectedIndex < _screens.length
+                ? _screens[_selectedIndex]
+                : const Center(child: Text('Screen not available'))),
     );
   }
 }
@@ -325,10 +347,155 @@ class _AdminDashboardState extends State<AdminDashboard> {
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  Widget _buildVehicleItem(String unit) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: Colors.green,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(unit, style: const TextStyle(fontSize: 16)),
+        ],
+      ),
+    );
+  }
+
+  TableRow _buildEmployeeRow(String name, String time) {
+    return TableRow(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            children: [
+              const Icon(Icons.email, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                name,
+                style: const TextStyle(fontSize: 16, color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            children: [
+              const Icon(Icons.access_time, color: Colors.white, size: 16),
+              const SizedBox(width: 4),
+              Text(
+                time,
+                style: const TextStyle(fontSize: 14, color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Welcome to Admin Dashboard', style: TextStyle(fontSize: 24)),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Welcome to Admin Dashboard',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 20),
+          // Vehicle Schedule Card
+          Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Vehicle Schedule',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0D2364),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Today | Monday | 06/06/06',
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  _buildVehicleItem('UNIT 20'),
+                  _buildVehicleItem('UNIT 21'),
+                  _buildVehicleItem('UNIT 02'),
+                  _buildVehicleItem('UNIT 05'),
+                  _buildVehicleItem('UNIT 10'),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Employee Tracking Card
+          Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D2364),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Employee Tracking',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Today | Monday | 06/06/06',
+                      style: TextStyle(fontSize: 14, color: Colors.white70),
+                    ),
+                    const SizedBox(height: 12),
+                    Table(
+                      columnWidths: const {
+                        0: FlexColumnWidth(3),
+                        1: FlexColumnWidth(1),
+                      },
+                      children: [
+                        _buildEmployeeRow('Jenny Tarog', '9:00am'),
+                        _buildEmployeeRow('Jeanne Russelle', '9:10am'),
+                        _buildEmployeeRow('Ashanti Naomi', '10:00am'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
