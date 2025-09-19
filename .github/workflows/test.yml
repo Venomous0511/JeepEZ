@@ -1,0 +1,13 @@
+name: Tag Test
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Say Hello
+        run: echo "✅ Workflow triggered on tag $GITHUB_REF_NAME"
