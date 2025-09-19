@@ -14,13 +14,15 @@ class AddAccountScreen extends StatefulWidget {
 }
 
 class _AddAccountScreenState extends State<AddAccountScreen> {
-  final nameCtrl = TextEditingController();
-  final employeeIDCtrl = TextEditingController();
-  final emailCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
-  String role = 'driver';
-  bool loading = false;
+  final TextEditingController emailCtrl = TextEditingController();
+  final TextEditingController passCtrl = TextEditingController();
+  final TextEditingController nameCtrl = TextEditingController();
+  final TextEditingController employeeIDCtrl = TextEditingController();
 
+  bool loading = false;
+  String role = "conductor";
+
+  /// ----------- GET AND CREATE SECONDARY FUNCTION -----------
   Future<FirebaseApp> _getOrCreateSecondaryApp() async {
     try {
       return Firebase.app('adminSecondary');
@@ -32,11 +34,61 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     }
   }
 
+  /// ----------- GENERATE EMPLOYEE ID FUNCTION -----------
+  Future<String> _generateEmployeeId(String role) async {
+    final Map<String, String> rolePrefixes = {
+      'admin': '10',
+      'legal_officer': '20',
+      'driver': '30',
+      'conductor': '40',
+      'inspector': '50',
+    };
+
+    final prefix = rolePrefixes[role] ?? '99';
+
+    // Find the last employee_id with this prefix
+    final query = await FirebaseFirestore.instance
+        .collection('users')
+        .where('employeeId', isGreaterThanOrEqualTo: prefix)
+        .where('employeeId', isLessThan: '${prefix}999999')
+        .orderBy('employeeId', descending: true)
+        .limit(1)
+        .get();
+
+    if (query.docs.isEmpty) {
+      // First ID for this role
+      return '${prefix}001';
+    } else {
+      final lastId = query.docs.first['employeeId'] as String;
+      final lastNum = int.tryParse(lastId) ?? int.parse('${prefix}000');
+      return (lastNum + 1).toString().padLeft(5, '0');
+    }
+  }
+
+  /// ----------- Called when role changes -----------
+  Future<void> _updateEmployeeId(String newRole) async {
+    final newId = await _generateEmployeeId(newRole);
+    setState(() {
+      role = newRole;
+      employeeIDCtrl.text = newId;
+    });
+  }
+
+  /// ----------- CREATE FUNCTION -----------
   Future<void> _createUser() async {
-    if (emailCtrl.text.trim().isEmpty || passCtrl.text.trim().length < 6) {
+    if (emailCtrl.text.trim().isEmpty || passCtrl.text.trim().length < 8) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Enter email and 6+ char password')),
+          const SnackBar(content: Text('Enter email and 8+ char password')),
+        );
+      }
+      return;
+    }
+
+    if (employeeIDCtrl.text.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Employee ID not generated')),
         );
       }
       return;
@@ -45,38 +97,56 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     setState(() => loading = true);
 
     try {
+      final email = emailCtrl.text.trim();
+      final password = passCtrl.text.trim();
+      final employeeId = employeeIDCtrl.text.trim();
+
+      // Create User In Secondary Auth Instance
       final secondaryApp = await _getOrCreateSecondaryApp();
       final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
 
       final newCred = await secondaryAuth.createUserWithEmailAndPassword(
-        email: emailCtrl.text.trim(),
-        password: passCtrl.text.trim(),
+        email: email,
+        password: password,
       );
       final newUid = newCred.user!.uid;
 
       await FirebaseFirestore.instance.collection('users').doc(newUid).set({
         'uid': newUid,
-        'email': emailCtrl.text.trim(),
-        'employeeID': employeeIDCtrl.text.trim(),
+        'email': email,
+        'employeeId': employeeId,
         'name': nameCtrl.text.trim(),
         'role': role,
+        'status': true,
         'createdAt': FieldValue.serverTimestamp(),
+        'createdBy': widget.user.email,
+      });
+
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'title': 'New Account Created',
+        'message': '${nameCtrl.text.trim()} has been added as $role',
+        'time': FieldValue.serverTimestamp(),
+        'dismissed': false,
+        'type': 'updates',
         'createdBy': widget.user.email,
       });
 
       await secondaryAuth.signOut();
 
+      final createdRole = role;
+
       emailCtrl.clear();
-      employeeIDCtrl.clear();
       passCtrl.clear();
       nameCtrl.clear();
-      setState(() => role = 'driver');
+      employeeIDCtrl.clear();
+      if (mounted) {
+        setState(() => role = 'conductor');
+      }
 
       if (mounted) {
-        // Pwede palitan gawin toast
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('User created as $role')));
+        ).showSnackBar(SnackBar(content: Text('User created as $createdRole with ID $employeeId')));
       }
     } catch (e) {
       if (mounted) {
@@ -92,13 +162,13 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   }
 
   @override
-  void dispose() {
-    nameCtrl.dispose();
-    emailCtrl.dispose();
-    passCtrl.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    // Generate initial ID for default role
+    _updateEmployeeId(role);
   }
 
+  /// ----------- SCREEN VIEW -----------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -143,11 +213,13 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       color: Color(0xFF0D2364),
                     ),
                   ),
+
                   const SizedBox(height: 16),
+
                   TextField(
                     controller: nameCtrl,
                     decoration: const InputDecoration(
-                      labelText: 'Name',
+                      labelText: 'Full Name',
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 12,
@@ -155,19 +227,9 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 16),
-                  TextField(
-                    controller: employeeIDCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Employee ID',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
+
                   TextField(
                     controller: emailCtrl,
                     decoration: const InputDecoration(
@@ -179,7 +241,9 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 12),
+
                   TextField(
                     controller: passCtrl,
                     obscureText: true,
@@ -192,7 +256,20 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 12),
+
+                  TextField(
+                    controller: employeeIDCtrl,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Employee ID (auto-generated)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
                   DropdownButtonFormField<String>(
                     value: role,
                     decoration: const InputDecoration(
@@ -205,47 +282,44 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                     ),
                     items:
                         const [
-                          'admin',
-                          'legal_officer',
-                          'driver',
-                          'conductor',
-                          'inspector',
-                        ].map((String role) {
-                          return DropdownMenuItem<String>(
-                            value: role,
-                            child: Text(role),
-                          );
-                        }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        role = newValue!;
-                      });
+                          DropdownMenuItem(value: "admin", child: Text("Admin")),
+                          DropdownMenuItem(value: "legal_officer", child: Text("Legal Officer")),
+                          DropdownMenuItem(value: "driver", child: Text("Driver")),
+                          DropdownMenuItem(value: "conductor", child: Text("Conductor")),
+                          DropdownMenuItem(value: "inspector", child: Text("Inspector")),
+                        ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        _updateEmployeeId(value);
+                      }
                     },
                   ),
+
                   const SizedBox(height: 20),
-                  loading
-                      ? const Center(child: CircularProgressIndicator())
-                      : SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _createUser,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0D2364),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text(
-                              'Create User',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
+
+                  SizedBox(
+                    width: double.infinity, // full width
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0D2364),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
+                      ),
+                      onPressed: loading ? null : _createUser,
+                      child: loading
+                          ? const CircularProgressIndicator()
+                          : const Text(
+                        "Create User",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  )
                 ],
               ),
             ),

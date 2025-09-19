@@ -1,10 +1,14 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
 import '../SuperAdminScreen/employee_list.dart';
 import '../SuperAdminScreen/deactivated_account.dart';
 import '../SuperAdminScreen/add_account.dart';
 import '../SuperAdminScreen/system_management.dart';
+
+// TODO: Add a Deactivated Account View and add a Activate Account
 
 // Main SuperAdminDashboard Class
 class SuperAdminDashboard extends StatefulWidget {
@@ -22,28 +26,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   // For dropdown in drawer
   bool showUserManagementOptions = false;
 
-  // Notifications data
-  final List<Map<String, String>> _notifications = [
-    {
-      'title': 'New Employee Added',
-      'message': 'John Doe has been added to the system',
-      'time': '2 hours ago',
-      'type': 'user',
-    },
-    {
-      'title': 'System Update',
-      'message': 'New security features have been implemented',
-      'time': '1 day ago',
-      'type': 'system',
-    },
-    {
-      'title': 'Account Deactivated',
-      'message': 'User account jane.smith@company.com has been deactivated',
-      'time': '3 days ago',
-      'type': 'warning',
-    },
-  ];
-
   late List<Widget> _screens;
 
   @override
@@ -59,23 +41,109 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   }
 
   // Function to add a new notification
-  void _addNotification() {
-    setState(() {
-      _notifications.insert(0, {
-        'title': 'New Notification',
-        'message': 'This is a sample notification added from the dashboard',
-        'time': 'Just now',
-        'type': 'info',
-      });
-    });
+  void _showAddNotificationDialog() {
+    final titleController = TextEditingController();
+    final messageController = TextEditingController();
 
-    // Show confirmation
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Notification added successfully!')),
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Add Notification"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(
+                  labelText: "Title",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: messageController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: "Message",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0D2364),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                final title = titleController.text.trim();
+                final message = messageController.text.trim();
+
+                if (title.isEmpty || message.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Please fill in all fields")),
+                  );
+                  return;
+                }
+
+                await FirebaseFirestore.instance.collection('notifications').add({
+                  'title': title,
+                  'message': message,
+                  'time': FieldValue.serverTimestamp(),
+                  'dismissed': false,
+                  'type': 'system',
+                  'createdBy': widget.user.role,
+                });
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Notification added successfully!")),
+                  );
+                }
+              },
+              child: const Text("Add"),
+            ),
+          ],
+        );
+      },
     );
   }
 
   /// ---------------- HOME SCREEN ----------------
+
+  IconData _getIconForType(String type) {
+    switch (type){
+      case 'system':
+        return Icons.system_update_alt;
+      case 'security':
+        return Icons.warning;
+      case 'updates':
+        return Icons.notifications_on;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  Color _getColorForType(String type) {
+    switch (type) {
+      case 'system':
+        return Colors.blue;
+      case 'security':
+        return Colors.red;
+      case 'updates':
+        return Colors.green;
+      default:
+        return Color(0xFF0D2364);
+    }
+  }
+
   Widget _buildHomeScreen() {
     return Stack(
       children: [
@@ -92,111 +160,114 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                   color: Color(0xFF0D2364),
                 ),
               ),
-              const SizedBox(height: 16),
               Expanded(
-                child: _notifications.isEmpty
-                    ? const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.notifications_off,
-                              size: 48,
-                              color: Colors.grey,
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'No notifications available',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          ],
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: getNotificationsStream(widget.user.role),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'No notifications',
+                          style: TextStyle(color: Colors.grey),
                         ),
-                      )
-                    : ListView.builder(
-                        itemCount: _notifications.length,
-                        itemBuilder: (context, index) {
-                          final notification = _notifications[index];
-                          IconData iconData;
-                          Color iconColor;
+                      );
+                    }
 
-                          // Set icon based on notification type
-                          switch (notification['type']) {
-                            case 'user':
-                              iconData = Icons.person_add;
-                              iconColor = Colors.green;
-                              break;
-                            case 'system':
-                              iconData = Icons.system_update;
-                              iconColor = Colors.blue;
-                              break;
-                            case 'warning':
-                              iconData = Icons.warning;
-                              iconColor = Colors.orange;
-                              break;
-                            default:
-                              iconData = Icons.notifications;
-                              iconColor = const Color(0xFF0D2364);
-                          }
+                    final docs = snapshot.data!.docs;
 
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            elevation: 2,
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.all(16),
-                              leading: Icon(iconData, color: iconColor),
-                              title: Text(
-                                notification['title']!,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 4),
-                                  Text(notification['message']!),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    notification['time']!,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.close, size: 18),
-                                onPressed: () {
-                                  setState(() {
-                                    _notifications.removeAt(index);
-                                  });
-                                },
-                              ),
+                    return ListView.builder(
+                      itemCount: docs.length,
+                      itemBuilder: (context, index) {
+                        final data = docs[index].data() as Map<String, dynamic>;
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.all(16),
+                            leading: Icon(
+                              _getIconForType(data['type'] ?? ''),
+                              color: _getColorForType(data['type'] ?? ''),
                             ),
-                          );
-                        },
-                      ),
+                            title: Text(
+                              data['title'],
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 4),
+                                Text(data['message']),
+                                const SizedBox(height: 4),
+                                Text(
+                                  DateFormat('MMM d, y hh:mm a').format(
+                                    (data['time'] as Timestamp).toDate(),
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.close, size: 18),
+                              onPressed: () async {
+                                await docs[index]
+                                    .reference
+                                    .update({'dismissed': true});
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
             ],
           ),
         ),
-        // Add Notification floating button in bottom right
+
+        // FloatingActionButton correctly placed
         Positioned(
           bottom: 20,
           right: 20,
           child: FloatingActionButton(
-            onPressed: _addNotification,
+            onPressed: _showAddNotificationDialog,
             backgroundColor: const Color(0xFF0D2364),
             foregroundColor: Colors.white,
-            child: const Icon(Icons.add),
             tooltip: 'Add Notification',
+            child: const Icon(Icons.add),
           ),
+
         ),
       ],
     );
   }
 
+  /// ---------------- FETCH FOR NOTIFICATION  ----------------
+  Stream<QuerySnapshot> getNotificationsStream(String role) {
+    final collection = FirebaseFirestore.instance.collection('notifications');
+
+    if (role == 'super_admin' || role == 'admin') {
+      // Super_Admin & Admin → See ALL (system + security)
+      return collection
+          .where('dismissed', isEqualTo: false)
+          .orderBy('time', descending: true)
+          .snapshots();
+    } else {
+      // Others → See only system notifications
+      return collection
+          .where('dismissed', isEqualTo: false)
+          .where('type', isEqualTo: 'system')
+          .orderBy('time', descending: true)
+          .snapshots();
+    }
+  }
+
+  /// ---------------- SIGN OUT  ----------------
   Future<void> _signOut() async {
     if (_isLoggingOut) return;
     setState(() => _isLoggingOut = true);
@@ -205,16 +276,17 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
       // show loading for 3 seconds before signing out
       await Future.delayed(const Duration(seconds: 3));
       await AuthService()
-          .logout(); // triggers authStateChanges -> back to login
+          .logout();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to sign out: $e')));
-      setState(() => _isLoggingOut = false); // reset only if error
+      setState(() => _isLoggingOut = false);
     }
   }
 
+  /// ---------------- SIDEBAR  ----------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -236,7 +308,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                 ),
               ),
               accountEmail: Text(
-                widget.user.email,
+                "Employee ID: ${widget.user.employeeId}",
                 style: const TextStyle(fontSize: 14),
               ),
               currentAccountPicture: const CircleAvatar(
@@ -320,7 +392,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  AttendanceScreen(user: widget.user),
+                                  DeactivatedAccountScreen(user: widget.user),
                             ),
                           );
                         },
@@ -376,3 +448,61 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     );
   }
 }
+
+  /// ---------------- MANUAL NOTIFICATION  ----------------
+  Future<void> createSystemNotification(String title, String message, String role) async {
+    final userQuery = await FirebaseFirestore.instance
+        .collection('users')
+        .where('role', isEqualTo: role)
+        .limit(1)
+        .get();
+
+    if (userQuery.docs.isNotEmpty && role == 'super_admin') {
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'title': title,
+        'message': message,
+        'time': FieldValue.serverTimestamp(),
+        'dismissed': false,
+        'type': 'system',
+        'createdBy': role,
+      });
+    } else {
+      throw Exception('Not authorized to create system notifications');
+    }
+  }
+
+  /// ---------------- AUTOMATIC NOTIFICATION  ----------------
+  Future<void> addEmployee(String name, String email) async {
+    final usersRef = FirebaseFirestore.instance.collection('users');
+
+    // Create employee
+    await usersRef.add({
+      'name': name,
+      'email': email,
+      'role': 'employee',
+      'createdAt': FieldValue.serverTimestamp(),
+      'createdBy': name
+    });
+
+    // Create system notification
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'title': 'New Employee Registered',
+      'message': '$name has been added to the system',
+      'time': FieldValue.serverTimestamp(),
+      'dismissed': false,
+      'type': 'system',
+      'createdBy': 'system',
+    });
+  }
+
+  /// ---------------- AUTOMATIC SECURITY NOTIFICATION  ----------------
+  Future<void> logSecurityWarning(String message) async {
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'title': 'Security Warning',
+      'message': message,
+      'time': FieldValue.serverTimestamp(),
+      'dismissed': false,
+      'type': 'security',
+      'createdBy': 'system',
+    });
+  }
