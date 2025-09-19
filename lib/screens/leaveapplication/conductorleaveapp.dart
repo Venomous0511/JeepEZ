@@ -61,7 +61,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Leave Application'),
-        backgroundColor: const Color(0xFF0D47A1),
+        backgroundColor: const Color(0xFF0D2364),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -221,7 +221,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                 child: ElevatedButton(
                   onPressed: _submitForm,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D47A1),
+                    backgroundColor: const Color(0xFF0D2364),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: const Text(
@@ -242,7 +242,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                   child: const Text(
                     'View submitted form',
                     style: TextStyle(
-                      color: Color(0xFF0D47A1),
+                      color: Color(0xFF0D2364),
                       decoration: TextDecoration.underline,
                     ),
                   ),

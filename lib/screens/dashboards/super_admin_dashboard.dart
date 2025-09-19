@@ -22,27 +22,25 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   // For dropdown in drawer
   bool showUserManagementOptions = false;
 
-  // Sample notifications data
+  // Notifications data
   final List<Map<String, String>> _notifications = [
     {
-      'title': 'System Update Available',
-      'message': 'Version 2.0.0 is now available for download',
-      'time': '2 hours ago',
-    },
-    {
-      'title': 'New Employee Registered',
+      'title': 'New Employee Added',
       'message': 'John Doe has been added to the system',
-      'time': '5 hours ago',
+      'time': '2 hours ago',
+      'type': 'user',
     },
     {
-      'title': 'Maintenance Scheduled',
-      'message': 'System maintenance scheduled for tomorrow at 2:00 AM',
+      'title': 'System Update',
+      'message': 'New security features have been implemented',
       'time': '1 day ago',
+      'type': 'system',
     },
     {
-      'title': 'Backup Completed',
-      'message': 'System backup was completed successfully',
-      'time': '2 days ago',
+      'title': 'Account Deactivated',
+      'message': 'User account jane.smith@company.com has been deactivated',
+      'time': '3 days ago',
+      'type': 'warning',
     },
   ];
 
@@ -60,76 +58,142 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     });
   }
 
+  // Function to add a new notification
+  void _addNotification() {
+    setState(() {
+      _notifications.insert(0, {
+        'title': 'New Notification',
+        'message': 'This is a sample notification added from the dashboard',
+        'time': 'Just now',
+        'type': 'info',
+      });
+    });
+
+    // Show confirmation
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Notification added successfully!')),
+    );
+  }
+
   /// ---------------- HOME SCREEN ----------------
   Widget _buildHomeScreen() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Notifications',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0D2364),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: _notifications.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No notifications',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: _notifications.length,
-                    itemBuilder: (context, index) {
-                      final notification = _notifications[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(16),
-                          leading: const Icon(
-                            Icons.notifications,
-                            color: Color(0xFF0D2364),
-                          ),
-                          title: Text(
-                            notification['title']!,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 4),
-                              Text(notification['message']!),
-                              const SizedBox(height: 4),
-                              Text(
-                                notification['time']!,
+    return Stack(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Notifications',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0D2364),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: _notifications.isEmpty
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.notifications_off,
+                              size: 48,
+                              color: Colors.grey,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No notifications available',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: _notifications.length,
+                        itemBuilder: (context, index) {
+                          final notification = _notifications[index];
+                          IconData iconData;
+                          Color iconColor;
+
+                          // Set icon based on notification type
+                          switch (notification['type']) {
+                            case 'user':
+                              iconData = Icons.person_add;
+                              iconColor = Colors.green;
+                              break;
+                            case 'system':
+                              iconData = Icons.system_update;
+                              iconColor = Colors.blue;
+                              break;
+                            case 'warning':
+                              iconData = Icons.warning;
+                              iconColor = Colors.orange;
+                              break;
+                            default:
+                              iconData = Icons.notifications;
+                              iconColor = const Color(0xFF0D2364);
+                          }
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            elevation: 2,
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(16),
+                              leading: Icon(iconData, color: iconColor),
+                              title: Text(
+                                notification['title']!,
                                 style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ],
-                          ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.close, size: 18),
-                            onPressed: () {
-                              setState(() {
-                                _notifications.removeAt(index);
-                              });
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 4),
+                                  Text(notification['message']!),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    notification['time']!,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.close, size: 18),
+                                onPressed: () {
+                                  setState(() {
+                                    _notifications.removeAt(index);
+                                  });
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        // Add Notification floating button in bottom right
+        Positioned(
+          bottom: 20,
+          right: 20,
+          child: FloatingActionButton(
+            onPressed: _addNotification,
+            backgroundColor: const Color(0xFF0D2364),
+            foregroundColor: Colors.white,
+            child: const Icon(Icons.add),
+            tooltip: 'Add Notification',
+          ),
+        ),
+      ],
     );
   }
 

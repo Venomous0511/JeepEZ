@@ -21,9 +21,14 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Employee List Management'),
-        backgroundColor: const Color(0xFF1565C0),
+        title: const Text(
+          'Employee List Management',
+          style: TextStyle(color: Colors.white), // 👈 Set text color to white
+        ),
+        backgroundColor: const Color(0xFF0D2364),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

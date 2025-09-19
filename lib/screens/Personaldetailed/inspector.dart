@@ -43,7 +43,7 @@ class _PersonalDetailsState extends State<PersonalDetails> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Personal Details'),
-        backgroundColor: const Color(0xFF0D47A1),
+        backgroundColor: const Color(0xFF0D2364),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -180,7 +180,7 @@ class _PersonalDetailsState extends State<PersonalDetails> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D47A1),
+                      backgroundColor: const Color(0xFF0D2364),
                     ),
                     child: const Text(
                       "Change Password",

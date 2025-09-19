@@ -96,7 +96,7 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.indigo,
+        backgroundColor: Color(0xFF0D2364),
         title: const Text('Employee List View (View-only)'),
       ),
       body: Container(
@@ -122,7 +122,7 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
                   borderRadius: BorderRadius.circular(8.0),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderSide: const BorderSide(color: Colors.indigo),
+                  borderSide: const BorderSide(color: Color(0xFF0D2364)),
                   borderRadius: BorderRadius.circular(8.0),
                 ),
               ),
@@ -147,7 +147,7 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
                       'Employee Name',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.indigo,
+                        color: Color(0xFF0D2364),
                         fontSize: 16,
                       ),
                     ),
@@ -158,7 +158,7 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
                       'Joining Date',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.indigo,
+                        color: Color(0xFF0D2364),
                         fontSize: 16,
                       ),
                     ),
@@ -180,7 +180,7 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
                       'Violation',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.indigo,
+                        color: Color(0xFF0D2364),
                         fontSize: 16,
                       ),
                     ),

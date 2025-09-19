@@ -27,7 +27,7 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Incident Report'),
-        backgroundColor: const Color(0xFF0D47A1),
+        backgroundColor: const Color(0xFF0D2364),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -104,7 +104,7 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                 child: ElevatedButton(
                   onPressed: _submitForm,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D47A1),
+                    backgroundColor: const Color(0xFF0D2364),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: const Text(

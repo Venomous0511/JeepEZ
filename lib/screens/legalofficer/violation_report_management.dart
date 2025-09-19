@@ -39,7 +39,7 @@ class ViolationReportHistoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.indigo,
+        backgroundColor: Color(0xFF0D2364),
         title: const Text('User Reports'),
       ),
       body: Padding(
@@ -220,7 +220,7 @@ class _UserItem extends StatelessWidget {
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Colors.indigo,
+            color: Color(0xFF0D2364),
           ),
         ),
       ],
