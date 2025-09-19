@@ -20,13 +20,10 @@ jobs:
           channel: 'stable'
 
       - name: Accept Android Licenses
-        run: yes | sdkmanager --licenses
+        run: yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses
 
       - name: Install NDK
-        run: sdkmanager "ndk;29.0.13846066"
-
-      - name: Build APK
-        run: flutter build apk --release
+        run: /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "ndk;29.0.13846066"
 
       # ---------- ANDROID APK ----------
       - name: Build Android APK
