@@ -146,12 +146,12 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
     );
   }
 
-  Widget _placeholder(String title) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text('$title screen coming soon')),
-    );
-  }
+  // Widget _placeholder(String title) {
+  //   return Scaffold(
+  //     appBar: AppBar(title: Text(title)),
+  //     body: Center(child: Text('$title screen coming soon')),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {

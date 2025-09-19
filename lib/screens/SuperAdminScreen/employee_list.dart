@@ -24,7 +24,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       appBar: AppBar(
         title: const Text(
           'Employee List Management',
-          style: TextStyle(color: Colors.white), // 👈 Set text color to white
+          style: TextStyle(color: Colors.white),
         ),
         backgroundColor: const Color(0xFF0D2364),
         iconTheme: const IconThemeData(color: Colors.white),
@@ -71,7 +71,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     columnSpacing: 16,
                     headingRowColor: WidgetStateProperty.all(Colors.blue[50]),
                     columns: const [
-                      DataColumn(label: Text("ID Number")),
+                      DataColumn(label: Text("Employee ID")),
                       DataColumn(label: Text("Status")),
                       DataColumn(label: Text("Name")),
                       DataColumn(label: Text("Email")),
@@ -83,7 +83,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
                       return DataRow(
                         cells: [
-                          DataCell(Text(data['employee_id'].toString())),
+                          DataCell(Text(data['employeeId'].toString())),
                           DataCell(
                               Text(
                                   data['status'] == true
@@ -135,7 +135,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
   /// ---------------- UPDATE USER FUNCTION ----------------
   Future<void> _editUser(String docId, Map<String, dynamic> data) async {
-    final employeeIdCtrl = TextEditingController(text: data['employee_id']?.toString());
+    final employeeIdCtrl = TextEditingController(text: data['employeeId']?.toString());
     final nameCtrl = TextEditingController(text: data['name']);
     final emailCtrl = TextEditingController(text: data['email']);
     String role = data['role'] ?? "conductor";
@@ -149,39 +149,12 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: employeeIdCtrl,
-                decoration: const InputDecoration(labelText: "Employee ID"),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
                 controller: nameCtrl,
                 decoration: const InputDecoration(labelText: "Name"),
               ),
               TextField(
                 controller: emailCtrl,
                 decoration: const InputDecoration(labelText: "Email"),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: role,
-                items: const [
-                  DropdownMenuItem(value: 'admin', child: Text('admin')),
-                  DropdownMenuItem(
-                    value: 'legal_officer',
-                    child: Text('legal_officer'),
-                  ),
-                  DropdownMenuItem(value: 'driver', child: Text('driver')),
-                  DropdownMenuItem(
-                    value: 'conductor',
-                    child: Text('conductor'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'inspector',
-                    child: Text('inspector'),
-                  ),
-                ],
-                onChanged: (v) => setState(() => role = v ?? 'conductor'),
-                decoration: const InputDecoration(labelText: 'Role'),
               ),
             ],
           ),
@@ -201,21 +174,38 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
     if (updated == true) {
       await FirebaseFirestore.instance.collection('users').doc(docId).update({
-        "employee_id": employeeIdCtrl.text.trim(),
         "name": nameCtrl.text.trim(),
         "email": emailCtrl.text.trim(),
         "role": role,
       });
+
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'title': 'Updated Account',
+        'message': 'Update account for ${nameCtrl.text.trim()} with an email of ${emailCtrl.text.trim()}',
+        'time': FieldValue.serverTimestamp(),
+        'dismissed': false,
+        'type': 'updates',
+        'createdBy': widget.user.email,
+      });
     }
+
+    employeeIdCtrl.dispose();
+    nameCtrl.dispose();
+    emailCtrl.dispose();
   }
 
   /// ---------------- DELETE USER ----------------
   Future<void> _deleteUser(String docId, Map<String, dynamic> data) async {
+    final userRef = FirebaseFirestore.instance.collection('users').doc(docId);
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Deactivate User"),
-        content: Text("Are you sure you want to Deactivate ${data['email']}? " "This will remove their info but keep the account as inactive"),
+        content: Text(
+          "Are you sure you want to deactivate ${data['email']}?\n\n"
+              "This will archive their info but keep the account slot reusable.",
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -230,13 +220,46 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     );
 
     if (confirm == true) {
-      await FirebaseFirestore.instance.collection('users').doc(docId).update({
-        "employee_id": "",
-        "name": "",
-        "email": "",
-        "role": "",
-        "status": "false",
+      final userSnap = await userRef.get();
+      if (!userSnap.exists) return;
+
+      final userData = userSnap.data()!;
+
+      await FirebaseFirestore.instance
+          .collection('archived_users')
+          .doc(docId)
+          .set({
+        ...userData,
+        "archivedAt": FieldValue.serverTimestamp(),
+        "archivedBy": widget.user.email,
       });
+
+      await userRef.update({
+        "status": false,
+        "employeeId": "",
+        "email": "",
+        "name": "",
+        "role": "",
+        "updatedAt": FieldValue.serverTimestamp(),
+      });
+
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'title': 'Deactivated Account',
+        'message':
+        'Deactivated account for ${data['email']}. This slot is now available for reuse.',
+        'time': FieldValue.serverTimestamp(),
+        'dismissed': false,
+        'type': 'updates',
+        'createdBy': widget.user.email,
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+          Text("User ${data['email']} archived and deactivated successfully"),
+        ),
+      );
     }
   }
 

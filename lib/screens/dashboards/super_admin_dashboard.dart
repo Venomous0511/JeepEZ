@@ -8,6 +8,9 @@ import '../SuperAdminScreen/deactivated_account.dart';
 import '../SuperAdminScreen/add_account.dart';
 import '../SuperAdminScreen/system_management.dart';
 
+// TODO: Employee List Fixed the Update and Delete also Add Notification
+// TODO: Add a Deactivated Account View and add a Activate Account
+
 // Main SuperAdminDashboard Class
 class SuperAdminDashboard extends StatefulWidget {
   final AppUser user;
@@ -36,6 +39,82 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  // Function to add a new notification
+  void _showAddNotificationDialog() {
+    final titleController = TextEditingController();
+    final messageController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Add Notification"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(
+                  labelText: "Title",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: messageController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: "Message",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0D2364),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                final title = titleController.text.trim();
+                final message = messageController.text.trim();
+
+                if (title.isEmpty || message.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Please fill in all fields")),
+                  );
+                  return;
+                }
+
+                await FirebaseFirestore.instance.collection('notifications').add({
+                  'title': title,
+                  'message': message,
+                  'time': FieldValue.serverTimestamp(),
+                  'dismissed': false,
+                  'type': 'system',
+                  'createdBy': widget.user.role,
+                });
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Notification added successfully!")),
+                  );
+                }
+              },
+              child: const Text("Add"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   /// ---------------- HOME SCREEN ----------------
@@ -67,94 +146,105 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   }
 
   Widget _buildHomeScreen() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Notifications',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0D2364),
-            ),
-          ),
-
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-                stream: getNotificationsStream(widget.user.role),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'No notifications',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    );
-                  }
-
-                  final docs = snapshot.data!.docs;
-
-                  return ListView.builder(
-                    itemCount: docs.length,
-                    itemBuilder: (context, index) {
-                      final data = docs[index].data() as Map<String, dynamic>;
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(16),
-
-                          leading: Icon(
-                              _getIconForType(data['type'] ?? ''),
-                              color: _getColorForType(data['type'] ?? ''),
-                          ),
-
-                          title: Text(
-                            data['title'],
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 4),
-
-                              Text(data['message']),
-
-                              const SizedBox(height: 4),
-
-                              Text(
-                                DateFormat('MMM d, y hh:mm a').format((data['time'] as Timestamp).toDate()),
-
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          trailing: IconButton(
-                            icon: const Icon(Icons.close, size: 18),
-                            onPressed: () async {
-                              await docs[index].reference.update({'dismissed': true});
-                            },
-                          ),
+    return Stack(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Notifications',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0D2364),
+                ),
+              ),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: getNotificationsStream(widget.user.role),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'No notifications',
+                          style: TextStyle(color: Colors.grey),
                         ),
                       );
-                    },
-                  );
-                })
+                    }
+
+                    final docs = snapshot.data!.docs;
+
+                    return ListView.builder(
+                      itemCount: docs.length,
+                      itemBuilder: (context, index) {
+                        final data = docs[index].data() as Map<String, dynamic>;
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.all(16),
+                            leading: Icon(
+                              _getIconForType(data['type'] ?? ''),
+                              color: _getColorForType(data['type'] ?? ''),
+                            ),
+                            title: Text(
+                              data['title'],
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 4),
+                                Text(data['message']),
+                                const SizedBox(height: 4),
+                                Text(
+                                  DateFormat('MMM d, y hh:mm a').format(
+                                    (data['time'] as Timestamp).toDate(),
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.close, size: 18),
+                              onPressed: () async {
+                                await docs[index]
+                                    .reference
+                                    .update({'dismissed': true});
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+
+        // FloatingActionButton correctly placed
+        Positioned(
+          bottom: 20,
+          right: 20,
+          child: FloatingActionButton(
+            onPressed: _showAddNotificationDialog,
+            backgroundColor: const Color(0xFF0D2364),
+            foregroundColor: Colors.white,
+            tooltip: 'Add Notification',
+            child: const Icon(Icons.add),
+          ),
+
+        ),
+      ],
     );
   }
 
@@ -219,7 +309,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                 ),
               ),
               accountEmail: Text(
-                widget.user.email,
+                "Employee ID: ${widget.user.employeeId}",
                 style: const TextStyle(fontSize: 14),
               ),
               currentAccountPicture: const CircleAvatar(
@@ -362,19 +452,23 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
 
   /// ---------------- MANUAL NOTIFICATION  ----------------
   Future<void> createSystemNotification(String title, String message, String role) async {
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(role).get();
+    final userQuery = await FirebaseFirestore.instance
+        .collection('users')
+        .where('role', isEqualTo: role)
+        .limit(1)
+        .get();
 
-    if (userDoc.exists && userDoc['role'] == 'super_admin') {
+    if (userQuery.docs.isNotEmpty && role == 'super_admin') {
       await FirebaseFirestore.instance.collection('notifications').add({
         'title': title,
         'message': message,
         'time': FieldValue.serverTimestamp(),
         'dismissed': false,
         'type': 'system',
-        'createdBy': role
+        'createdBy': role,
       });
     } else {
-      SnackBar(content: Text('Not authorized to create system notifications'));
+      throw Exception('Not authorized to create system notifications');
     }
   }
 
