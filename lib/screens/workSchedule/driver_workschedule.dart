@@ -15,7 +15,7 @@ class WorkScheduleScreen extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(16.0),
               decoration: BoxDecoration(
-                color: const Color(0xFF0D47A1),
+                color: const Color(0xFF0D2364),
                 borderRadius: BorderRadius.circular(8.0),
               ),
               child: const Text(

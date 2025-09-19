@@ -4,6 +4,7 @@ import '../legalofficer/inspector_report_history.dart';
 import '../legalofficer/violation_report_management.dart';
 import '../legalofficer/employee_list_view.dart';
 import '../legalofficer/inspector_report_management.dart';
+import '../legalofficer/hiring_management.dart';
 
 class LegalOfficerDashboardScreen extends StatelessWidget {
   const LegalOfficerDashboardScreen({super.key, required this.user});
@@ -137,6 +138,16 @@ class LegalOfficerDashboardScreen extends StatelessWidget {
                         builder: (context) => EmployeeListViewScreen(
                           user: user,
                         ), // ✅ Correct parameter name
+                      ),
+                    );
+                  }),
+                  // ADDED HIRING MANAGEMENT OPTION
+                  _drawerItem(context, 'Hiring Management', () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => HiringManagementScreen(),
                       ),
                     );
                   }),

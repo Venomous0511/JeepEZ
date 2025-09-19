@@ -14,63 +14,27 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
   final nameCtrl = TextEditingController();
-  String role = 'driver';
+  final employeeIdCtrl = TextEditingController();
+  String role = 'conductor';
   bool loading = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Employee List Management'),
-        backgroundColor: const Color(0xFF1565C0),
+        title: const Text(
+          'Employee List Management',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: const Color(0xFF0D2364),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// ---------------- FORM ----------------
-            // TextField(
-            //   controller: nameCtrl,
-            //   decoration: const InputDecoration(labelText: 'Name'),
-            // ),
-            // const SizedBox(height: 8),
-            // TextField(
-            //   controller: emailCtrl,
-            //   decoration: const InputDecoration(labelText: 'Email'),
-            // ),
-            // const SizedBox(height: 8),
-            // TextField(
-            //   controller: passCtrl,
-            //   decoration: const InputDecoration(labelText: 'Password'),
-            //   obscureText: true,
-            // ),
-            // const SizedBox(height: 12),
-            // DropdownButtonFormField<String>(
-            //   value: role,
-            //   items: const [
-            //     'admin',
-            //     'legal_officer',
-            //     'driver',
-            //     'conductor',
-            //     'inspector',
-            //   ].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-            //   onChanged: (v) => setState(() => role = v ?? 'driver'),
-            //   decoration: const InputDecoration(labelText: 'Role'),
-            // ),
-            // const SizedBox(height: 16),
-            // loading
-            //     ? const Center(child: CircularProgressIndicator())
-            //     : ElevatedButton.icon(
-            //   onPressed: _createUser,
-            //   icon: const Icon(Icons.person_add),
-            //   label: const Text('Add Account'),
-            // ),
-            //
-            // const SizedBox(height: 24),
-            // const Divider(),
-            // const SizedBox(height: 8),
-
             /// ---------------- LIST ----------------
             const Text(
               'Existing Users',
@@ -95,15 +59,20 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   return const Text('No users yet.');
                 }
 
-                final employeeDocs = snap.data!.docs;
+                final employeeDocs = snap.data!.docs.where((d) {
+                  final data = d.data() as Map<String, dynamic>;
+                  return data['status'] == true;
+                }).toList();
 
-                // ✅ Wrap DataTable in horizontal scroll
+                // Wrap DataTable in horizontal scroll
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
                     columnSpacing: 16,
                     headingRowColor: WidgetStateProperty.all(Colors.blue[50]),
                     columns: const [
+                      DataColumn(label: Text("Employee ID")),
+                      DataColumn(label: Text("Status")),
                       DataColumn(label: Text("Name")),
                       DataColumn(label: Text("Email")),
                       DataColumn(label: Text("Role")),
@@ -114,6 +83,20 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
                       return DataRow(
                         cells: [
+                          DataCell(Text(data['employeeId'].toString())),
+                          DataCell(
+                              Text(
+                                  data['status'] == true
+                                      ? "Active"
+                                      : "Inactive",
+                                  style: TextStyle(
+                                    color: data['status'] == true
+                                        ? Colors.green
+                                        : Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                              ),
+                          ),
                           DataCell(Text(data['name'] ?? '')),
                           DataCell(Text(data['email'] ?? '')),
                           DataCell(Text(data['role'] ?? '')),
@@ -150,54 +133,12 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     );
   }
 
-  /// ---------------- CREATE USER FUNCTION ----------------
-  Future<void> _createUser() async {
-    if (emailCtrl.text.isEmpty || passCtrl.text.length < 6) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Enter email and password (6+ chars)")),
-      );
-      return;
-    }
-
-    setState(() => loading = true);
-
-    try {
-      final newUser = {
-        "name": nameCtrl.text.trim(),
-        "email": emailCtrl.text.trim(),
-        "role": role,
-        "createdAt": FieldValue.serverTimestamp(),
-        "createdBy": widget.user.email,
-      };
-
-      await FirebaseFirestore.instance.collection("users").add(newUser);
-
-      if (!mounted) return;
-
-      nameCtrl.clear();
-      emailCtrl.clear();
-      passCtrl.clear();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("User created successfully")),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
-    } finally {
-      if (mounted) {
-        setState(() => loading = false);
-      }
-    }
-  }
-
   /// ---------------- UPDATE USER FUNCTION ----------------
   Future<void> _editUser(String docId, Map<String, dynamic> data) async {
+    final employeeIdCtrl = TextEditingController(text: data['employeeId']?.toString());
     final nameCtrl = TextEditingController(text: data['name']);
-    String role = data['role'] ?? "driver";
+    final emailCtrl = TextEditingController(text: data['email']);
+    String role = data['role'] ?? "conductor";
 
     final updated = await showDialog<bool>(
       context: context,
@@ -211,27 +152,9 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 controller: nameCtrl,
                 decoration: const InputDecoration(labelText: "Name"),
               ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: role,
-                items: const [
-                  DropdownMenuItem(value: 'admin', child: Text('admin')),
-                  DropdownMenuItem(
-                    value: 'legal_officer',
-                    child: Text('legal_officer'),
-                  ),
-                  DropdownMenuItem(value: 'driver', child: Text('driver')),
-                  DropdownMenuItem(
-                    value: 'conductor',
-                    child: Text('conductor'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'inspector',
-                    child: Text('inspector'),
-                  ),
-                ],
-                onChanged: (v) => setState(() => role = v ?? 'driver'),
-                decoration: const InputDecoration(labelText: 'Role'),
+              TextField(
+                controller: emailCtrl,
+                decoration: const InputDecoration(labelText: "Email"),
               ),
             ],
           ),
@@ -252,18 +175,37 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     if (updated == true) {
       await FirebaseFirestore.instance.collection('users').doc(docId).update({
         "name": nameCtrl.text.trim(),
+        "email": emailCtrl.text.trim(),
         "role": role,
       });
+
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'title': 'Updated Account',
+        'message': 'Update account for ${nameCtrl.text.trim()} with an email of ${emailCtrl.text.trim()}',
+        'time': FieldValue.serverTimestamp(),
+        'dismissed': false,
+        'type': 'updates',
+        'createdBy': widget.user.email,
+      });
     }
+
+    employeeIdCtrl.dispose();
+    nameCtrl.dispose();
+    emailCtrl.dispose();
   }
 
   /// ---------------- DELETE USER ----------------
   Future<void> _deleteUser(String docId, Map<String, dynamic> data) async {
+    final userRef = FirebaseFirestore.instance.collection('users').doc(docId);
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Delete User"),
-        content: Text("Are you sure you want to delete ${data['email']}?"),
+        title: const Text("Deactivate User"),
+        content: Text(
+          "Are you sure you want to deactivate ${data['email']}?\n\n"
+              "This will archive their info but keep the account slot reusable.",
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -271,14 +213,50 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+            child: const Text("Deactivate", style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
 
     if (confirm == true) {
-      await FirebaseFirestore.instance.collection('users').doc(docId).delete();
+      final userSnap = await userRef.get();
+      if (!userSnap.exists) return;
+
+      final userData = userSnap.data()!;
+
+      await FirebaseFirestore.instance
+          .collection('archived_users')
+          .doc(docId)
+          .set({
+        ...userData,
+        "archivedAt": FieldValue.serverTimestamp(),
+        "archivedBy": widget.user.email,
+      });
+
+      await userRef.update({
+        "status": false,
+        "name": "",
+        "updatedAt": FieldValue.serverTimestamp(),
+      });
+
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'title': 'Deactivated Account',
+        'message':
+        'Deactivated account for ${data['email']}. This slot is now available for reuse.',
+        'time': FieldValue.serverTimestamp(),
+        'dismissed': false,
+        'type': 'updates',
+        'createdBy': widget.user.email,
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+          Text("User ${data['email']} archived and deactivated successfully"),
+        ),
+      );
     }
   }
 

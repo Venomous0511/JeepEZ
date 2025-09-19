@@ -4,7 +4,18 @@ import '../../services/auth_service.dart';
 import '../admin/employeelist.dart';
 import '../admin/attendance_record.dart';
 import '../admin/leavemanagement.dart';
-import '../admin/hiringmanagement.dart';
+import '../admin/driver_and_conductor_management.dart';
+import '../admin/maintenance.dart';
+import '../admin/route_playback.dart';
+
+// Add this Notification class definition
+class Notification {
+  final String id;
+  final String message;
+  bool isRead;
+
+  Notification({required this.id, required this.message, this.isRead = false});
+}
 
 class AdminDashboard extends StatefulWidget {
   final AppUser user;
@@ -17,19 +28,48 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   int _selectedIndex = 0;
   bool _isLoggingOut = false;
-  int _notificationCount = 3; // Example notification count
+  bool _isLoading = true;
+
+  // Replace _notificationCount with a list of notifications
+  List<Notification> notifications = [
+    Notification(id: '1', message: 'New leave request from John Doe'),
+    Notification(id: '2', message: 'Attendance alert: Late clock-in'),
+    Notification(id: '3', message: 'New hiring application received'),
+  ];
+
+  // Calculate unread count
+  int get unreadCount => notifications.where((n) => !n.isRead).length;
 
   final List<Widget> _screens = [];
 
   @override
   void initState() {
     super.initState();
-    _screens.add(_buildHomeScreen());
-    _screens.add(const EmployeeListScreen());
-    _screens.add(const AttendanceScreen());
-    _screens.add(const LeaveManagementScreen());
-    _screens.add(_buildRoutePlaybackScreen());
-    _screens.add(const HiringManagementScreen());
+    _initializeScreens();
+  }
+
+  Future<void> _initializeScreens() async {
+    try {
+      // Initialize screens after HomeScreen is defined
+      _screens.addAll([
+        const HomeScreen(),
+        const EmployeeListScreen(),
+        const AttendanceScreen(),
+        const LeaveManagementScreen(),
+        const DriverConductorManagementScreen(),
+        const MaintenanceScreen(),
+        const RoutePlaybackScreen(),
+      ]);
+    } catch (e) {
+      // Handle any errors during initialization
+      debugPrint('Error initializing screens: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _onItemTapped(int index) {
@@ -38,34 +78,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
     });
   }
 
-  Widget _buildHomeScreen() {
-    return const HomeScreen();
-  }
-
-  Widget _buildRoutePlaybackScreen() {
-    return const Center(
-      child: Text('Route Playback Screen', style: TextStyle(fontSize: 24)),
-    );
-  }
-
   Future<void> _signOut() async {
     if (_isLoggingOut) return;
     setState(() => _isLoggingOut = true);
 
     try {
       await Future.delayed(const Duration(milliseconds: 3000));
-
       await AuthService().logout();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to sign out: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to sign out: ${e.toString()}')),
+      );
     } finally {
       if (mounted) setState(() => _isLoggingOut = false);
     }
   }
 
+  // Updated notification method
   void _showNotifications() {
     showDialog(
       context: context,
@@ -76,18 +106,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
             width: double.maxFinite,
             child: ListView(
               shrinkWrap: true,
-              children: [
-                _buildNotificationItem('New leave request from John Doe'),
-                _buildNotificationItem('Attendance alert: Late clock-in'),
-                _buildNotificationItem('New hiring application received'),
-              ],
+              children: notifications.map((notification) {
+                return _buildNotificationItem(notification);
+              }).toList(),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () {
                 setState(() {
-                  _notificationCount = 0; // Mark all as read
+                  // Mark all notifications as read
+                  for (var notification in notifications) {
+                    notification.isRead = true;
+                  }
                 });
                 Navigator.of(context).pop();
               },
@@ -111,15 +142,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildNotificationItem(String message) {
+  // Updated notification item builder
+  Widget _buildNotificationItem(Notification notification) {
     return ListTile(
-      leading: const Icon(Icons.notifications, color: Color(0xFF0D2364)),
-      title: Text(message),
+      leading: Icon(
+        Icons.notifications,
+        color: notification.isRead ? Colors.grey : const Color(0xFF0D2364),
+      ),
+      title: Text(
+        notification.message,
+        style: TextStyle(
+          fontWeight: notification.isRead ? FontWeight.normal : FontWeight.bold,
+          color: notification.isRead ? Colors.grey[700] : Colors.black,
+        ),
+      ),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: () {
-        // Handle individual notification tap
+        if (!notification.isRead) {
+          setState(() {
+            notification.isRead = true;
+          });
+        }
         Navigator.of(context).pop();
-        // Add specific action for each notification here
+        // You can add navigation logic here based on notification type
       },
     );
   }
@@ -139,7 +184,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 icon: const Icon(Icons.notifications),
                 onPressed: _showNotifications,
               ),
-              if (_notificationCount > 0)
+              if (unreadCount > 0)
                 Positioned(
                   right: 8,
                   top: 8,
@@ -154,9 +199,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       minHeight: 16,
                     ),
                     child: Text(
-                      _notificationCount > 9
-                          ? '9+'
-                          : _notificationCount.toString(),
+                      unreadCount > 9 ? '9+' : unreadCount.toString(),
                       style: const TextStyle(color: Colors.white, fontSize: 10),
                       textAlign: TextAlign.center,
                     ),
@@ -170,20 +213,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: Column(
           children: [
             UserAccountsDrawerHeader(
-              decoration: BoxDecoration(color: Color(0xFF0D2364)),
+              decoration: const BoxDecoration(color: Color(0xFF0D2364)),
               accountName: Text(
                 widget.user.name ?? 'Admin',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               accountEmail: Text(
                 widget.user.email,
-                style: TextStyle(fontSize: 14),
+                style: const TextStyle(fontSize: 14),
               ),
               currentAccountPicture: CircleAvatar(
                 backgroundColor: Colors.white,
                 child: Icon(
                   Icons.admin_panel_settings,
-                  color: Color(0xFF0D2364),
+                  color: const Color(0xFF0D2364),
                 ),
               ),
             ),
@@ -233,24 +279,36 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       Navigator.pop(context);
                     },
                   ),
+                  // ADDED: Driver & Conductor Management
                   ListTile(
                     leading: const Icon(
-                      Icons.directions,
+                      Icons.directions_car,
                       color: Color(0xFF0D2364),
                     ),
-                    title: const Text('Route Playback'),
+                    title: const Text('Driver & Conductor Management'),
                     selected: _selectedIndex == 4,
                     onTap: () {
                       _onItemTapped(4);
                       Navigator.pop(context);
                     },
                   ),
+                  // ADDED: Maintenance
                   ListTile(
-                    leading: const Icon(Icons.work, color: Color(0xFF0D2364)),
-                    title: const Text('Hiring Management'),
+                    leading: const Icon(Icons.build, color: Color(0xFF0D2364)),
+                    title: const Text('Maintenance'),
                     selected: _selectedIndex == 5,
                     onTap: () {
                       _onItemTapped(5);
+                      Navigator.pop(context);
+                    },
+                  ),
+                  // ADDED: Route Playback
+                  ListTile(
+                    leading: const Icon(Icons.map, color: Color(0xFF0D2364)),
+                    title: const Text('Route Playback'),
+                    selected: _selectedIndex == 6,
+                    onTap: () {
+                      _onItemTapped(6);
                       Navigator.pop(context);
                     },
                   ),
@@ -277,7 +335,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ],
         ),
       ),
-      body: _screens[_selectedIndex],
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : (_screens.isNotEmpty && _selectedIndex < _screens.length
+                ? _screens[_selectedIndex]
+                : const Center(child: Text('Screen not available'))),
     );
   }
 }
@@ -285,10 +347,155 @@ class _AdminDashboardState extends State<AdminDashboard> {
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  Widget _buildVehicleItem(String unit) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: Colors.green,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(unit, style: const TextStyle(fontSize: 16)),
+        ],
+      ),
+    );
+  }
+
+  TableRow _buildEmployeeRow(String name, String time) {
+    return TableRow(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            children: [
+              const Icon(Icons.email, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                name,
+                style: const TextStyle(fontSize: 16, color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            children: [
+              const Icon(Icons.access_time, color: Colors.white, size: 16),
+              const SizedBox(width: 4),
+              Text(
+                time,
+                style: const TextStyle(fontSize: 14, color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Welcome to Admin Dashboard', style: TextStyle(fontSize: 24)),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Welcome to Admin Dashboard',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 20),
+          // Vehicle Schedule Card
+          Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Vehicle Schedule',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0D2364),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Today | Monday | 06/06/06',
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  _buildVehicleItem('UNIT 20'),
+                  _buildVehicleItem('UNIT 21'),
+                  _buildVehicleItem('UNIT 02'),
+                  _buildVehicleItem('UNIT 05'),
+                  _buildVehicleItem('UNIT 10'),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Employee Tracking Card
+          Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D2364),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Employee Tracking',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Today | Monday | 06/06/06',
+                      style: TextStyle(fontSize: 14, color: Colors.white70),
+                    ),
+                    const SizedBox(height: 12),
+                    Table(
+                      columnWidths: const {
+                        0: FlexColumnWidth(3),
+                        1: FlexColumnWidth(1),
+                      },
+                      children: [
+                        _buildEmployeeRow('Jenny Tarog', '9:00am'),
+                        _buildEmployeeRow('Jeanne Russelle', '9:10am'),
+                        _buildEmployeeRow('Ashanti Naomi', '10:00am'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

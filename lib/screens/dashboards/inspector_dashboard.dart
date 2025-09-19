@@ -3,6 +3,8 @@ import '../../models/app_user.dart';
 import '../Personaldetailed/driver.dart'; // Import the PersonalDetails screen
 import '../inspectorreportform/inspector_form.dart';
 import '../inspectortrip/inspector_trip_report.dart';
+import '../workSchedule/inspector.dart';
+import '../leaveapplication/inspector_leaveapp.dart';
 
 class InspectorDashboard extends StatefulWidget {
   final AppUser user;
@@ -21,10 +23,10 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
     super.initState();
     _screens = [
       _buildHomeScreen(),
-      _placeholder('Schedule'),
+      const WorkScheduleScreen(),
       _buildTripScreen(),
       _buildInspectorReportScreen(),
-      _placeholder('Leave'),
+      const LeaveApplicationScreen(),
     ];
   }
 
@@ -144,12 +146,12 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
     );
   }
 
-  Widget _placeholder(String title) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text('$title screen coming soon')),
-    );
-  }
+  // Widget _placeholder(String title) {
+  //   return Scaffold(
+  //     appBar: AppBar(title: Text(title)),
+  //     body: Center(child: Text('$title screen coming soon')),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {

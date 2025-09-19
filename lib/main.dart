@@ -50,6 +50,12 @@ class JeepezApp extends StatelessWidget {
                   );
                 }
 
+                if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
+                  // If no user doc, sign out or redirect to login
+                  FirebaseAuth.instance.signOut();
+                  return const LoginScreen();
+                }
+
                 var data = userSnapshot.data!.data() as Map<String, dynamic>;
 
                 AppUser user = AppUser.fromMap(snapshot.data!.uid, data);
