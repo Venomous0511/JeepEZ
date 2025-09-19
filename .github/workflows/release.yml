@@ -19,6 +19,15 @@ jobs:
           flutter-version: '3.32.8'
           channel: 'stable'
 
+      - name: Accept Android Licenses
+        run: yes | sdkmanager --licenses
+
+      - name: Install NDK
+        run: sdkmanager "ndk;29.0.13846066"
+
+      - name: Build APK
+        run: flutter build apk --release
+
       # ---------- ANDROID APK ----------
       - name: Build Android APK
         run: flutter build apk --release
