@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
 import '../Personaldetailed/driver.dart'; // Import the PersonalDetails screen
 import '../inspectorreportform/inspector_form.dart';
-import '../inspectortrip/inspector_trip_report.dart';
+import '../inspectorTrip/inspector_trip_report.dart';
 import '../workSchedule/inspector.dart';
 import '../leaveapplication/inspector_leaveapp.dart';
 
