@@ -116,7 +116,9 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         'email': email,
         'employeeId': employeeId,
         'name': nameCtrl.text.trim(),
-        'role': role,
+        'employment_type'
+                'role':
+            role,
         'status': true,
         'createdAt': FieldValue.serverTimestamp(),
         'createdBy': widget.user.email,
@@ -144,9 +146,11 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('User created as $createdRole with ID $employeeId')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('User created as $createdRole with ID $employeeId'),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -271,7 +275,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                   const SizedBox(height: 12),
 
                   DropdownButtonFormField<String>(
-                    value: role,
+                    initialValue: role,
                     decoration: const InputDecoration(
                       labelText: 'Role',
                       border: OutlineInputBorder(),
@@ -280,14 +284,22 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                         vertical: 8,
                       ),
                     ),
-                    items:
-                        const [
-                          DropdownMenuItem(value: "admin", child: Text("Admin")),
-                          DropdownMenuItem(value: "legal_officer", child: Text("Legal Officer")),
-                          DropdownMenuItem(value: "driver", child: Text("Driver")),
-                          DropdownMenuItem(value: "conductor", child: Text("Conductor")),
-                          DropdownMenuItem(value: "inspector", child: Text("Inspector")),
-                        ],
+                    items: const [
+                      DropdownMenuItem(value: "admin", child: Text("Admin")),
+                      DropdownMenuItem(
+                        value: "legal_officer",
+                        child: Text("Legal Officer"),
+                      ),
+                      DropdownMenuItem(value: "driver", child: Text("Driver")),
+                      DropdownMenuItem(
+                        value: "conductor",
+                        child: Text("Conductor"),
+                      ),
+                      DropdownMenuItem(
+                        value: "inspector",
+                        child: Text("Inspector"),
+                      ),
+                    ],
                     onChanged: (value) {
                       if (value != null) {
                         _updateEmployeeId(value);
@@ -311,15 +323,15 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       child: loading
                           ? const CircularProgressIndicator()
                           : const Text(
-                        "Create User",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
+                              "Create User",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
                     ),
-                  )
+                  ),
                 ],
               ),
             ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class RoutePlaybackScreen extends StatelessWidget {
-  const RoutePlaybackScreen({super.key});
+class RouteHistoryScreen extends StatelessWidget {
+  const RouteHistoryScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

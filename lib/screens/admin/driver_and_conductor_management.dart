@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DriverConductorManagementScreen extends StatefulWidget {
   const DriverConductorManagementScreen({super.key});
@@ -11,48 +12,392 @@ class DriverConductorManagementScreen extends StatefulWidget {
 class _DriverConductorManagementScreenState
     extends State<DriverConductorManagementScreen> {
   final TextEditingController searchCtrl = TextEditingController();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String searchQuery = '';
 
-  final List<Map<String, String>> employeeData = [
-    {
-      'name': 'Tom',
-      'role': 'Driver',
-      'schedule': 'Mon–Fri, 6AM–2PM',
-      'performance': 'Excellent',
-    },
-    {
-      'name': 'Mj',
-      'role': 'Conductor',
-      'schedule': 'Mon–Fri, 6AM–2PM',
-      'performance': 'Good',
-    },
-    {
-      'name': 'Jian',
-      'role': 'Driver',
-      'schedule': 'Tue–Sat, 2PM–10PM',
-      'performance': 'Needs Review',
-    },
-    {
-      'name': 'Diego',
-      'role': 'Conductor',
-      'schedule': 'Wed–Sun, 6AM–2PM',
-      'performance': 'Excellent',
-    },
-    {
-      'name': 'Jeriel Celis',
-      'role': 'Driver',
-      'schedule': 'Mon–Fri, 6AM–2PM',
-      'performance': 'Outstanding',
-    },
-  ];
+  // Stream for real-time updates
+  Stream<QuerySnapshot> get employeesStream {
+    return _firestore.collection('employees').orderBy('name').snapshots();
+  }
 
-  List<Map<String, String>> get filteredData {
-    if (searchQuery.isEmpty) return employeeData;
-    return employeeData
-        .where(
-          (e) => e['name']!.toLowerCase().contains(searchQuery.toLowerCase()),
-        )
-        .toList();
+  // Initialize sample data (run this once to populate Firestore)
+  Future<void> _initializeSampleData() async {
+    final sampleData = [
+      {
+        'employeeId': '100001',
+        'name': 'Tom',
+        'employmentType': 'Full-time',
+        'role': 'Driver',
+        'schedule': 'Mon–Fri',
+        'vehicle': '101',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'employeeId': '100002',
+        'name': 'Mj',
+        'employmentType': 'Full-time',
+        'role': 'Conductor',
+        'schedule': 'Mon–Fri',
+        'vehicle': '101',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'employeeId': '100003',
+        'name': 'Jian',
+        'employmentType': 'Full-time',
+        'role': 'Driver',
+        'schedule': 'Tue–Sat',
+        'vehicle': '102',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'employeeId': '100004',
+        'name': 'Diego',
+        'employmentType': 'Full-time',
+        'role': 'Conductor',
+        'schedule': 'Wed–Sun',
+        'vehicle': '103',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'employeeId': '100005',
+        'name': 'Jeriel Celis',
+        'employmentType': 'Full-time',
+        'role': 'Driver',
+        'schedule': 'Mon–Fri',
+        'vehicle': '104',
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+    ];
+
+    // Check if data already exists
+    final snapshot = await _firestore.collection('employees').get();
+    if (snapshot.docs.isEmpty) {
+      // Add sample data
+      for (final data in sampleData) {
+        await _firestore.collection('employees').add(data);
+      }
+      print('Sample data initialized');
+    }
+  }
+
+  // Update employee schedule
+  Future<void> _updateEmployeeSchedule(String docId, String newSchedule) async {
+    try {
+      await _firestore.collection('employees').doc(docId).update({
+        'schedule': newSchedule,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Schedule updated successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating schedule: $e')));
+      }
+    }
+  }
+
+  // Update employee vehicle
+  Future<void> _updateEmployeeVehicle(String docId, String newVehicle) async {
+    try {
+      await _firestore.collection('employees').doc(docId).update({
+        'vehicle': newVehicle,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Vehicle updated successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating vehicle: $e')));
+      }
+    }
+  }
+
+  // Filter employees based on search query
+  List<QueryDocumentSnapshot> _filterEmployees(
+    List<QueryDocumentSnapshot> docs,
+  ) {
+    if (searchQuery.isEmpty) return docs;
+
+    return docs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final name = data['name']?.toString().toLowerCase() ?? '';
+      return name.contains(searchQuery.toLowerCase());
+    }).toList();
+  }
+
+  void _showActionMenu(BuildContext context, QueryDocumentSnapshot doc) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(Icons.calendar_today),
+                title: const Text('Change Schedule'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showScheduleSelector(context, doc);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.directions_bus),
+                title: const Text('Change Vehicle'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showVehicleSelector(context, doc);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showScheduleSelector(BuildContext context, QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+
+    // Create a map for days of the week with checkboxes
+    final Map<String, bool> selectedDays = {
+      'Monday': false,
+      'Tuesday': false,
+      'Wednesday': false,
+      'Thursday': false,
+      'Friday': false,
+      'Saturday': false,
+      'Sunday': false,
+    };
+
+    // Parse existing schedule if available
+    final currentSchedule = data['schedule']?.toString() ?? '';
+    if (currentSchedule.isNotEmpty) {
+      final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      final fullDays = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+      ];
+
+      if (currentSchedule.contains('–')) {
+        // Range format like "Mon–Fri"
+        final parts = currentSchedule.split('–');
+        final startDay = parts[0];
+        final endDay = parts[1];
+
+        final startIndex = days.indexOf(startDay);
+        final endIndex = days.indexOf(endDay);
+
+        if (startIndex != -1 && endIndex != -1) {
+          for (int i = startIndex; i <= endIndex; i++) {
+            selectedDays[fullDays[i]] = true;
+          }
+        }
+      } else {
+        // Single day or other format
+        final dayIndex = days.indexOf(currentSchedule);
+        if (dayIndex != -1) {
+          selectedDays[fullDays[dayIndex]] = true;
+        }
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              insetPadding: const EdgeInsets.all(20),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 300),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Select Schedule',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Day of week checkboxes
+                      const Text('Select Days:'),
+                      const SizedBox(height: 8),
+
+                      // Monday to Sunday checkboxes in a grid
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 2,
+                        childAspectRatio: 3,
+                        children: selectedDays.entries.map((entry) {
+                          return CheckboxListTile(
+                            title: Text(entry.key),
+                            value: entry.value,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                selectedDays[entry.key] = value ?? false;
+                              });
+                            },
+                            controlAffinity: ListTileControlAffinity.leading,
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                          );
+                        }).toList(),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Selected days summary
+                      Text(
+                        'Selected: ${selectedDays.entries.where((entry) => entry.value).map((entry) => entry.key.substring(0, 3)).join(', ')}',
+                        style: const TextStyle(fontSize: 14),
+                        textAlign: TextAlign.center,
+                      ),
+
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Cancel'),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () async {
+                              // Convert selected days to schedule format
+                              final selectedDayList = selectedDays.entries
+                                  .where((entry) => entry.value)
+                                  .map((entry) => entry.key.substring(0, 3))
+                                  .toList();
+
+                              if (selectedDayList.isNotEmpty) {
+                                await _updateEmployeeSchedule(
+                                  doc.id,
+                                  selectedDayList.join(', '),
+                                );
+                                Navigator.pop(context);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Please select at least one day',
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            child: const Text('Save'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showVehicleSelector(BuildContext context, QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    final List<String> vehicles = ['101', '102', '103', '104', '105'];
+    String currentVehicle = data['vehicle']?.toString() ?? vehicles.first;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              insetPadding: const EdgeInsets.all(20),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 250),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Select Vehicle',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButton<String>(
+                        isExpanded: true,
+                        value: currentVehicle,
+                        items: vehicles.map((String vehicle) {
+                          return DropdownMenuItem<String>(
+                            value: vehicle,
+                            child: Text('Vehicle $vehicle'),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            currentVehicle = newValue!;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Cancel'),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () async {
+                              await _updateEmployeeVehicle(
+                                doc.id,
+                                currentVehicle,
+                              );
+                              Navigator.pop(context);
+                            },
+                            child: const Text('Save'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize sample data when the widget loads
+    _initializeSampleData();
   }
 
   @override
@@ -66,99 +411,189 @@ class _DriverConductorManagementScreenState
         backgroundColor: const Color(0xFF0D2364),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isMobile = constraints.maxWidth < 600;
-          final fontSize = isMobile ? 14.0 : 16.0;
-          final padding = isMobile ? 8.0 : 12.0;
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            /// 🔍 Search Bar
+            TextField(
+              controller: searchCtrl,
+              decoration: InputDecoration(
+                labelText: 'Search by name',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onChanged: (value) => setState(() => searchQuery = value),
+            ),
+            const SizedBox(height: 16),
 
-          return SingleChildScrollView(
-            padding: EdgeInsets.all(padding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                /// 🔍 Search Bar
-                TextField(
-                  controller: searchCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Search by name',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+            /// 📋 Data Table with StreamBuilder
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withAlpha(128),
+                    spreadRadius: 1,
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text(
+                      'Employees',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1565C0),
+                      ),
                     ),
                   ),
-                  onChanged: (value) => setState(() => searchQuery = value),
-                ),
-                const SizedBox(height: 16),
 
-                /// 📋 Table Header + Rows
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Column(
-                    children: [
-                      /// Header
-                      Container(
-                        color: Colors.blue[50],
-                        padding: EdgeInsets.symmetric(vertical: padding),
-                        child: Row(
-                          children: [
-                            _headerCell("Name", 150, fontSize),
-                            _headerCell("Role", 100, fontSize),
-                            _headerCell("Schedule", 200, fontSize),
-                            _headerCell("Performance", 120, fontSize),
-                          ],
+                  // StreamBuilder for real-time data
+                  StreamBuilder<QuerySnapshot>(
+                    stream: employeesStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text('Error: ${snapshot.error}'),
+                        );
+                      }
+
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+
+                      final docs = snapshot.data?.docs ?? [];
+                      final filteredDocs = _filterEmployees(docs);
+
+                      if (filteredDocs.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Text('No employees found'),
+                        );
+                      }
+
+                      return Table(
+                        border: TableBorder.all(
+                          color: Colors.grey.shade300,
+                          width: 1.0,
                         ),
-                      ),
-
-                      /// Rows
-                      ...filteredData.map((e) {
-                        final index = filteredData.indexOf(e);
-                        final bgColor = index % 2 == 0
-                            ? Colors.white
-                            : Colors.grey[100];
-
-                        return Container(
-                          color: bgColor,
-                          padding: EdgeInsets.symmetric(vertical: padding),
-                          child: Row(
+                        columnWidths: const {
+                          0: FlexColumnWidth(2.0),
+                          1: FlexColumnWidth(1.5),
+                          2: FlexColumnWidth(1.5),
+                          3: FlexColumnWidth(1.2),
+                          4: FlexColumnWidth(1.2),
+                          5: FlexColumnWidth(1.2),
+                          6: FixedColumnWidth(40), // Fixed width for actions
+                        },
+                        defaultVerticalAlignment:
+                            TableCellVerticalAlignment.middle,
+                        children: [
+                          // Table header
+                          TableRow(
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                            ),
                             children: [
-                              _dataCell(e['name'], 150, fontSize),
-                              _dataCell(e['role'], 100, fontSize),
-                              _dataCell(e['schedule'], 200, fontSize),
-                              _dataCell(e['performance'], 120, fontSize),
+                              _buildHeaderCell('Name'),
+                              _buildHeaderCell('Employee ID'),
+                              _buildHeaderCell('Employment Type'),
+                              _buildHeaderCell('Role'),
+                              _buildHeaderCell('Vehicle'),
+                              _buildHeaderCell('Schedule'),
+                              _buildHeaderCell(''),
                             ],
                           ),
-                        );
-                      }).toList(),
-                    ],
+                          // Table rows
+                          ...filteredDocs.map((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            return TableRow(
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                              ),
+                              children: [
+                                _buildNameCell(data['name']?.toString() ?? ''),
+                                _buildCell(
+                                  data['employeeId']?.toString() ?? '',
+                                ),
+                                _buildCell(
+                                  data['employmentType']?.toString() ?? '',
+                                ),
+                                _buildCell(data['role']?.toString() ?? ''),
+                                _buildCell(data['vehicle']?.toString() ?? ''),
+                                _buildCell(data['schedule']?.toString() ?? ''),
+                                _buildActionCell(context, doc),
+                              ],
+                            );
+                          }),
+                        ],
+                      );
+                    },
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
 
-  Widget _headerCell(String text, double width, double fontSize) {
-    return SizedBox(
-      width: width,
+  Widget _buildHeaderCell(String text) {
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
       child: Text(
         text,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
         textAlign: TextAlign.center,
-        style: TextStyle(fontWeight: FontWeight.bold, fontSize: fontSize),
       ),
     );
   }
 
-  Widget _dataCell(String? text, double width, double fontSize) {
-    return SizedBox(
-      width: width,
+  Widget _buildNameCell(String text) {
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
       child: Text(
-        text ?? '',
+        text,
+        style: const TextStyle(fontSize: 14),
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: fontSize),
+      ),
+    );
+  }
+
+  Widget _buildCell(String text) {
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 14),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildActionCell(BuildContext context, QueryDocumentSnapshot doc) {
+    return Padding(
+      padding: const EdgeInsets.all(4.0),
+      child: IconButton(
+        icon: const Icon(Icons.more_vert, size: 20),
+        onPressed: () => _showActionMenu(context, doc),
       ),
     );
   }

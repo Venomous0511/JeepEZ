@@ -6,7 +6,7 @@ import '../admin/attendance_record.dart';
 import '../admin/leavemanagement.dart';
 import '../admin/driver_and_conductor_management.dart';
 import '../admin/maintenance.dart';
-import '../admin/route_playback.dart';
+import '../admin/route_history.dart';
 
 // Add this Notification class definition
 class Notification {
@@ -54,11 +54,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
       _screens.addAll([
         const HomeScreen(),
         const EmployeeListScreen(),
-        const AttendanceScreen(),
+        AttendanceScreen(
+          onBackPressed: () {
+            setState(() {
+              _selectedIndex = 0; // Navigate back to home
+            });
+          },
+        ),
         const LeaveManagementScreen(),
         const DriverConductorManagementScreen(),
         const MaintenanceScreen(),
-        const RoutePlaybackScreen(),
+        const RouteHistoryScreen(),
       ]);
     } catch (e) {
       // Handle any errors during initialization
@@ -173,7 +179,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Dashboard'),
+        title: const Text(''),
         backgroundColor: const Color(0xFF0D2364),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -480,7 +486,7 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 12),
                     Table(
                       columnWidths: const {
-                        0: FlexColumnWidth(3),
+                        0: FlexColumnWidth(2),
                         1: FlexColumnWidth(1),
                       },
                       children: [

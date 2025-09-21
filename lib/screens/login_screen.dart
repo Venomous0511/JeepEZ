@@ -47,85 +47,103 @@ class _LoginScreenState extends State<LoginScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 32.0),
               child: Center(
                 child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      TextField(
-                        controller: emailCtrl,
-                        decoration: const InputDecoration(
-                          labelText: "Employee ID",
-                          border: OutlineInputBorder(),
+                  child: Container(
+                    width: 400, // Fixed width for web-like form
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(20),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      TextField(
-                        controller: passCtrl,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: "Password",
-                          border: OutlineInputBorder(),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(
+                          controller: emailCtrl,
+                          decoration: const InputDecoration(
+                            labelText: "Employee ID",
+                            border: OutlineInputBorder(),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 16),
 
-                      if (loading)
-                        const CircularProgressIndicator()
-                      else
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFF0D2364),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            onPressed: () async {
-                              setState(() {
-                                loading = true;
-                                error = "";
-                              });
+                        TextField(
+                          controller: passCtrl,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: "Password",
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
 
-                              // Don't Change Anything
-                              try {
-                                AppUser? user = await AuthService().login(
-                                  emailCtrl.text.trim(),
-                                  passCtrl.text.trim(),
-                                );
-                                if (user != null && context.mounted) {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          RoleBasedDashboard(user: user),
-                                    ),
+                        if (loading)
+                          const CircularProgressIndicator()
+                        else
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFF0D2364),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                              onPressed: () async {
+                                setState(() {
+                                  loading = true;
+                                  error = "";
+                                });
+
+                                // Don't Change Anything
+                                try {
+                                  AppUser? user = await AuthService().login(
+                                    emailCtrl.text.trim(),
+                                    passCtrl.text.trim(),
                                   );
-                                } else {
-                                  setState(() => error = "User not found");
+                                  if (user != null && context.mounted) {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            RoleBasedDashboard(user: user),
+                                      ),
+                                    );
+                                  } else {
+                                    setState(() => error = "User not found");
+                                  }
+                                } catch (e) {
+                                  setState(() => error = e.toString());
+                                } finally {
+                                  setState(() => loading = false);
                                 }
-                              } catch (e) {
-                                setState(() => error = e.toString());
-                              } finally {
-                                setState(() => loading = false);
-                              }
-                            },
-                            child: const Text(
-                              "Login",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
+                              },
+                              child: const Text(
+                                "Login",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
                           ),
-                        ),
 
-                      if (error.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 10),
-                          child: Text(
-                            error,
-                            style: const TextStyle(color: Colors.red),
+                        if (error.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: Text(
+                              error,
+                              style: const TextStyle(color: Colors.red),
+                            ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

@@ -16,6 +16,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
       'totalTime': '48h',
       'status': 'Pending',
       'selected': false,
+      'selectedDays': [10, 11, 12],
     },
     {
       'name': 'Robert Fox',
@@ -24,6 +25,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
       'totalTime': '24h',
       'status': 'Pending',
       'selected': true,
+      'selectedDays': [9, 10],
     },
     {
       'name': 'Ralph Edwards',
@@ -32,6 +34,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
       'totalTime': '72h',
       'status': 'Pending',
       'selected': false,
+      'selectedDays': [8, 9, 10, 11],
     },
     {
       'name': 'Jacob Jones',
@@ -40,10 +43,19 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
       'totalTime': '48h',
       'status': 'Pending',
       'selected': false,
+      'selectedDays': [8, 9, 10],
     },
   ];
 
+  // For the start day dropdown
+  int? _selectedStartDay;
+  final List<int> _availableDays = List.generate(31, (index) => index + 1);
+
   void _showCalendarDialog(BuildContext context, int index) {
+    // Initialize selected start day with the first day of the request
+    final selectedDays = _leaveRequests[index]['selectedDays'];
+    _selectedStartDay = selectedDays.isNotEmpty ? selectedDays.first : null;
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -78,13 +90,41 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
+  void _updateSelectedDay(int index) {
+    if (_selectedStartDay != null) {
+      setState(() {
+        // For simplicity, we'll assume a fixed duration of 3 days
+        // You can modify this logic as needed
+        final endDay = _selectedStartDay! + 2;
+        final month = 'Dec';
+
+        _leaveRequests[index]['from'] = '$month $_selectedStartDay';
+        _leaveRequests[index]['to'] = '$month $endDay';
+
+        // Calculate total time (assuming 24h per day)
+        final totalHours = 3 * 24;
+        _leaveRequests[index]['totalTime'] = '${totalHours}h';
+
+        // Update selected days
+        _leaveRequests[index]['selectedDays'] = List.generate(
+          3,
+          (i) => _selectedStartDay! + i,
+        );
+      });
+    }
+
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Leave Management'),
+        title: const Text(
+          'Leave Management',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: const Color(0xFF0D2364),
-        // Removed the back icon button
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -121,18 +161,9 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Leave Management',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1565C0),
-            ),
-          ),
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
-              // Responsive layout for leave type cards
               final isWideScreen = constraints.maxWidth > 600;
               final crossAxisCount = isWideScreen ? 4 : 2;
 
@@ -143,32 +174,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 childAspectRatio: isWideScreen ? 1 : 1.2,
-                children: [
-                  _buildLeaveTypeCard(
-                    'Annual Leave',
-                    '15',
-                    'This month',
-                    Colors.blue,
-                  ),
-                  _buildLeaveTypeCard(
-                    'Sick Leave',
-                    '11',
-                    'This month',
-                    Colors.orange,
-                  ),
-                  _buildLeaveTypeCard(
-                    'Other Leave',
-                    '6',
-                    'This month',
-                    Colors.green,
-                  ),
-                  _buildLeaveTypeCard(
-                    'Pending Request',
-                    '5',
-                    'This month',
-                    Colors.red,
-                  ),
-                ],
+                children: [],
               );
             },
           ),
@@ -177,50 +183,8 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  Widget _buildLeaveTypeCard(
-    String title,
-    String count,
-    String subtitle,
-    Color color,
-  ) {
-    return Column(
-      children: [
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: color.withAlpha(128),
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Text(
-              count,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          title,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-        ),
-        Text(
-          subtitle,
-          style: const TextStyle(fontSize: 10, color: Colors.grey),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
   Widget _buildVacationTable(BuildContext context) {
     final isWideScreen = MediaQuery.of(context).size.width > 600;
-
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -249,14 +213,13 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
               ),
             ),
           ),
-          // Use horizontal scroll for the table on small screens
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 minWidth: isWideScreen
                     ? MediaQuery.of(context).size.width * 0.9
-                    : 700, // Minimum width to ensure table is readable
+                    : 700,
               ),
               child: Table(
                 border: TableBorder.all(
@@ -269,11 +232,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                   2: const FlexColumnWidth(1.2),
                   3: const FlexColumnWidth(1.2),
                   4: const FlexColumnWidth(1.5),
-                  5: const FixedColumnWidth(60), // Fixed width for actions
+                  5: const FixedColumnWidth(60),
                 },
                 defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                 children: [
-                  // Table header
                   TableRow(
                     decoration: BoxDecoration(color: Colors.grey.shade100),
                     children: [
@@ -285,7 +247,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                       _buildHeaderCell(''),
                     ],
                   ),
-                  // Table rows
                   ..._leaveRequests.asMap().entries.map((entry) {
                     final index = entry.key;
                     final request = entry.value;
@@ -426,112 +387,128 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
 
   Widget _buildCalendarDialog(BuildContext context, int index) {
     final request = _leaveRequests[index];
-    DateTime now = DateTime.now();
-    DateTime firstDay = DateTime(now.year, now.month, 1);
 
-    return AlertDialog(
-      title: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text('${request['name']}\'s Leave Request'),
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => Navigator.pop(context),
+    return StatefulBuilder(
+      builder: (BuildContext context, StateSetter setState) {
+        return AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('${request['name']}\'s Leave Request'),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
           ),
-        ],
-      ),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '${request['from']} to ${request['to']} (${request['totalTime']})',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                mainAxisSpacing: 4,
-                crossAxisSpacing: 4,
-                childAspectRatio: 1.5,
-              ),
-              itemCount: 7 * 6,
-              itemBuilder: (context, dayIndex) {
-                DateTime day = firstDay.add(Duration(days: dayIndex));
-                bool isCurrentMonth = day.month == now.month;
-                bool isLeaveDay = _isDateInRange(
-                  day,
-                  request['from'],
-                  request['to'],
-                );
-
-                return Container(
-                  decoration: BoxDecoration(
-                    color: isLeaveDay
-                        ? Colors.blue.withAlpha(128)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: isCurrentMonth
-                          ? Colors.grey[300]!
-                          : Colors.grey[100]!,
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Start Day dropdown only
+                Row(
+                  children: [
+                    const Text('Start Day:'),
+                    const SizedBox(width: 16),
+                    DropdownButton<int>(
+                      value: _selectedStartDay,
+                      hint: const Text('Select day'),
+                      items: _availableDays.map((int day) {
+                        return DropdownMenuItem<int>(
+                          value: day,
+                          child: Text('December $day'),
+                        );
+                      }).toList(),
+                      onChanged: (int? newValue) {
+                        setState(() {
+                          _selectedStartDay = newValue;
+                        });
+                      },
                     ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Calendar view
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 7,
+                    mainAxisSpacing: 4,
+                    crossAxisSpacing: 4,
+                    childAspectRatio: 1.5,
                   ),
-                  child: Center(
-                    child: Text(
-                      '${day.day}',
-                      style: TextStyle(
-                        color: isCurrentMonth ? Colors.black : Colors.grey,
-                        fontWeight: isLeaveDay
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                  itemCount: 31, // December has 31 days
+                  itemBuilder: (context, dayIndex) {
+                    final day = dayIndex + 1;
+                    // For simplicity, highlight the selected start day and next 2 days
+                    final isSelected =
+                        _selectedStartDay != null &&
+                        day >= _selectedStartDay! &&
+                        day <= _selectedStartDay! + 2;
+
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.blue.withAlpha(128)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.grey[300]!),
                       ),
-                    ),
+                      child: Center(
+                        child: Text(
+                          '$day',
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.black,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 16),
+                if (request['status'] == 'Pending')
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () => _rejectRequest(index),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Reject'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => _updateSelectedDay(index),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Save'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => _approveRequest(index),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Approve'),
+                      ),
+                    ],
                   ),
-                );
-              },
+              ],
             ),
-            const SizedBox(height: 16),
-            if (request['status'] == 'Pending')
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  ElevatedButton(
-                    onPressed: () => _rejectRequest(index),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Reject'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => _approveRequest(index),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Approve'),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
-  }
-
-  bool _isDateInRange(DateTime date, String fromStr, String toStr) {
-    try {
-      int fromDay = int.parse(fromStr.split(' ')[1]);
-      int toDay = int.parse(toStr.split(' ')[1]);
-
-      return date.day >= fromDay && date.day <= toDay;
-    } catch (e) {
-      return false;
-    }
   }
 }

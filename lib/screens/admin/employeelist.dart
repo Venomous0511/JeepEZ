@@ -11,8 +11,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Employee List Management',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
       home: const EmployeeListScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -182,100 +183,249 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         backgroundColor: const Color(0xFF0D2364),
         foregroundColor: Colors.white,
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search employees...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8.0),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withAlpha(3),
+                              spreadRadius: 1,
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          controller: searchController,
+                          decoration: const InputDecoration(
+                            hintText: 'Search employees...',
+                            prefixIcon: Icon(Icons.search),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(
+                              vertical: 12.0,
+                              horizontal: 16.0,
+                            ),
+                          ),
+                        ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 12.0,
-                        horizontal: 16.0,
+                    ),
+                    const SizedBox(width: 8.0),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D2364),
+                        borderRadius: BorderRadius.circular(8.0),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withAlpha(3),
+                            spreadRadius: 1,
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.filter_list),
+                        onPressed: _showFilterDialog,
+                        tooltip: 'Filter',
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Container(
+                    width: constraints.maxWidth,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8.0),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withAlpha(5),
+                          spreadRadius: 2,
+                          blurRadius: 7,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Container(
+                        constraints: BoxConstraints(
+                          minWidth: constraints.maxWidth - 32,
+                        ),
+                        padding: const EdgeInsets.all(16.0),
+                        child: DataTable(
+                          columnSpacing: 20,
+                          headingRowColor: WidgetStateProperty.all(
+                            const Color(0xFFF5F7FA),
+                          ),
+                          columns: const [
+                            DataColumn(
+                              label: SizedBox(
+                                width: 100,
+                                child: Text(
+                                  'Employee ID',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            DataColumn(
+                              label: SizedBox(
+                                width: 150,
+                                child: Text(
+                                  'Employee\'s Name',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            DataColumn(
+                              label: SizedBox(
+                                width: 120,
+                                child: Text(
+                                  'Joining Date',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            DataColumn(
+                              label: SizedBox(
+                                width: 200,
+                                child: Text(
+                                  'Email',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            DataColumn(
+                              label: SizedBox(
+                                width: 100,
+                                child: Text(
+                                  'Status',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            DataColumn(
+                              label: SizedBox(
+                                width: 120,
+                                child: Text(
+                                  'Actions',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                          ],
+                          rows: filteredEmployees.map((employee) {
+                            return DataRow(
+                              cells: [
+                                DataCell(
+                                  SizedBox(
+                                    width: 100,
+                                    child: Text(employee.id),
+                                  ),
+                                ),
+                                DataCell(
+                                  SizedBox(
+                                    width: 150,
+                                    child: Text(employee.name),
+                                  ),
+                                ),
+                                DataCell(
+                                  SizedBox(
+                                    width: 120,
+                                    child: Text(employee.joiningDate),
+                                  ),
+                                ),
+                                DataCell(
+                                  SizedBox(
+                                    width: 200,
+                                    child: Text(
+                                      employee.email,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                                DataCell(
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: employee.status == 'Active'
+                                          ? Colors.green.withAlpha(2)
+                                          : Colors.red.withAlpha(2),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: SizedBox(
+                                      width: 100,
+                                      child: Text(
+                                        employee.status,
+                                        style: TextStyle(
+                                          color: employee.status == 'Active'
+                                              ? Colors.green
+                                              : Colors.red,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                DataCell(
+                                  SizedBox(
+                                    width: 120,
+                                    child: Row(
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.edit,
+                                            size: 20,
+                                          ),
+                                          onPressed: () {
+                                            // Edit employee action
+                                          },
+                                          color: Colors.blue,
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            size: 20,
+                                          ),
+                                          onPressed: () {
+                                            // Deactivate employee action
+                                          },
+                                          color: Colors.red,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8.0),
-                IconButton(
-                  icon: const Icon(Icons.filter_list),
-                  onPressed: _showFilterDialog,
-                  tooltip: 'Filter',
-                  style: IconButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D2364),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.all(16.0),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                headingRowColor: WidgetStateProperty.all(Colors.grey[200]),
-                columns: const [
-                  DataColumn(label: Text('Employee ID')),
-                  DataColumn(label: Text('Employee\'s Name')),
-                  DataColumn(label: Text('Joining Date')),
-                  DataColumn(label: Text('Email')),
-                  DataColumn(label: Text('Status')),
-                  DataColumn(label: Text('Actions')),
-                ],
-                rows: filteredEmployees.map((employee) {
-                  return DataRow(
-                    cells: [
-                      DataCell(Text(employee.id)),
-                      DataCell(Text(employee.name)),
-                      DataCell(Text(employee.joiningDate)),
-                      DataCell(Text(employee.email)),
-                      DataCell(
-                        Text(
-                          employee.status,
-                          style: TextStyle(
-                            color: employee.status == 'Active'
-                                ? Colors.green
-                                : Colors.red,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      DataCell(
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, size: 20),
-                              onPressed: () {
-                                // Edit employee action
-                              },
-                              color: Colors.blue,
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, size: 20),
-                              onPressed: () {
-                                // Deactivate employee action
-                              },
-                              color: Colors.red,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList(),
               ),
-            ),
-          ),
-        ],
+              const SizedBox(height: 16),
+            ],
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
