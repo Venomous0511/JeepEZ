@@ -15,99 +15,94 @@ class _DriverConductorManagementScreenState
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String searchQuery = '';
 
-  // Stream for real-time updates
+  // Stream for real-time updates from users collection
   Stream<QuerySnapshot> get employeesStream {
-    return _firestore.collection('employees').orderBy('name').snapshots();
+    return _firestore
+        .collection('users')
+        .where('role', whereIn: ['driver', 'conductor']) // ✅ fixed
+        .orderBy('name')
+        .snapshots();
   }
 
-  // Initialize sample data (run this once to populate Firestore)
-  Future<void> _initializeSampleData() async {
-    final sampleData = [
-      {
-        'employeeId': '100001',
-        'name': 'Tom',
-        'employmentType': 'Full-time',
-        'role': 'Driver',
-        'schedule': 'Mon–Fri',
-        'vehicle': '101',
-        'createdAt': FieldValue.serverTimestamp(),
-      },
-      {
-        'employeeId': '100002',
-        'name': 'Mj',
-        'employmentType': 'Full-time',
-        'role': 'Conductor',
-        'schedule': 'Mon–Fri',
-        'vehicle': '101',
-        'createdAt': FieldValue.serverTimestamp(),
-      },
-      {
-        'employeeId': '100003',
-        'name': 'Jian',
-        'employmentType': 'Full-time',
-        'role': 'Driver',
-        'schedule': 'Tue–Sat',
-        'vehicle': '102',
-        'createdAt': FieldValue.serverTimestamp(),
-      },
-      {
-        'employeeId': '100004',
-        'name': 'Diego',
-        'employmentType': 'Full-time',
-        'role': 'Conductor',
-        'schedule': 'Wed–Sun',
-        'vehicle': '103',
-        'createdAt': FieldValue.serverTimestamp(),
-      },
-      {
-        'employeeId': '100005',
-        'name': 'Jeriel Celis',
-        'employmentType': 'Full-time',
-        'role': 'Driver',
-        'schedule': 'Mon–Fri',
-        'vehicle': '104',
-        'createdAt': FieldValue.serverTimestamp(),
-      },
-    ];
-
-    // Check if data already exists
-    final snapshot = await _firestore.collection('employees').get();
-    if (snapshot.docs.isEmpty) {
-      // Add sample data
-      for (final data in sampleData) {
-        await _firestore.collection('employees').add(data);
-      }
-      print('Sample data initialized');
-    }
-  }
-
-  // Update employee schedule
+  // Update employee schedule + save to schedules history
   Future<void> _updateEmployeeSchedule(String docId, String newSchedule) async {
     try {
-      await _firestore.collection('employees').doc(docId).update({
+      await _firestore.collection('users').doc(docId).update({
         'schedule': newSchedule,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
+      await _firestore.collection('schedules').add({
+        'userId': docId,
+        'schedule': newSchedule,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Schedule updated successfully')),
+          const SnackBar(content: Text('Schedule updated & saved in schedules')),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error updating schedule: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating schedule: $e')),
+        );
       }
     }
+  }
+
+  // Get the employee schedules (history)
+  Future<List<Map<String, dynamic>>> _getEmployeeSchedules(String userId) async {
+    final snapshot = await _firestore
+        .collection('schedules')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .get();
+
+    return snapshot.docs.map((doc) => doc.data()).toList();
+  }
+
+  void _showScheduleHistory(BuildContext context, String userId) async {
+    final schedules = await _getEmployeeSchedules(userId);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Schedule History'),
+          content: SizedBox(
+            width: 300,
+            height: 300,
+            child: schedules.isEmpty
+                ? const Center(child: Text("No schedule history"))
+                : SingleChildScrollView(
+              child: Column(
+                children: schedules.map((s) {
+                  return ListTile(
+                    title: Text(s['schedule']),
+                    subtitle: Text(
+                      s['createdAt'] != null
+                          ? (s['createdAt'] as Timestamp)
+                          .toDate()
+                          .toString()
+                          : '',
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   // Update employee vehicle
   Future<void> _updateEmployeeVehicle(String docId, String newVehicle) async {
     try {
-      await _firestore.collection('employees').doc(docId).update({
-        'vehicle': newVehicle,
+      await _firestore.collection('users').doc(docId).update({
+        'assignedVehicle': int.tryParse(newVehicle) ?? 0,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
@@ -126,9 +121,7 @@ class _DriverConductorManagementScreenState
   }
 
   // Filter employees based on search query
-  List<QueryDocumentSnapshot> _filterEmployees(
-    List<QueryDocumentSnapshot> docs,
-  ) {
+  List<QueryDocumentSnapshot> _filterEmployees(List<QueryDocumentSnapshot> docs) {
     if (searchQuery.isEmpty) return docs;
 
     return docs.where((doc) {
@@ -138,6 +131,7 @@ class _DriverConductorManagementScreenState
     }).toList();
   }
 
+  // Action menu (schedule / vehicle / history)
   void _showActionMenu(BuildContext context, QueryDocumentSnapshot doc) {
     showModalBottomSheet(
       context: context,
@@ -151,6 +145,14 @@ class _DriverConductorManagementScreenState
                 onTap: () {
                   Navigator.pop(context);
                   _showScheduleSelector(context, doc);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.history),
+                title: const Text('View Schedule History'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showScheduleHistory(context, doc.id);
                 },
               ),
               ListTile(
@@ -168,10 +170,10 @@ class _DriverConductorManagementScreenState
     );
   }
 
+  // Schedule selector dialog (unchanged)
   void _showScheduleSelector(BuildContext context, QueryDocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
 
-    // Create a map for days of the week with checkboxes
     final Map<String, bool> selectedDays = {
       'Monday': false,
       'Tuesday': false,
@@ -182,7 +184,6 @@ class _DriverConductorManagementScreenState
       'Sunday': false,
     };
 
-    // Parse existing schedule if available
     final currentSchedule = data['schedule']?.toString() ?? '';
     if (currentSchedule.isNotEmpty) {
       final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -197,7 +198,6 @@ class _DriverConductorManagementScreenState
       ];
 
       if (currentSchedule.contains('–')) {
-        // Range format like "Mon–Fri"
         final parts = currentSchedule.split('–');
         final startDay = parts[0];
         final endDay = parts[1];
@@ -211,7 +211,6 @@ class _DriverConductorManagementScreenState
           }
         }
       } else {
-        // Single day or other format
         final dayIndex = days.indexOf(currentSchedule);
         if (dayIndex != -1) {
           selectedDays[fullDays[dayIndex]] = true;
@@ -238,12 +237,6 @@ class _DriverConductorManagementScreenState
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 16),
-
-                      // Day of week checkboxes
-                      const Text('Select Days:'),
-                      const SizedBox(height: 8),
-
-                      // Monday to Sunday checkboxes in a grid
                       GridView.count(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
@@ -264,16 +257,12 @@ class _DriverConductorManagementScreenState
                           );
                         }).toList(),
                       ),
-
                       const SizedBox(height: 16),
-
-                      // Selected days summary
                       Text(
-                        'Selected: ${selectedDays.entries.where((entry) => entry.value).map((entry) => entry.key.substring(0, 3)).join(', ')}',
+                        'Selected: ${selectedDays.entries.where((e) => e.value).map((e) => e.key.substring(0, 3)).join(', ')}',
                         style: const TextStyle(fontSize: 14),
                         textAlign: TextAlign.center,
                       ),
-
                       const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -285,10 +274,9 @@ class _DriverConductorManagementScreenState
                           const SizedBox(width: 8),
                           ElevatedButton(
                             onPressed: () async {
-                              // Convert selected days to schedule format
                               final selectedDayList = selectedDays.entries
-                                  .where((entry) => entry.value)
-                                  .map((entry) => entry.key.substring(0, 3))
+                                  .where((e) => e.value)
+                                  .map((e) => e.key.substring(0, 3))
                                   .toList();
 
                               if (selectedDayList.isNotEmpty) {
@@ -300,9 +288,8 @@ class _DriverConductorManagementScreenState
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text(
-                                      'Please select at least one day',
-                                    ),
+                                    content:
+                                    Text('Please select at least one day'),
                                   ),
                                 );
                               }
@@ -322,10 +309,22 @@ class _DriverConductorManagementScreenState
     );
   }
 
-  void _showVehicleSelector(BuildContext context, QueryDocumentSnapshot doc) {
+  // Load vehicle IDs from vehicles collection
+  Future<List<String>> _getVehicles() async {
+    final snapshot = await _firestore.collection('vehicles').get();
+    return snapshot.docs.map((doc) => doc['vehicleId'].toString()).toList();
+  }
+
+  // Vehicle selector dialog
+  void _showVehicleSelector(
+      BuildContext context,
+      QueryDocumentSnapshot doc,
+      ) async {
     final data = doc.data() as Map<String, dynamic>;
-    final List<String> vehicles = ['101', '102', '103', '104', '105'];
-    String currentVehicle = data['vehicle']?.toString() ?? vehicles.first;
+    final vehicles = await _getVehicles();
+
+    String currentVehicle =
+        data['assignedVehicle']?.toString() ?? (vehicles.isNotEmpty ? vehicles.first : '0');
 
     showDialog(
       context: context,
@@ -333,57 +332,32 @@ class _DriverConductorManagementScreenState
         return StatefulBuilder(
           builder: (context, setState) {
             return Dialog(
-              insetPadding: const EdgeInsets.all(20),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 250),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Select Vehicle',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButton<String>(
-                        isExpanded: true,
-                        value: currentVehicle,
-                        items: vehicles.map((String vehicle) {
-                          return DropdownMenuItem<String>(
-                            value: vehicle,
-                            child: Text('Vehicle $vehicle'),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            currentVehicle = newValue!;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel'),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: () async {
-                              await _updateEmployeeVehicle(
-                                doc.id,
-                                currentVehicle,
-                              );
-                              Navigator.pop(context);
-                            },
-                            child: const Text('Save'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButton<String>(
+                      value: currentVehicle,
+                      isExpanded: true,
+                      items: vehicles.map((v) {
+                        return DropdownMenuItem<String>(
+                          value: v,
+                          child: Text('Vehicle $v'),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        setState(() => currentVehicle = val!);
+                      },
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        await _updateEmployeeVehicle(doc.id, currentVehicle);
+                        Navigator.pop(context);
+                      },
+                      child: const Text('Save'),
+                    ),
+                  ],
                 ),
               ),
             );
@@ -391,13 +365,6 @@ class _DriverConductorManagementScreenState
         );
       },
     );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // Initialize sample data when the widget loads
-    _initializeSampleData();
   }
 
   @override
@@ -460,7 +427,7 @@ class _DriverConductorManagementScreenState
                     ),
                   ),
 
-                  // StreamBuilder for real-time data
+                  // 🔹 StreamBuilder for real-time data
                   StreamBuilder<QuerySnapshot>(
                     stream: employeesStream,
                     builder: (context, snapshot) {
@@ -500,12 +467,12 @@ class _DriverConductorManagementScreenState
                           3: FlexColumnWidth(1.2),
                           4: FlexColumnWidth(1.2),
                           5: FlexColumnWidth(1.2),
-                          6: FixedColumnWidth(40), // Fixed width for actions
+                          6: FixedColumnWidth(40),
                         },
                         defaultVerticalAlignment:
-                            TableCellVerticalAlignment.middle,
+                        TableCellVerticalAlignment.middle,
                         children: [
-                          // Table header
+                          // Header row
                           TableRow(
                             decoration: BoxDecoration(
                               color: Colors.grey.shade100,
@@ -520,7 +487,7 @@ class _DriverConductorManagementScreenState
                               _buildHeaderCell(''),
                             ],
                           ),
-                          // Table rows
+                          // Data rows
                           ...filteredDocs.map((doc) {
                             final data = doc.data() as Map<String, dynamic>;
                             return TableRow(
@@ -528,15 +495,15 @@ class _DriverConductorManagementScreenState
                                 color: Colors.white,
                               ),
                               children: [
-                                _buildNameCell(data['name']?.toString() ?? ''),
-                                _buildCell(
-                                  data['employeeId']?.toString() ?? '',
-                                ),
-                                _buildCell(
-                                  data['employmentType']?.toString() ?? '',
-                                ),
+                                _buildCell(data['name']?.toString() ?? ''),
+                                _buildCell(data['employeeId']?.toString() ?? ''),
+                                _buildCell(data['employmentType']?.toString() ?? ''),
                                 _buildCell(data['role']?.toString() ?? ''),
-                                _buildCell(data['vehicle']?.toString() ?? ''),
+                                _buildCell(
+                                  data['assignedVehicle'] != null
+                                      ? 'UNIT ${data['assignedVehicle']}'
+                                      : '',
+                                ),
                                 _buildCell(data['schedule']?.toString() ?? ''),
                                 _buildActionCell(context, doc),
                               ],
@@ -555,23 +522,13 @@ class _DriverConductorManagementScreenState
     );
   }
 
+  // Helpers for table UI
   Widget _buildHeaderCell(String text) {
     return Padding(
       padding: const EdgeInsets.all(12.0),
       child: Text(
         text,
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-
-  Widget _buildNameCell(String text) {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 14),
         textAlign: TextAlign.center,
       ),
     );
