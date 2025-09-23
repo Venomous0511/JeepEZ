@@ -19,7 +19,7 @@ class _DriverConductorManagementScreenState
   Stream<QuerySnapshot> get employeesStream {
     return _firestore
         .collection('users')
-        .where('role', whereIn: ['driver', 'conductor']) // ✅ fixed
+        .where('role', whereIn: ['driver', 'conductor'])
         .orderBy('name')
         .snapshots();
   }
@@ -40,20 +40,24 @@ class _DriverConductorManagementScreenState
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Schedule updated & saved in schedules')),
+          const SnackBar(
+            content: Text('Schedule updated & saved in schedules'),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating schedule: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating schedule: $e')));
       }
     }
   }
 
   // Get the employee schedules (history)
-  Future<List<Map<String, dynamic>>> _getEmployeeSchedules(String userId) async {
+  Future<List<Map<String, dynamic>>> _getEmployeeSchedules(
+    String userId,
+  ) async {
     final snapshot = await _firestore
         .collection('schedules')
         .where('userId', isEqualTo: userId)
@@ -77,21 +81,21 @@ class _DriverConductorManagementScreenState
             child: schedules.isEmpty
                 ? const Center(child: Text("No schedule history"))
                 : SingleChildScrollView(
-              child: Column(
-                children: schedules.map((s) {
-                  return ListTile(
-                    title: Text(s['schedule']),
-                    subtitle: Text(
-                      s['createdAt'] != null
-                          ? (s['createdAt'] as Timestamp)
-                          .toDate()
-                          .toString()
-                          : '',
+                    child: Column(
+                      children: schedules.map((s) {
+                        return ListTile(
+                          title: Text(s['schedule']),
+                          subtitle: Text(
+                            s['createdAt'] != null
+                                ? (s['createdAt'] as Timestamp)
+                                      .toDate()
+                                      .toString()
+                                : '',
+                          ),
+                        );
+                      }).toList(),
                     ),
-                  );
-                }).toList(),
-              ),
-            ),
+                  ),
           ),
         );
       },
@@ -121,7 +125,9 @@ class _DriverConductorManagementScreenState
   }
 
   // Filter employees based on search query
-  List<QueryDocumentSnapshot> _filterEmployees(List<QueryDocumentSnapshot> docs) {
+  List<QueryDocumentSnapshot> _filterEmployees(
+    List<QueryDocumentSnapshot> docs,
+  ) {
     if (searchQuery.isEmpty) return docs;
 
     return docs.where((doc) {
@@ -170,7 +176,7 @@ class _DriverConductorManagementScreenState
     );
   }
 
-  // Schedule selector dialog (unchanged)
+  // Schedule selector dialog
   void _showScheduleSelector(BuildContext context, QueryDocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
 
@@ -288,8 +294,9 @@ class _DriverConductorManagementScreenState
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content:
-                                    Text('Please select at least one day'),
+                                    content: Text(
+                                      'Please select at least one day',
+                                    ),
                                   ),
                                 );
                               }
@@ -317,14 +324,15 @@ class _DriverConductorManagementScreenState
 
   // Vehicle selector dialog
   void _showVehicleSelector(
-      BuildContext context,
-      QueryDocumentSnapshot doc,
-      ) async {
+    BuildContext context,
+    QueryDocumentSnapshot doc,
+  ) async {
     final data = doc.data() as Map<String, dynamic>;
     final vehicles = await _getVehicles();
 
     String currentVehicle =
-        data['assignedVehicle']?.toString() ?? (vehicles.isNotEmpty ? vehicles.first : '0');
+        data['assignedVehicle']?.toString() ??
+        (vehicles.isNotEmpty ? vehicles.first : '0');
 
     showDialog(
       context: context,
@@ -367,6 +375,80 @@ class _DriverConductorManagementScreenState
     );
   }
 
+  // Build responsive employee card for mobile view
+  Widget _buildEmployeeCard(QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    data['name']?.toString() ?? '',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.more_vert),
+                  onPressed: () => _showActionMenu(context, doc),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _buildInfoRow('Employee ID', data['employeeId']?.toString() ?? ''),
+            _buildInfoRow(
+              'Employment Type',
+              data['employmentType']?.toString() ?? '',
+            ),
+            _buildInfoRow('Role', data['role']?.toString() ?? ''),
+            _buildInfoRow(
+              'Vehicle',
+              data['assignedVehicle'] != null
+                  ? 'UNIT ${data['assignedVehicle']}'
+                  : 'Not assigned',
+            ),
+            _buildInfoRow(
+              'Schedule',
+              data['schedule']?.toString() ?? 'Not set',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 14))),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -383,7 +465,7 @@ class _DriverConductorManagementScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// 🔍 Search Bar
+            // Search Bar
             TextField(
               controller: searchCtrl,
               decoration: InputDecoration(
@@ -397,7 +479,7 @@ class _DriverConductorManagementScreenState
             ),
             const SizedBox(height: 16),
 
-            /// 📋 Data Table with StreamBuilder
+            // Data Container with responsive layout
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
@@ -427,7 +509,7 @@ class _DriverConductorManagementScreenState
                     ),
                   ),
 
-                  // 🔹 StreamBuilder for real-time data
+                  // StreamBuilder for real-time data
                   StreamBuilder<QuerySnapshot>(
                     stream: employeesStream,
                     builder: (context, snapshot) {
@@ -455,61 +537,125 @@ class _DriverConductorManagementScreenState
                         );
                       }
 
-                      return Table(
-                        border: TableBorder.all(
-                          color: Colors.grey.shade300,
-                          width: 1.0,
-                        ),
-                        columnWidths: const {
-                          0: FlexColumnWidth(2.0),
-                          1: FlexColumnWidth(1.5),
-                          2: FlexColumnWidth(1.5),
-                          3: FlexColumnWidth(1.2),
-                          4: FlexColumnWidth(1.2),
-                          5: FlexColumnWidth(1.2),
-                          6: FixedColumnWidth(40),
-                        },
-                        defaultVerticalAlignment:
-                        TableCellVerticalAlignment.middle,
-                        children: [
-                          // Header row
-                          TableRow(
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                            ),
-                            children: [
-                              _buildHeaderCell('Name'),
-                              _buildHeaderCell('Employee ID'),
-                              _buildHeaderCell('Employment Type'),
-                              _buildHeaderCell('Role'),
-                              _buildHeaderCell('Vehicle'),
-                              _buildHeaderCell('Schedule'),
-                              _buildHeaderCell(''),
-                            ],
+                      // Horizontally scrollable table for all screen sizes
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          columnSpacing: 16,
+                          headingRowColor: MaterialStateColor.resolveWith(
+                            (states) => Colors.grey.shade100,
                           ),
-                          // Data rows
-                          ...filteredDocs.map((doc) {
-                            final data = doc.data() as Map<String, dynamic>;
-                            return TableRow(
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
+                          columns: const [
+                            DataColumn(
+                              label: Text(
+                                'Name',
+                                style: TextStyle(fontWeight: FontWeight.bold),
                               ),
-                              children: [
-                                _buildCell(data['name']?.toString() ?? ''),
-                                _buildCell(data['employeeId']?.toString() ?? ''),
-                                _buildCell(data['employmentType']?.toString() ?? ''),
-                                _buildCell(data['role']?.toString() ?? ''),
-                                _buildCell(
-                                  data['assignedVehicle'] != null
-                                      ? 'UNIT ${data['assignedVehicle']}'
-                                      : '',
+                            ),
+                            DataColumn(
+                              label: Text(
+                                'Employee ID',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            DataColumn(
+                              label: Text(
+                                'Employment Type',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            DataColumn(
+                              label: Text(
+                                'Role',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            DataColumn(
+                              label: Text(
+                                'Vehicle',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            DataColumn(
+                              label: Text(
+                                'Schedule',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            DataColumn(
+                              label: Text(
+                                'Actions',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                          rows: filteredDocs.map((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            return DataRow(
+                              cells: [
+                                DataCell(
+                                  SizedBox(
+                                    width: 120,
+                                    child: Text(
+                                      data['name']?.toString() ?? '',
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
                                 ),
-                                _buildCell(data['schedule']?.toString() ?? ''),
-                                _buildActionCell(context, doc),
+                                DataCell(
+                                  SizedBox(
+                                    width: 80,
+                                    child: Text(
+                                      data['employeeId']?.toString() ?? '',
+                                    ),
+                                  ),
+                                ),
+                                DataCell(
+                                  SizedBox(
+                                    width: 100,
+                                    child: Text(
+                                      data['employmentType']?.toString() ?? '',
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                                DataCell(
+                                  SizedBox(
+                                    width: 80,
+                                    child: Text(data['role']?.toString() ?? ''),
+                                  ),
+                                ),
+                                DataCell(
+                                  SizedBox(
+                                    width: 80,
+                                    child: Text(
+                                      data['assignedVehicle'] != null
+                                          ? 'UNIT ${data['assignedVehicle']}'
+                                          : 'Not assigned',
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                                DataCell(
+                                  SizedBox(
+                                    width: 120,
+                                    child: Text(
+                                      data['schedule']?.toString() ?? 'Not set',
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                                DataCell(
+                                  IconButton(
+                                    icon: const Icon(Icons.more_vert, size: 20),
+                                    onPressed: () =>
+                                        _showActionMenu(context, doc),
+                                  ),
+                                ),
                               ],
                             );
-                          }),
-                        ],
+                          }).toList(),
+                        ),
                       );
                     },
                   ),
@@ -518,39 +664,6 @@ class _DriverConductorManagementScreenState
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  // Helpers for table UI
-  Widget _buildHeaderCell(String text) {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-
-  Widget _buildCell(String text) {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 14),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-
-  Widget _buildActionCell(BuildContext context, QueryDocumentSnapshot doc) {
-    return Padding(
-      padding: const EdgeInsets.all(4.0),
-      child: IconButton(
-        icon: const Icon(Icons.more_vert, size: 20),
-        onPressed: () => _showActionMenu(context, doc),
       ),
     );
   }

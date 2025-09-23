@@ -26,9 +26,7 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  int _selectedIndex = 0;
   bool _isLoggingOut = false;
-  bool _isLoading = true;
 
   // Replace _notificationCount with a list of notifications
   List<Notification> notifications = [
@@ -39,50 +37,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   // Calculate unread count
   int get unreadCount => notifications.where((n) => !n.isRead).length;
-
-  final List<Widget> _screens = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeScreens();
-  }
-
-  Future<void> _initializeScreens() async {
-    try {
-      // Initialize screens after HomeScreen is defined
-      _screens.addAll([
-        const HomeScreen(),
-        const EmployeeListScreen(),
-        AttendanceScreen(
-          onBackPressed: () {
-            setState(() {
-              _selectedIndex = 0; // Navigate back to home
-            });
-          },
-        ),
-        const LeaveManagementScreen(),
-        const DriverConductorManagementScreen(),
-        const MaintenanceScreen(),
-        const RouteHistoryScreen(),
-      ]);
-    } catch (e) {
-      // Handle any errors during initialization
-      debugPrint('Error initializing screens: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
 
   Future<void> _signOut() async {
     if (_isLoggingOut) return;
@@ -175,6 +129,37 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  // Helper method to create drawer items
+  Widget _drawerItem(BuildContext context, String title, VoidCallback onTap) {
+    return ListTile(
+      leading: _getIconForTitle(title),
+      title: Text(title),
+      onTap: onTap,
+    );
+  }
+
+  // Helper method to get appropriate icon for each menu item
+  Icon _getIconForTitle(String title) {
+    switch (title) {
+      case 'Home':
+        return const Icon(Icons.home, color: Color(0xFF0D2364));
+      case 'Employee List':
+        return const Icon(Icons.people, color: Color(0xFF0D2364));
+      case 'Attendance':
+        return const Icon(Icons.calendar_today, color: Color(0xFF0D2364));
+      case 'Leave Management':
+        return const Icon(Icons.event_busy, color: Color(0xFF0D2364));
+      case 'Driver & Conductor Management':
+        return const Icon(Icons.directions_car, color: Color(0xFF0D2364));
+      case 'Maintenance':
+        return const Icon(Icons.build, color: Color(0xFF0D2364));
+      case 'Route Playback':
+        return const Icon(Icons.map, color: Color(0xFF0D2364));
+      default:
+        return const Icon(Icons.menu, color: Color(0xFF0D2364));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -241,83 +226,68 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
             Expanded(
               child: ListView(
-                padding: EdgeInsets.zero,
                 children: [
-                  ListTile(
-                    leading: const Icon(Icons.home, color: Color(0xFF0D2364)),
-                    title: const Text('Home'),
-                    selected: _selectedIndex == 0,
-                    onTap: () {
-                      _onItemTapped(0);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.people, color: Color(0xFF0D2364)),
-                    title: const Text('Employee List'),
-                    selected: _selectedIndex == 1,
-                    onTap: () {
-                      _onItemTapped(1);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.calendar_today,
-                      color: Color(0xFF0D2364),
-                    ),
-                    title: const Text('Attendance'),
-                    selected: _selectedIndex == 2,
-                    onTap: () {
-                      _onItemTapped(2);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.event_busy,
-                      color: Color(0xFF0D2364),
-                    ),
-                    title: const Text('Leave Management'),
-                    selected: _selectedIndex == 3,
-                    onTap: () {
-                      _onItemTapped(3);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  // ADDED: Driver & Conductor Management
-                  ListTile(
-                    leading: const Icon(
-                      Icons.directions_car,
-                      color: Color(0xFF0D2364),
-                    ),
-                    title: const Text('Driver & Conductor Management'),
-                    selected: _selectedIndex == 4,
-                    onTap: () {
-                      _onItemTapped(4);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  // ADDED: Maintenance
-                  ListTile(
-                    leading: const Icon(Icons.build, color: Color(0xFF0D2364)),
-                    title: const Text('Maintenance'),
-                    selected: _selectedIndex == 5,
-                    onTap: () {
-                      _onItemTapped(5);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  // ADDED: Route Playback
-                  ListTile(
-                    leading: const Icon(Icons.map, color: Color(0xFF0D2364)),
-                    title: const Text('Route Playback'),
-                    selected: _selectedIndex == 6,
-                    onTap: () {
-                      _onItemTapped(6);
-                      Navigator.pop(context);
-                    },
-                  ),
+                  _drawerItem(context, 'Home', () {
+                    Navigator.pop(context);
+                  }),
+                  _drawerItem(context, 'Employee List', () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EmployeeListScreen(),
+                      ),
+                    );
+                  }),
+                  _drawerItem(context, 'Attendance', () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AttendanceScreen(
+                          onBackPressed: () {
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    );
+                  }),
+                  _drawerItem(context, 'Leave Management', () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => LeaveManagementScreen(),
+                      ),
+                    );
+                  }),
+                  _drawerItem(context, 'Driver & Conductor Management', () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DriverConductorManagementScreen(),
+                      ),
+                    );
+                  }),
+                  _drawerItem(context, 'Maintenance', () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MaintenanceScreen(),
+                      ),
+                    );
+                  }),
+                  _drawerItem(context, 'Route Playback', () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => RouteHistoryScreen(),
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -341,11 +311,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ],
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : (_screens.isNotEmpty && _selectedIndex < _screens.length
-                ? _screens[_selectedIndex]
-                : const Center(child: Text('Screen not available'))),
+      body: const HomeScreen(), // Always show HomeScreen as the main body
     );
   }
 }
