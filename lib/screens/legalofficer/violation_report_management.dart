@@ -40,7 +40,11 @@ class ViolationReportHistoryScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Color(0xFF0D2364),
-        title: const Text('User Reports'),
+        title: const Text(
+          'User Reports',
+          style: TextStyle(color: Colors.white),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -253,7 +257,11 @@ class _UserItem extends StatelessWidget {
             Expanded(
               flex: 1,
               child: IconButton(
-                icon: const Icon(Icons.more_vert, size: 20),
+                icon: const Icon(
+                  Icons.more_vert,
+                  size: 20,
+                  color: Color(0xFF0D2364),
+                ),
                 onPressed: () => _showViolationReport(context),
               ),
             ),

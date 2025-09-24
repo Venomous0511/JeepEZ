@@ -12,63 +12,11 @@ class InspectorReportHistoryScreen extends StatelessWidget {
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
         backgroundColor: Color(0xFF0D2364),
-        title: const Text('Inspector Report History'),
-      ),
-      drawer: Drawer(
-        child: Column(
-          children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(color: Color(0xFF0D2364)),
-              child: Row(
-                children: [
-                  _buildJeepEZLogo(),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Admin (Legal Officer)',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                children: [
-                  _drawerItem(context, 'Home', () {
-                    Navigator.pushReplacementNamed(context, '/legal-dashboard');
-                  }),
-                  _drawerItem(context, 'Inspector Report History', () {}),
-                  _drawerItem(context, 'Violation Report Management', () {
-                    Navigator.pushNamed(context, '/violation-management');
-                  }),
-                  _drawerItem(context, 'Incident Report Management', () {
-                    Navigator.pushNamed(context, '/incident-management');
-                  }),
-                  _drawerItem(context, 'Employee List View', () {
-                    Navigator.pushNamed(context, '/employee-list');
-                  }),
-                ],
-              ),
-            ),
-            const Divider(),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: ListTile(
-                leading: const Icon(Icons.logout, color: Colors.redAccent),
-                title: const Text(
-                  'Logout',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                onTap: () {
-                  Navigator.popUntil(context, (route) => route.isFirst);
-                },
-              ),
-            ),
-          ],
+        title: const Text(
+          'Inspector Report History',
+          style: TextStyle(color: Colors.white),
         ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -99,7 +47,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
 
             // Report History Section
             _sectionTitle('Report History'),
-            _styledCardWhite(_buildReportTable()),
+            _styledCardWhite(_buildReportTable(context)),
           ],
         ),
       ),
@@ -172,51 +120,6 @@ class InspectorReportHistoryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildJeepEZLogo() {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          const Icon(Icons.directions_bus, size: 32, color: Colors.indigo),
-          Positioned(
-            bottom: 2,
-            child: Text(
-              'JeepEZ',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0D2364),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _drawerItem(BuildContext context, String title, VoidCallback onTap) {
-    return ListTile(
-      dense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: title == 'Inspector Report History'
-              ? Color(0xFF0D2364)
-              : Colors.black87,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      onTap: onTap,
-    );
-  }
-
   Widget _sectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -246,7 +149,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildReportTable() {
+  Widget _buildReportTable(BuildContext context) {
     // Sample report data - in a real app, this would come from your data source
     final List<Map<String, dynamic>> reports = [
       {
@@ -286,65 +189,138 @@ class InspectorReportHistoryScreen extends StatelessWidget {
       },
     ];
 
-    return DataTable(
-      headingRowColor: WidgetStateProperty.all(Colors.grey.shade300),
-      columnSpacing: 12,
-      columns: const [
-        DataColumn(
-          label: Text(
-            'Report ID',
-            style: TextStyle(fontWeight: FontWeight.bold),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: DataTable(
+          headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
+          headingTextStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
           ),
-        ),
-        DataColumn(
-          label: Text('Date', style: TextStyle(fontWeight: FontWeight.bold)),
-        ),
-        DataColumn(
-          label: Text(
-            'Inspector',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-        DataColumn(
-          label: Text(
-            'Violations',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-        DataColumn(
-          label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold)),
-        ),
-        DataColumn(
-          label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold)),
-        ),
-      ],
-      rows: reports.map((report) {
-        return DataRow(
-          cells: [
-            DataCell(Text(report['id'])),
-            DataCell(Text(report['date'])),
-            DataCell(Text(report['inspector'])),
-            DataCell(Text(report['violations'].toString())),
-            DataCell(
-              Text(
-                report['status'],
-                style: TextStyle(
-                  color: _getStatusColor(report['status']),
-                  fontWeight: FontWeight.bold,
-                ),
+          dataRowColor: WidgetStateProperty.resolveWith<Color>((
+            Set<WidgetState> states,
+          ) {
+            if (states.contains(WidgetState.selected)) {
+              return Theme.of(context).colorScheme.primary.withOpacity(0.08);
+            }
+            return Colors.white;
+          }),
+          columnSpacing: 20,
+          horizontalMargin: 12,
+          columns: const [
+            DataColumn(
+              label: SizedBox(
+                width: 120,
+                child: Text('Report ID', overflow: TextOverflow.ellipsis),
               ),
             ),
-            DataCell(
-              IconButton(
-                icon: const Icon(Icons.visibility, size: 20),
-                onPressed: () {
-                  // Navigate to report details
-                },
+            DataColumn(
+              label: SizedBox(
+                width: 100,
+                child: Text('Date', overflow: TextOverflow.ellipsis),
+              ),
+            ),
+            DataColumn(
+              label: SizedBox(
+                width: 120,
+                child: Text('Inspector', overflow: TextOverflow.ellipsis),
+              ),
+            ),
+            DataColumn(
+              label: SizedBox(
+                width: 80,
+                child: Text('Violations', overflow: TextOverflow.ellipsis),
+              ),
+            ),
+            DataColumn(
+              label: SizedBox(
+                width: 100,
+                child: Text('Status', overflow: TextOverflow.ellipsis),
+              ),
+            ),
+            DataColumn(
+              label: SizedBox(
+                width: 80,
+                child: Text('Actions', overflow: TextOverflow.ellipsis),
               ),
             ),
           ],
-        );
-      }).toList(),
+          rows: reports.map((report) {
+            return DataRow(
+              cells: [
+                DataCell(
+                  SizedBox(
+                    width: 120,
+                    child: Text(report['id'], overflow: TextOverflow.ellipsis),
+                  ),
+                ),
+                DataCell(
+                  SizedBox(
+                    width: 100,
+                    child: Text(
+                      report['date'],
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  SizedBox(
+                    width: 120,
+                    child: Text(
+                      report['inspector'],
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  SizedBox(
+                    width: 80,
+                    child: Text(
+                      report['violations'].toString(),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  SizedBox(
+                    width: 100,
+                    child: Text(
+                      report['status'],
+                      style: TextStyle(
+                        color: _getStatusColor(report['status']),
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  SizedBox(
+                    width: 80,
+                    child: IconButton(
+                      icon: const Icon(Icons.visibility, size: 20),
+                      onPressed: () {
+                        // Navigate to report details
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 

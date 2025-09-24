@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
-import '../Personaldetailed/conductor.dart';
-import '../workSchedule/conductor_workschedule.dart';
+import '../Personaldetailed/driver.dart';
+import '../workSchedule/driver_workschedule.dart';
 import '../incidentreport/driver_incidentreport.dart';
-import '../ticketreport/conductor_ticketreport.dart';
+import '../vehiclechecklist/driver_vehicle_checklist.dart';
 import '../leaveapplication/driverleaveapp.dart';
 
 class ConductorDashboard extends StatefulWidget {
@@ -25,7 +25,7 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
       _buildHomeScreen(),
       const WorkScheduleScreen(),
       const IncidentReportScreen(),
-      const TicketReportScreen(),
+      const VehicleChecklistScreen(),
       const LeaveApplicationScreen(),
     ];
   }
@@ -50,7 +50,6 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
               ),
             ),
             const SizedBox(height: 20),
-
             Center(
               child: IconButton(
                 icon: const Icon(Icons.person, color: Colors.black, size: 40),
@@ -66,7 +65,7 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
             ),
             Center(
               child: Text(
-                widget.user.name ?? "Conductor",
+                widget.user.name ?? "Driver",
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -74,7 +73,6 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
               ),
             ),
             const SizedBox(height: 20),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Container(
@@ -95,7 +93,6 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
               ),
             ),
             const SizedBox(height: 20),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Container(
@@ -110,7 +107,7 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
                     Icon(Icons.access_time, color: Colors.white),
                     SizedBox(width: 8),
                     Text(
-                      "Passenger Count",
+                      "Time Logs",
                       style: TextStyle(color: Colors.white, fontSize: 18),
                     ),
                   ],
@@ -143,8 +140,8 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
             label: 'Incident',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.confirmation_number),
-            label: 'Tickets',
+            icon: Icon(Icons.checklist),
+            label: 'Checklist',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.beach_access),

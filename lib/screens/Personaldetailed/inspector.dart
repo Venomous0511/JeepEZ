@@ -16,6 +16,10 @@ class _PersonalDetailsState extends State<PersonalDetails> {
   final _newPasswordController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // Add the missing variables
+  final String address = "Sapang Palay Proper City of San Jose Del Monte";
+  final String phone = "09920367481";
+
   Future<void> _signOut() async {
     try {
       await _auth.signOut();
@@ -42,200 +46,358 @@ class _PersonalDetailsState extends State<PersonalDetails> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Personal Details'),
         backgroundColor: const Color(0xFF0D2364),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.pop(context);
           },
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Personal Details",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-
-            Text(
-              name,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Employee ID: $employeeId",
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Job Title:",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      Text(jobTitle),
-                    ],
-                  ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              // Header Container - SIMPLIFIED without any icons
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D2364),
+                  borderRadius: BorderRadius.circular(12.0),
                 ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Work Status:",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      Text(workStatus),
-                    ],
+                child: const Text(
+                  "Personal Details",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
+                  textAlign: TextAlign.center,
                 ),
-              ],
-            ),
-
-            const Divider(height: 30),
-
-            const Text(
-              "Other Information",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-
-            const Text(
-              "Sapang Palay Proper City of San Jose Del Monte",
-              style: TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-
-            const Text("09928333692", style: TextStyle(fontSize: 16)),
-
-            const Divider(height: 30),
-
-            const Text(
-              "Change Password",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-
-            TextField(
-              controller: _currentPasswordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: "Current Password",
-                border: OutlineInputBorder(),
-                hintText: "Enter your current password",
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
-            TextField(
-              controller: _newPasswordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: "New Password",
-                border: OutlineInputBorder(),
-                hintText: "Enter your new password",
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Text("Cancel"),
+              // Main Content Container
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12.0),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                    border: Border.all(color: Colors.grey.shade300, width: 1.0),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (_currentPasswordController.text.isNotEmpty &&
-                          _newPasswordController.text.isNotEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Password changed successfully!"),
-                          ),
-                        );
-                        Navigator.pop(context);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Please fill in all fields"),
-                          ),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D2364),
-                    ),
-                    child: const Text(
-                      "Change Password",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: const Text("Log Out"),
-                        content: const Text(
-                          "Are you sure you want to log out?",
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            child: const Text("Cancel"),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context); // Close the dialog
-                              _signOut(); // Perform the logout
-                            },
-                            child: const Text(
-                              "Log Out",
-                              style: TextStyle(color: Colors.red),
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      // Personal Details Section
+                      _buildSection(
+                        title: "Personal Details",
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
                             ),
                           ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Employee ID: $employeeId",
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Job Title and Work Status
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildInfoItem(
+                                  label: "Job Title:",
+                                  value: jobTitle,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _buildInfoItem(
+                                  label: "Work Status:",
+                                  value: workStatus,
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
-                      );
-                    },
-                  );
-                },
-                child: const Text(
-                  "Log out",
-                  style: TextStyle(color: Colors.red, fontSize: 16),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Other Information Section
+                      _buildSection(
+                        title: "Other Information",
+                        children: [
+                          _buildInfoItem(
+                            label: "Address:",
+                            value: address,
+                            crossAlignment: CrossAxisAlignment.start,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildInfoItem(label: "Phone:", value: phone),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Change Password Section
+                      _buildSection(
+                        title: "Change Password",
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: Colors.grey.shade400,
+                                width: 1.0,
+                              ),
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child: TextField(
+                              controller: _currentPasswordController,
+                              obscureText: true,
+                              decoration: const InputDecoration(
+                                labelText: "Current Password",
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.all(12.0),
+                                hintText: "Enter your current password",
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: Colors.grey.shade400,
+                                width: 1.0,
+                              ),
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child: TextField(
+                              controller: _newPasswordController,
+                              obscureText: true,
+                              decoration: const InputDecoration(
+                                labelText: "New Password",
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.all(12.0),
+                                hintText: "Enter your new password",
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Buttons
+                          Row(
+                            children: [
+                              Expanded(
+                                child: SizedBox(
+                                  height: 50,
+                                  child: OutlinedButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          8.0,
+                                        ),
+                                      ),
+                                      side: BorderSide(
+                                        color: Colors.grey.shade400,
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      "Cancel",
+                                      style: TextStyle(
+                                        color: Colors.black87,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: SizedBox(
+                                  height: 50,
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      if (_currentPasswordController
+                                              .text
+                                              .isNotEmpty &&
+                                          _newPasswordController
+                                              .text
+                                              .isNotEmpty) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              "Password changed successfully!",
+                                            ),
+                                          ),
+                                        );
+                                        Navigator.pop(context);
+                                      } else {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              "Please fill in all fields",
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF0D2364),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          8.0,
+                                        ),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      "Change Password",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Log Out Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: TextButton(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: const Text("Log Out"),
+                                  content: const Text(
+                                    "Are you sure you want to log out?",
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                      },
+                                      child: const Text("Cancel"),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                        _signOut();
+                                      },
+                                      child: const Text(
+                                        "Log Out",
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                              side: BorderSide(
+                                color: Colors.red.withOpacity(0.5),
+                                width: 1.0,
+                              ),
+                            ),
+                          ),
+                          child: const Text(
+                            "Log out",
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  // Add the missing helper methods
+  Widget _buildSection({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0D2364),
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...children,
+      ],
+    );
+  }
+
+  Widget _buildInfoItem({
+    required String label,
+    required String value,
+    CrossAxisAlignment crossAlignment = CrossAxisAlignment.start,
+  }) {
+    return Column(
+      crossAxisAlignment: crossAlignment,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(value, style: TextStyle(color: Colors.grey.shade700)),
+      ],
     );
   }
 

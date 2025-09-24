@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 
 class AttendanceScreen extends StatefulWidget {
   final VoidCallback onBackPressed;
-
   const AttendanceScreen({super.key, required this.onBackPressed});
 
   @override
@@ -14,10 +13,9 @@ class AttendanceScreen extends StatefulWidget {
 }
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
   String mode = "today";
   DateTime selectedDate = DateTime.now();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   /// Pick custom date
   void _pickDate() async {
@@ -45,7 +43,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   /// Fetch and process attendance logs from backend
-  Future<List<Map<String, dynamic>>> fetchAttendance(DateTime targetDate) async {
+  Future<List<Map<String, dynamic>>> fetchAttendance(
+    DateTime targetDate,
+  ) async {
     final response = await http.get(
       Uri.parse("https://jeepez-attendance.onrender.com/api/logs"),
     );
@@ -58,8 +58,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       // Group logs by name and date
       final Map<String, List<Map<String, dynamic>>> grouped = {};
       for (var log in data) {
-        final logDate = DateFormat('yyyy-MM-dd')
-            .format(DateTime.parse(log['timestamp']).toLocal());
+        final logDate = DateFormat(
+          'yyyy-MM-dd',
+        ).format(DateTime.parse(log['timestamp']).toLocal());
 
         if (logDate == filterDate) {
           final key = "${log['name']}_$logDate";
@@ -70,9 +71,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final List<Map<String, dynamic>> attendance = [];
 
       grouped.forEach((key, logs) {
-        logs.sort((a, b) =>
-            DateTime.parse(a['timestamp'])
-                .compareTo(DateTime.parse(b['timestamp'])));
+        logs.sort(
+          (a, b) => DateTime.parse(
+            a['timestamp'],
+          ).compareTo(DateTime.parse(b['timestamp'])),
+        );
 
         String name = logs.first['name'];
         String date = logs.first['date'];
@@ -142,9 +145,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: widget.onBackPressed,
         ),
-        title: const Text('Attendance Record',
-            style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Attendance Record',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: const Color(0xFF0D2364),
+        automaticallyImplyLeading:
+            false, // Ito ang nagtatanggal ng hamburger menu
       ),
       body: Column(
         children: [
@@ -166,9 +173,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 ),
                 const SizedBox(width: 8),
                 ChoiceChip(
-                  label: Text(mode == "custom"
-                      ? DateFormat("yyyy-MM-dd").format(selectedDate)
-                      : "Pick Date"),
+                  label: Text(
+                    mode == "custom"
+                        ? DateFormat("yyyy-MM-dd").format(selectedDate)
+                        : "Pick Date",
+                  ),
                   selected: mode == "custom",
                   onSelected: (_) => _pickDate(),
                 ),
@@ -186,7 +195,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 }
                 if (attendanceSnapshot.hasError) {
                   return Center(
-                      child: Text("Error: ${attendanceSnapshot.error}"));
+                    child: Text("Error: ${attendanceSnapshot.error}"),
+                  );
                 }
 
                 final attendanceData = attendanceSnapshot.data ?? [];
@@ -213,7 +223,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         scrollDirection: Axis.horizontal,
                         child: DataTable(
                           columnSpacing: 16,
-                          headingRowColor: WidgetStateProperty.all(Colors.blue[50]),
+                          headingRowColor: WidgetStateProperty.all(
+                            Colors.blue[50],
+                          ),
                           columns: const [
                             DataColumn(label: Text("Employee's ID")),
                             DataColumn(label: Text("Employee's Name")),
@@ -237,21 +249,44 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             return matches.map((match) {
                               return DataRow(
                                 cells: [
-                                  DataCell(Text(user['employeeId']?.toString() ?? '')),
+                                  DataCell(
+                                    Text(user['employeeId']?.toString() ?? ''),
+                                  ),
                                   DataCell(Text(name)),
-                                  DataCell(Text(
-                                    match['unit'] != null && match['unit'].toString().isNotEmpty
-                                        ? "Unit ${match['unit']}"
-                                        : (user['assignedVehicle'] != null
-                                        ? "Unit ${user['assignedVehicle']}"
-                                        : ''),
-                                  )),
-                                  DataCell(Text(match['timeIn'] != null
-                                      ? formatDateTime(DateTime.parse(match['timeIn']).toLocal())
-                                      : '')),
-                                  DataCell(Text(match['timeOut'] != null
-                                      ? formatDateTime(DateTime.parse(match['timeOut']).toLocal())
-                                      : '')),
+                                  DataCell(
+                                    Text(
+                                      match['unit'] != null &&
+                                              match['unit']
+                                                  .toString()
+                                                  .isNotEmpty
+                                          ? "Unit ${match['unit']}"
+                                          : (user['assignedVehicle'] != null
+                                                ? "Unit ${user['assignedVehicle']}"
+                                                : ''),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      match['timeIn'] != null
+                                          ? formatDateTime(
+                                              DateTime.parse(
+                                                match['timeIn'],
+                                              ).toLocal(),
+                                            )
+                                          : '',
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      match['timeOut'] != null
+                                          ? formatDateTime(
+                                              DateTime.parse(
+                                                match['timeOut'],
+                                              ).toLocal(),
+                                            )
+                                          : '',
+                                    ),
+                                  ),
                                 ],
                               );
                             });

@@ -13,7 +13,6 @@ class IncidentReportManagementScreen extends StatelessWidget {
       'date': '2025-09-01',
       'type': 'Traffic Violation',
       'reporter': 'Juan Dela Cruz',
-      'priority': 'Critical',
       'status': 'Open',
     },
     {
@@ -21,7 +20,6 @@ class IncidentReportManagementScreen extends StatelessWidget {
       'date': '2025-09-02',
       'type': 'Passenger Misconduct',
       'reporter': 'Maria Lopez',
-      'priority': 'Medium',
       'status': 'Under Investigation',
     },
     {
@@ -29,7 +27,6 @@ class IncidentReportManagementScreen extends StatelessWidget {
       'date': '2025-09-03',
       'type': 'Overloading',
       'reporter': 'Pedro Santos',
-      'priority': 'High',
       'status': 'Resolved',
     },
     {
@@ -37,7 +34,6 @@ class IncidentReportManagementScreen extends StatelessWidget {
       'date': '2025-09-04',
       'type': 'No Valid ID',
       'reporter': 'Ana Reyes',
-      'priority': 'Low',
       'status': 'Closed',
     },
     {
@@ -45,7 +41,6 @@ class IncidentReportManagementScreen extends StatelessWidget {
       'date': '2025-09-05',
       'type': 'Smoking in Vehicle',
       'reporter': 'Carlos Gomez',
-      'priority': 'Medium',
       'status': 'Open',
     },
   ];
@@ -55,7 +50,11 @@ class IncidentReportManagementScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Color(0xFF0D2364),
-        title: const Text('Incident Report Management'),
+        title: const Text(
+          'Incident Report Management',
+          style: TextStyle(color: Colors.white),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -168,12 +167,7 @@ class IncidentReportManagementScreen extends StatelessWidget {
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
-                      DataColumn(
-                        label: Text(
-                          'Priority',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
+
                       DataColumn(
                         label: Text(
                           'Status',
@@ -194,15 +188,6 @@ class IncidentReportManagementScreen extends StatelessWidget {
                           DataCell(Text(incident['date'])),
                           DataCell(Text(incident['type'])),
                           DataCell(Text(incident['reporter'])),
-                          DataCell(
-                            Text(
-                              incident['priority'],
-                              style: TextStyle(
-                                color: _getPriorityColor(incident['priority']),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
                           DataCell(
                             Text(
                               incident['status'],
