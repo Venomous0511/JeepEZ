@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
@@ -7,15 +8,6 @@ import '../admin/leavemanagement.dart';
 import '../admin/driver_and_conductor_management.dart';
 import '../admin/maintenance.dart';
 import '../admin/route_history.dart';
-
-// Add this Notification class definition
-class Notification {
-  final String id;
-  final String message;
-  bool isRead;
-
-  Notification({required this.id, required this.message, this.isRead = false});
-}
 
 class AdminDashboard extends StatefulWidget {
   final AppUser user;
@@ -27,16 +19,6 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   bool _isLoggingOut = false;
-
-  // Replace _notificationCount with a list of notifications
-  List<Notification> notifications = [
-    Notification(id: '1', message: 'New leave request from John Doe'),
-    Notification(id: '2', message: 'Attendance alert: Late clock-in'),
-    Notification(id: '3', message: 'New hiring application received'),
-  ];
-
-  // Calculate unread count
-  int get unreadCount => notifications.where((n) => !n.isRead).length;
 
   Future<void> _signOut() async {
     if (_isLoggingOut) return;
@@ -55,7 +37,71 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  // Updated notification method
+  /// ---------------- FETCH NOTIFICATIONS ----------------
+  Stream<QuerySnapshot> getNotificationsStream(String role) {
+    final collection = FirebaseFirestore.instance.collection('notifications');
+
+    if (role == 'super_admin' || role == 'admin') {
+      // Super_Admin & Admin → See ALL (system + security)
+      return collection
+          .where('dismissed', isEqualTo: false)
+          .orderBy('time', descending: true)
+          .snapshots();
+    } else {
+      // Others → See only system notifications
+      return collection
+          .where('dismissed', isEqualTo: false)
+          .where('type', isEqualTo: 'system')
+          .orderBy('time', descending: true)
+          .snapshots();
+    }
+  }
+
+  IconData _getIconForType(String type) {
+    switch (type) {
+      case 'system':
+        return Icons.system_update_alt;
+      case 'security':
+        return Icons.warning;
+      case 'updates':
+        return Icons.notifications_on;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  Color _getColorForType(String type) {
+    switch (type) {
+      case 'system':
+        return Colors.blue;
+      case 'security':
+        return Colors.red;
+      case 'updates':
+        return Colors.green;
+      default:
+        return const Color(0xFF0D2364);
+    }
+  }
+
+  /// ---------------- MARK ALL AS READ ----------------
+  Future<void> _markAllAsRead() async {
+    final query = await FirebaseFirestore.instance
+        .collection('notifications')
+        .where('read', isEqualTo: false)
+        .get();
+
+    for (var doc in query.docs) {
+      await doc.reference.update({'read': true});
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("All notifications marked as read")),
+      );
+    }
+  }
+
+  /// ---------------- SHOW NOTIFICATIONS POPUP ----------------
   void _showNotifications() {
     showDialog(
       context: context,
@@ -64,24 +110,88 @@ class _AdminDashboardState extends State<AdminDashboard> {
           title: const Text('Notifications'),
           content: SizedBox(
             width: double.maxFinite,
-            child: ListView(
-              shrinkWrap: true,
-              children: notifications.map((notification) {
-                return _buildNotificationItem(notification);
-              }).toList(),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: getNotificationsStream(widget.user.role),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text("No notifications"));
+                }
+
+                final docs = snapshot.data!.docs;
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final data = docs[index].data() as Map<String, dynamic>;
+                    final type = data['type'] ?? 'updates';
+                    final message = data['message'] ?? 'No message';
+
+                    return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: (data['read'] == true)
+                            ? Colors.white
+                            : Colors.blue.shade50, // highlight unread
+                        border: Border.all(color: Colors.grey.shade300, width: 1),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withAlpha(1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            _getIconForType(type),
+                            color: _getColorForType(type),
+                            size: 28,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  message,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                if (data['time'] != null)
+                                  Text(
+                                    (data['time'] as Timestamp)
+                                        .toDate()
+                                        .toString()
+                                        .substring(0, 16),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                setState(() {
-                  // Mark all notifications as read
-                  for (var notification in notifications) {
-                    notification.isRead = true;
-                  }
-                });
-                Navigator.of(context).pop();
-              },
+              onPressed: _markAllAsRead,
               child: const Text(
                 'Mark all as read',
                 style: TextStyle(
@@ -102,34 +212,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // Updated notification item builder
-  Widget _buildNotificationItem(Notification notification) {
-    return ListTile(
-      leading: Icon(
-        Icons.notifications,
-        color: notification.isRead ? Colors.grey : const Color(0xFF0D2364),
-      ),
-      title: Text(
-        notification.message,
-        style: TextStyle(
-          fontWeight: notification.isRead ? FontWeight.normal : FontWeight.bold,
-          color: notification.isRead ? Colors.grey[700] : Colors.black,
-        ),
-      ),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-      onTap: () {
-        if (!notification.isRead) {
-          setState(() {
-            notification.isRead = true;
-          });
-        }
-        Navigator.of(context).pop();
-        // You can add navigation logic here based on notification type
-      },
-    );
-  }
-
-  // Helper method to create drawer items
+  /// ---------------- DRAWER ITEM ----------------
   Widget _drawerItem(BuildContext context, String title, VoidCallback onTap) {
     return ListTile(
       leading: _getIconForTitle(title),
@@ -138,7 +221,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // Helper method to get appropriate icon for each menu item
   Icon _getIconForTitle(String title) {
     switch (title) {
       case 'Home':
@@ -169,34 +251,46 @@ class _AdminDashboardState extends State<AdminDashboard> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications),
-                onPressed: _showNotifications,
-              ),
-              if (unreadCount > 0)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      unreadCount > 9 ? '9+' : unreadCount.toString(),
-                      style: const TextStyle(color: Colors.white, fontSize: 10),
-                      textAlign: TextAlign.center,
-                    ),
+          StreamBuilder<QuerySnapshot>(
+            stream: getNotificationsStream(widget.user.role),
+            builder: (context, snapshot) {
+              int unreadCount = 0;
+              if (snapshot.hasData) {
+                unreadCount = snapshot.data!.docs
+                    .where((doc) => (doc['read'] != true))
+                    .length;
+              }
+
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications),
+                    onPressed: _showNotifications,
                   ),
-                ),
-            ],
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          unreadCount > 9 ? '9+' : unreadCount.toString(),
+                          style: const TextStyle(color: Colors.white, fontSize: 10),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -216,11 +310,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 widget.user.email,
                 style: const TextStyle(fontSize: 14),
               ),
-              currentAccountPicture: CircleAvatar(
+              currentAccountPicture: const CircleAvatar(
                 backgroundColor: Colors.white,
                 child: Icon(
                   Icons.admin_panel_settings,
-                  color: const Color(0xFF0D2364),
+                  color: Color(0xFF0D2364),
                 ),
               ),
             ),
@@ -235,7 +329,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const EmployeeListScreen(),
+                        builder: (context) =>
+                            EmployeeListScreen(user: widget.user),
                       ),
                     );
                   }),
@@ -257,7 +352,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => LeaveManagementScreen(),
+                        builder: (context) => const LeaveManagementScreen(),
                       ),
                     );
                   }),
@@ -266,7 +361,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => DriverConductorManagementScreen(),
+                        builder: (context) =>
+                        const DriverConductorManagementScreen(),
                       ),
                     );
                   }),
@@ -275,7 +371,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => MaintenanceScreen(),
+                        builder: (context) => const MaintenanceScreen(),
                       ),
                     );
                   }),
@@ -284,7 +380,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => RouteHistoryScreen(),
+                        builder: (context) => const RouteHistoryScreen(),
                       ),
                     );
                   }),
@@ -300,10 +396,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
               trailing: _isLoggingOut
                   ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
                   : null,
               onTap: _isLoggingOut ? null : _signOut,
             ),
@@ -311,7 +407,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ],
         ),
       ),
-      body: const HomeScreen(), // Always show HomeScreen as the main body
+      body: const HomeScreen(),
     );
   }
 }

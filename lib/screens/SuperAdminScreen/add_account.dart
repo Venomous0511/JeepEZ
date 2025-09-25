@@ -116,7 +116,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         'email': email,
         'employeeId': employeeId,
         'name': nameCtrl.text.trim(),
-
         'role': role,
         'status': true,
         'createdAt': FieldValue.serverTimestamp(),
