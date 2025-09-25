@@ -116,9 +116,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         'email': email,
         'employeeId': employeeId,
         'name': nameCtrl.text.trim(),
-        'employment_type'
-                'role':
-            role,
+        'role': role,
         'status': true,
         'createdAt': FieldValue.serverTimestamp(),
         'createdBy': widget.user.email,
