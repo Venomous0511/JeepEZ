@@ -224,21 +224,6 @@ class IncidentReportManagementScreen extends StatelessWidget {
     );
   }
 
-  static Color _getPriorityColor(String priority) {
-    switch (priority) {
-      case 'Critical':
-        return Colors.red;
-      case 'High':
-        return Colors.orange;
-      case 'Medium':
-        return Colors.amber;
-      case 'Low':
-        return Colors.green;
-      default:
-        return Colors.grey;
-    }
-  }
-
   static Color _getStatusColor(String status) {
     switch (status) {
       case 'Open':

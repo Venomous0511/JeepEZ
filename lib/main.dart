@@ -88,10 +88,10 @@ class RoleBasedDashboard extends StatelessWidget {
         return LegalOfficerDashboardScreen(user: user);
       case "driver":
         return DriverDashboard(user: user);
-      case "conductor":
-        return ConductorDashboard(user: user);
       case "inspector":
         return InspectorDashboard(user: user);
+      case "conductor":
+        return ConductorDashboard(user: user);
       default:
         return const Scaffold(body: Center(child: Text("Unknown role")));
     }
