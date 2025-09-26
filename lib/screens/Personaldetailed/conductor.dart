@@ -35,8 +35,8 @@ class _PersonalDetailsState extends State<PersonalDetails> {
 
   @override
   Widget build(BuildContext context) {
-    final String employeeId = "000001";
-    final String jobTitle = "Driver";
+    final String employeeId = "40001";
+    final String jobTitle = "Conductor";
     final String workStatus = "Part time";
     final String name = widget.user.name ?? "Ashu";
     final String address = "Sapang Palay Proper City of San Jose Del Monte";

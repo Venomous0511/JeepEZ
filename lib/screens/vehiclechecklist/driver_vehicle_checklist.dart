@@ -85,7 +85,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                     borderRadius: BorderRadius.circular(12.0),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.3),
+                        color: Colors.grey.withAlpha(3),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -194,7 +194,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                   borderRadius: BorderRadius.circular(12.0),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.3),
+                      color: Colors.grey.withAlpha(3),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -271,7 +271,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8.0),
                           side: BorderSide(
-                            color: const Color(0xFF0D2364).withOpacity(0.5),
+                            color: const Color(0xFF0D2364).withAlpha(5),
                             width: 1.0,
                           ),
                         ),

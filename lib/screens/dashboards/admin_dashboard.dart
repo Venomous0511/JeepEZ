@@ -87,12 +87,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Future<void> _markAllAsRead() async {
     final query = await FirebaseFirestore.instance
         .collection('notifications')
-        .where('read', isEqualTo: false)
+        .where('dismissed', isEqualTo: false)
         .get();
 
+    final batch = FirebaseFirestore.instance.batch();
+
     for (var doc in query.docs) {
-      await doc.reference.update({'read': true});
+      // Check if document has 'read' field, if not, create it
+      final data = doc.data() as Map<String, dynamic>;
+      if (!data.containsKey('read')) {
+        batch.update(doc.reference, {'read': true});
+      } else if (data['read'] == false) {
+        batch.update(doc.reference, {'read': true});
+      }
     }
+
+    await batch.commit();
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -129,15 +139,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     final data = docs[index].data() as Map<String, dynamic>;
                     final type = data['type'] ?? 'updates';
                     final message = data['message'] ?? 'No message';
+                    // FIX: Safe check for 'read' field
+                    final isRead = data['read'] ?? false;
 
                     return Container(
                       margin: const EdgeInsets.symmetric(vertical: 6),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: (data['read'] == true)
+                        color: isRead
                             ? Colors.white
                             : Colors.blue.shade50, // highlight unread
-                        border: Border.all(color: Colors.grey.shade300, width: 1),
+                        border: Border.all(
+                          color: Colors.grey.shade300,
+                          width: 1,
+                        ),
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: [
                           BoxShadow(
@@ -246,7 +261,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(''),
+        title: const Text('Admin Dashboard'),
         backgroundColor: const Color(0xFF0D2364),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -256,39 +271,49 @@ class _AdminDashboardState extends State<AdminDashboard> {
             builder: (context, snapshot) {
               int unreadCount = 0;
               if (snapshot.hasData) {
-                unreadCount = snapshot.data!.docs
-                    .where((doc) => (doc['read'] != true))
-                    .length;
+                // FIX: Safe check for 'read' field
+                unreadCount = snapshot.data!.docs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  return (data['read'] != true);
+                }).length;
               }
 
-              return Stack(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.notifications),
-                    onPressed: _showNotifications,
-                  ),
-                  if (unreadCount > 0)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 16,
-                          minHeight: 16,
-                        ),
-                        child: Text(
-                          unreadCount > 9 ? '9+' : unreadCount.toString(),
-                          style: const TextStyle(color: Colors.white, fontSize: 10),
-                          textAlign: TextAlign.center,
+              return Container(
+                width: 50, // FIX: Constrain the container width
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications),
+                      onPressed: _showNotifications,
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            unreadCount > 9 ? '9+' : unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize:
+                                  8, // FIX: Smaller font to prevent overflow
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               );
             },
           ),
@@ -362,7 +387,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       context,
                       MaterialPageRoute(
                         builder: (context) =>
-                        const DriverConductorManagementScreen(),
+                            const DriverConductorManagementScreen(),
                       ),
                     );
                   }),
@@ -396,10 +421,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
               trailing: _isLoggingOut
                   ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : null,
               onTap: _isLoggingOut ? null : _signOut,
             ),
@@ -444,9 +469,13 @@ class HomeScreen extends StatelessWidget {
             children: [
               const Icon(Icons.email, color: Colors.white, size: 20),
               const SizedBox(width: 8),
-              Text(
-                name,
-                style: const TextStyle(fontSize: 16, color: Colors.white),
+              Expanded(
+                // FIX: Added Expanded to prevent overflow
+                child: Text(
+                  name,
+                  style: const TextStyle(fontSize: 16, color: Colors.white),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),

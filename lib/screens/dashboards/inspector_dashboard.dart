@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
-import '../Personaldetailed/driver.dart'; // Import the PersonalDetails screen
-import '../inspectorreportform/inspector_form.dart';
+import '../Personaldetailed/driver.dart';
+import '../violationReport/inspector_violation_report.dart';
 import '../inspectorTrip/inspector_trip_report.dart';
 import '../workSchedule/inspector.dart';
 import '../leaveapplication/inspector_leaveapp.dart';
@@ -25,7 +25,7 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
       _buildHomeScreen(),
       const WorkScheduleScreen(),
       _buildTripScreen(),
-      _buildInspectorReportScreen(),
+      _buildViolationReportForm(),
       const LeaveApplicationScreen(),
     ];
   }
@@ -35,17 +35,20 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
       backgroundColor: Colors.white,
       body: Column(
         children: [
+          // JeepEZ Header with full width blue background
           Container(
+            width: double.infinity,
             color: const Color(0xFF0D2364),
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Column(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.directions_bus, size: 40, color: Colors.white),
-                const SizedBox(height: 8),
-                const Text(
+                Icon(Icons.directions_bus, size: 32, color: Colors.white),
+                SizedBox(width: 12),
+                Text(
                   'JeepEZ',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -53,6 +56,8 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
               ],
             ),
           ),
+
+          // User Profile Section
           Container(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Column(
@@ -81,6 +86,8 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
               ],
             ),
           ),
+
+          // Date Container
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Container(
@@ -93,10 +100,14 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
               child: const Text(
                 'Today | Monday | 06/06/06',
                 style: TextStyle(color: Colors.white, fontSize: 16),
+                textAlign: TextAlign.center,
               ),
             ),
           ),
+
           const SizedBox(height: 20),
+
+          // Route Preview Map Placeholder
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Container(
@@ -120,38 +131,12 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
   }
 
   Widget _buildTripScreen() {
-    return const InspectorTripReportScreen();
+    return InspectorTripScreen();
   }
 
-  Widget _buildInspectorReportScreen() {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Violations')),
-      body: Center(
-        child: ElevatedButton.icon(
-          icon: const Icon(Icons.assignment),
-          label: const Text('Open Report/Remarks'),
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          ),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const InspectorReportScreen(),
-              ),
-            );
-          },
-        ),
-      ),
-    );
+  Widget _buildViolationReportForm() {
+    return ViolationReportForm();
   }
-
-  // Widget _placeholder(String title) {
-  //   return Scaffold(
-  //     appBar: AppBar(title: Text(title)),
-  //     body: Center(child: Text('$title screen coming soon')),
-  //   );
-  // }
 
   @override
   Widget build(BuildContext context) {

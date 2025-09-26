@@ -212,7 +212,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
             Set<WidgetState> states,
           ) {
             if (states.contains(WidgetState.selected)) {
-              return Theme.of(context).colorScheme.primary.withOpacity(0.08);
+              return Theme.of(context).colorScheme.primary.withAlpha(8);
             }
             return Colors.white;
           }),

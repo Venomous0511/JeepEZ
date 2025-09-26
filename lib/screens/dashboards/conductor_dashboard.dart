@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
-import '../Personaldetailed/driver.dart';
-import '../workSchedule/driver_workschedule.dart';
-import '../incidentreport/driver_incidentreport.dart';
-import '../vehiclechecklist/driver_vehicle_checklist.dart';
-import '../leaveapplication/driverleaveapp.dart';
+import '../Personaldetailed/conductor.dart';
+import '../workSchedule/conductor_workschedule.dart';
+import '../ticketreport/conductor_ticketreport.dart';
+import '../incidentreport/conductor_incidentreport.dart';
+import '../leaveapplication/conductorleaveapp.dart';
 
 class ConductorDashboard extends StatefulWidget {
   final AppUser user;
@@ -24,8 +24,8 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
     _screens = [
       _buildHomeScreen(),
       const WorkScheduleScreen(),
+      const TicketReportScreen(),
       const IncidentReportScreen(),
-      const VehicleChecklistScreen(),
       const LeaveApplicationScreen(),
     ];
   }
@@ -65,7 +65,7 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
             ),
             Center(
               child: Text(
-                widget.user.name ?? "Driver",
+                widget.user.name ?? "Conductor",
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -137,11 +137,11 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.report_problem),
-            label: 'Incident',
+            label: 'Ticket Report',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.checklist),
-            label: 'Checklist',
+            label: 'Incident',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.beach_access),

@@ -89,7 +89,7 @@ class _PersonalDetailsState extends State<PersonalDetails> {
                     borderRadius: BorderRadius.circular(12.0),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.3),
+                        color: Colors.grey.withAlpha(3),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -332,7 +332,7 @@ class _PersonalDetailsState extends State<PersonalDetails> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8.0),
                               side: BorderSide(
-                                color: Colors.red.withOpacity(0.5),
+                                color: Colors.red.withAlpha(5),
                                 width: 1.0,
                               ),
                             ),
