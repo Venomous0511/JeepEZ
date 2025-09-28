@@ -37,42 +37,73 @@ class _DriverDashboardState extends State<DriverDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: double.infinity,
-              color: const Color(0xFF0D2364),
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: const Center(
-                child: Icon(
-                  Icons.directions_bus,
-                  size: 60,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: IconButton(
-                icon: const Icon(Icons.person, color: Colors.black, size: 40),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PersonalDetails(user: widget.user),
+            // Logo section with notification bell at the top
+            Stack(
+              children: [
+                Container(
+                  width: double.infinity,
+                  color: const Color(0xFF0D2364),
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: const Center(
+                    child: Icon(
+                      Icons.directions_bus,
+                      size: 60,
+                      color: Colors.white,
                     ),
-                  );
-                },
-              ),
-            ),
-            Center(
-              child: Text(
-                widget.user.name ?? "Driver",
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  ),
                 ),
+                // Notification Bell at the top right corner
+                Positioned(
+                  right: 20,
+                  top: 20,
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.notifications,
+                      color: Colors
+                          .white, // White color to contrast with blue background
+                      size: 30,
+                    ),
+                    onPressed: () {
+                      _showNotifications();
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Profile Section - centered
+            Center(
+              child: Column(
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.person,
+                      color: Colors.black,
+                      size: 40,
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              PersonalDetails(user: widget.user),
+                        ),
+                      );
+                    },
+                  ),
+                  Text(
+                    widget.user.name ?? "Driver",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 20),
+
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Container(
@@ -118,6 +149,27 @@ class _DriverDashboardState extends State<DriverDashboard> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showNotifications() {
+    // Temporary notification dialog - you can replace this with your actual notification screen
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Notifications'),
+          content: const Text('No new notifications'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 

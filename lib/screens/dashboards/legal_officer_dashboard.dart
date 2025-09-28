@@ -1,15 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../../models/app_user.dart';
+import '../../services/auth_service.dart';
 import '../legalofficer/inspector_report_history.dart';
 import '../legalofficer/violation_report_management.dart';
 import '../legalofficer/employee_list_view.dart';
 import '../legalofficer/inspector_report_management.dart';
 import '../legalofficer/hiring_management.dart';
 
-class LegalOfficerDashboardScreen extends StatelessWidget {
+class LegalOfficerDashboardScreen extends StatefulWidget {
   const LegalOfficerDashboardScreen({super.key, required this.user});
 
   final AppUser user;
+
+  @override
+  State<LegalOfficerDashboardScreen> createState() =>
+      _LegalOfficerDashboardScreenState();
+}
+
+class _LegalOfficerDashboardScreenState
+    extends State<LegalOfficerDashboardScreen> {
+  bool _isLoggingOut = false;
+  int _selectedIndex = 0;
 
   final List<Map<String, dynamic>> inspectors = const [
     {
@@ -62,174 +75,374 @@ class LegalOfficerDashboardScreen extends StatelessWidget {
     },
   ];
 
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  /// ---------------- NOTIFICATION FUNCTIONS  ----------------
+  IconData _getIconForType(String type) {
+    switch (type) {
+      case 'system':
+        return Icons.system_update_alt;
+      case 'security':
+        return Icons.warning;
+      case 'updates':
+        return Icons.notifications_on;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  Color _getColorForType(String type) {
+    switch (type) {
+      case 'system':
+        return Colors.blue;
+      case 'security':
+        return Colors.red;
+      case 'updates':
+        return Colors.green;
+      default:
+        return Color(0xFF0D2364);
+    }
+  }
+
+  Stream<QuerySnapshot> getNotificationsStream(String role) {
+    final collection = FirebaseFirestore.instance.collection('notifications');
+
+    if (role == 'super_admin' || role == 'admin') {
+      // Super_Admin & Admin → See ALL (system + security)
+      return collection
+          .where('dismissed', isEqualTo: false)
+          .orderBy('time', descending: true)
+          .snapshots();
+    } else {
+      // Others → See only system notifications
+      return collection
+          .where('dismissed', isEqualTo: false)
+          .where('type', isEqualTo: 'system')
+          .orderBy('time', descending: true)
+          .snapshots();
+    }
+  }
+
+  /// ---------------- SIGN OUT  ----------------
+  Future<void> _signOut() async {
+    if (_isLoggingOut) return;
+    setState(() => _isLoggingOut = true);
+
+    try {
+      // show loading for 3 seconds before signing out
+      await Future.delayed(const Duration(seconds: 3));
+      await AuthService().logout();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to sign out: $e')));
+      setState(() => _isLoggingOut = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: Color(0xFF0D2364),
-        title: const Text(
-          'Legal Officer',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        iconTheme: IconThemeData(color: Colors.white),
+        title: const Text('Legal Officer Dashboard'),
+        backgroundColor: const Color(0xFF0D2364),
+        foregroundColor: Colors.white,
       ),
       drawer: Drawer(
         child: Column(
           children: [
-            DrawerHeader(
+            UserAccountsDrawerHeader(
               decoration: const BoxDecoration(color: Color(0xFF0D2364)),
-              child: Row(
+              accountName: Text(
+                widget.user.name ?? 'Legal Officer',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              accountEmail: Text(
+                "Employee ID: ${widget.user.employeeId}",
+                style: const TextStyle(fontSize: 14),
+              ),
+              currentAccountPicture: const CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Icon(Icons.gavel, color: Color(0xFF0D2364)),
+              ),
+            ),
+
+            // Expanded ListView for menu items
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
                 children: [
-                  _buildJeepEZLogo(),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Admin (Legal Officer)',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  ListTile(
+                    leading: const Icon(Icons.home, color: Color(0xFF0D2364)),
+                    title: const Text('Home'),
+                    selected: _selectedIndex == 0,
+                    onTap: () {
+                      _onItemTapped(0);
+                      Navigator.pop(context);
+                    },
+                  ),
+
+                  // Notification Bill
+                  ListTile(
+                    leading: const Icon(
+                      Icons.notifications,
+                      color: Color(0xFF0D2364),
                     ),
+                    title: const Text('Notifications'),
+                    selected: _selectedIndex == 1,
+                    onTap: () {
+                      _onItemTapped(1);
+                      Navigator.pop(context);
+                    },
+                  ),
+
+                  // Inspector Report History
+                  ListTile(
+                    leading: const Icon(
+                      Icons.history,
+                      color: Color(0xFF0D2364),
+                    ),
+                    title: const Text('Inspector Report History'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              InspectorReportHistoryScreen(user: widget.user),
+                        ),
+                      );
+                    },
+                  ),
+
+                  // Violation Report Management
+                  ListTile(
+                    leading: const Icon(
+                      Icons.report_problem,
+                      color: Color(0xFF0D2364),
+                    ),
+                    title: const Text('Violation Report Management'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ViolationReportHistoryScreen(user: widget.user),
+                        ),
+                      );
+                    },
+                  ),
+
+                  // Incident Report Management
+                  ListTile(
+                    leading: const Icon(
+                      Icons.warning,
+                      color: Color(0xFF0D2364),
+                    ),
+                    title: const Text('Incident Report Management'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              IncidentReportManagementScreen(user: widget.user),
+                        ),
+                      );
+                    },
+                  ),
+
+                  // Employee List View
+                  ListTile(
+                    leading: const Icon(Icons.people, color: Color(0xFF0D2364)),
+                    title: const Text('Employee List View'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              EmployeeListViewScreen(user: widget.user),
+                        ),
+                      );
+                    },
+                  ),
+
+                  // Hiring Management
+                  ListTile(
+                    leading: const Icon(Icons.work, color: Color(0xFF0D2364)),
+                    title: const Text('Hiring Management'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => HiringManagementScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
             ),
-            Expanded(
-              child: ListView(
-                children: [
-                  _drawerItem(context, 'Home', () {
-                    Navigator.pop(context);
-                  }),
-                  _drawerItem(context, 'Inspector Report History', () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            InspectorReportHistoryScreen(user: user),
-                      ),
-                    );
-                  }),
-                  _drawerItem(context, 'Violation Report Management', () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ViolationReportHistoryScreen(user: user),
-                      ),
-                    );
-                  }),
-                  _drawerItem(context, 'Incident Report Management', () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            IncidentReportManagementScreen(user: user),
-                      ),
-                    );
-                  }),
-                  _drawerItem(context, 'Employee List View', () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EmployeeListViewScreen(
-                          user: user,
-                        ), // ✅ Correct parameter name
-                      ),
-                    );
-                  }),
-                  // ADDED HIRING MANAGEMENT OPTION
-                  _drawerItem(context, 'Hiring Management', () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => HiringManagementScreen(),
-                      ),
-                    );
-                  }),
-                ],
+
+            const Divider(height: 1),
+
+            // Logout pinned at bottom
+            ListTile(
+              leading: const Icon(Icons.logout, color: Color(0xFF0D2364)),
+              title: Text(
+                _isLoggingOut ? 'Logging out...' : 'Logout',
+                style: const TextStyle(color: Color(0xFF0D2364)),
               ),
+              trailing: _isLoggingOut
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : null,
+              onTap: _isLoggingOut ? null : _signOut,
             ),
-            const Divider(),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: ListTile(
-                leading: const Icon(Icons.logout, color: Color(0xFF0D2364)),
-                title: const Text(
-                  'Logout',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-            ),
+            const SizedBox(height: 12), // spacing at bottom
           ],
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _sectionTitle('Inspector Leaderboard'),
-            _buildInspectorTableWithScroll(),
-            const SizedBox(height: 24),
-            _sectionTitle('Incident Tracking'),
-            _buildIncidentTableWithScroll(),
-            const SizedBox(height: 24),
-            _sectionTitle('Violations by Type'),
-            _styledCard(_buildViolationChart()),
-          ],
-        ),
-      ),
+      body: _getSelectedScreen(),
     );
   }
 
-  Widget _buildJeepEZLogo() {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          const Icon(Icons.directions_bus, size: 32, color: Color(0xFF0D2364)),
-          Positioned(
-            bottom: 2,
-            child: Text(
-              'JeepEZ',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0D2364),
+  Widget _getSelectedScreen() {
+    switch (_selectedIndex) {
+      case 0:
+        return _buildHomeContent();
+      case 1:
+        return _buildNotificationScreen();
+      default:
+        return _buildHomeContent();
+    }
+  }
+
+  /// ---------------- NOTIFICATION SCREEN  ----------------
+  Widget _buildNotificationScreen() {
+    return Stack(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Notifications',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0D2364),
+                ),
               ),
-            ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: getNotificationsStream(widget.user.role),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'No notifications',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      );
+                    }
+
+                    final docs = snapshot.data!.docs;
+
+                    return ListView.builder(
+                      itemCount: docs.length,
+                      itemBuilder: (context, index) {
+                        final data = docs[index].data() as Map<String, dynamic>;
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.all(16),
+                            leading: Icon(
+                              _getIconForType(data['type'] ?? ''),
+                              color: _getColorForType(data['type'] ?? ''),
+                            ),
+                            title: Text(
+                              data['title'],
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 4),
+                                Text(data['message']),
+                                const SizedBox(height: 4),
+                                Text(
+                                  DateFormat('MMM d, y hh:mm a').format(
+                                    (data['time'] as Timestamp).toDate(),
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.close, size: 18),
+                              onPressed: () async {
+                                await docs[index].reference.update({
+                                  'dismissed': true,
+                                });
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
+        ),
+      ],
+    );
+  }
+
+  /// ---------------- HOME SCREEN  ----------------
+  Widget _buildHomeContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle('Inspector Leaderboard'),
+          _buildInspectorTableWithScroll(),
+          const SizedBox(height: 24),
+          _sectionTitle('Incident Tracking'),
+          _buildIncidentTableWithScroll(),
+          const SizedBox(height: 24),
+          _sectionTitle('Violations by Type'),
+          _styledCard(_buildViolationChart()),
         ],
       ),
-    );
-  }
-
-  Widget _drawerItem(BuildContext context, String title, VoidCallback onTap) {
-    return ListTile(
-      dense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-      title: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.black,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      onTap: onTap,
     );
   }
 

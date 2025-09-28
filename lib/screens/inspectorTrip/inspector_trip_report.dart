@@ -5,6 +5,8 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -16,6 +18,8 @@ class MyApp extends StatelessWidget {
 }
 
 class InspectorTripScreen extends StatefulWidget {
+  const InspectorTripScreen({super.key});
+
   @override
   _InspectorTripScreenState createState() => _InspectorTripScreenState();
 }
@@ -32,7 +36,7 @@ class _InspectorTripScreenState extends State<InspectorTripScreen> {
 
   List<Map<String, String>> submittedForms = [];
 
-  // Controllers for editable table cells (from 44 downwards)
+  // Controllers for editable table cells
   List<List<TextEditingController>> tableControllers = List.generate(
     5,
     (row) => List.generate(
@@ -438,48 +442,74 @@ class _InspectorTripScreenState extends State<InspectorTripScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Responsive table
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minWidth: MediaQuery.of(context).size.width * 0.7,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Header Row
-                          _buildTableHeaderRow(const [
-                            '20',
-                            '15',
-                            '10',
-                            '5',
-                            '2',
-                            '1',
-                          ]),
-                          const SizedBox(height: 4),
+                  // UPDATED TABLE DESIGN - Matching the image
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[400]!, width: 1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Column(
+                      children: [
+                        // Header Row - WHITE BACKGROUND WITH BLUE TEXT
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.grey[400]!,
+                              width: 1,
+                            ),
+                            color: Colors.white,
+                          ),
+                          child: Row(
+                            children: [
+                              _buildTableHeaderCell('20'),
+                              _buildTableHeaderCell('15'),
+                              _buildTableHeaderCell('10'),
+                              _buildTableHeaderCell('5'),
+                              _buildTableHeaderCell('2'),
+                              _buildTableHeaderCell('1'),
+                            ],
+                          ),
+                        ),
 
-                          // NO.123 Row
-                          _buildTableStaticRow(const [
-                            'NO.123',
-                            'NO.123',
-                            'NO.123',
-                            'NO.123',
-                            'NO.123',
-                            'NO.123',
-                          ]),
-                          const SizedBox(height: 4),
+                        // NO.123 Static Row - WHITE BACKGROUND WITH BLUE TEXT
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.grey[400]!,
+                              width: 1,
+                            ),
+                            color: Colors.white,
+                          ),
+                          child: Row(
+                            children: [
+                              _buildTableCell('NO.123'),
+                              _buildTableCell('NO.123'),
+                              _buildTableCell('NO.123'),
+                              _buildTableCell('NO.123'),
+                              _buildTableCell('NO.123'),
+                              _buildTableCell('NO.123'),
+                            ],
+                          ),
+                        ),
 
-                          // Editable Rows
-                          for (int row = 0; row < 5; row++)
-                            Column(
+                        // Editable Rows - WHITE BACKGROUND WITH BLACK TEXT
+                        for (int row = 0; row < 5; row++)
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: Colors.grey[400]!,
+                                width: 1,
+                              ),
+                              color: Colors.white,
+                            ),
+                            child: Row(
                               children: [
-                                _buildEditableTableRow(row),
-                                const SizedBox(height: 4),
+                                for (int col = 0; col < 6; col++)
+                                  _buildEditableTableCell(row, col),
                               ],
                             ),
-                        ],
-                      ),
+                          ),
+                      ],
                     ),
                   ),
 
@@ -515,101 +545,82 @@ class _InspectorTripScreenState extends State<InspectorTripScreen> {
     );
   }
 
-  Widget _buildTableHeaderRow(List<String> values) {
-    return Row(
-      children: values.map((value) {
-        return Expanded(
-          child: Container(
-            height: 40,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey[400]!),
-              color: const Color(0xFF0D2364).withAlpha(1),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(4),
-                topRight: Radius.circular(4),
-              ),
-            ),
-            child: Center(
-              child: Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0D2364),
-                ),
-              ),
+  // UPDATED: Helper methods for table cells - Matching image design
+  Widget _buildTableHeaderCell(String text) {
+    return Expanded(
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          border: Border(right: BorderSide(color: Colors.grey[400]!, width: 1)),
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0D2364), // BLUE TEXT
             ),
           ),
-        );
-      }).toList(),
+        ),
+      ),
     );
   }
 
-  Widget _buildTableStaticRow(List<String> values) {
-    return Row(
-      children: values.map((value) {
-        return Expanded(
-          child: Container(
-            height: 40,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey[400]!),
-            ),
-            child: Center(
-              child: Text(
-                value,
-                style: const TextStyle(fontSize: 14, color: Color(0xFF0D2364)),
-              ),
+  Widget _buildTableCell(String text) {
+    return Expanded(
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          border: Border(right: BorderSide(color: Colors.grey[400]!, width: 1)),
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF0D2364), // BLUE TEXT
             ),
           ),
-        );
-      }).toList(),
+        ),
+      ),
     );
   }
 
-  Widget _buildEditableTableRow(int rowIndex) {
-    return Row(
-      children: List.generate(6, (colIndex) {
-        return Expanded(
-          child: Container(
-            height: 40,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey[400]!),
-              borderRadius: rowIndex == 4
-                  ? const BorderRadius.only(
-                      bottomLeft: Radius.circular(4),
-                      bottomRight: Radius.circular(4),
-                    )
-                  : null,
-            ),
-            child: TextField(
-              controller: tableControllers[rowIndex][colIndex],
-              textAlign: TextAlign.center,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
-                isDense: true,
-                hintText: '0',
-              ),
-              style: const TextStyle(fontSize: 14, color: Colors.black),
-              onChanged: (value) {
-                if (value.isNotEmpty && !RegExp(r'^[0-9]*$').hasMatch(value)) {
-                  tableControllers[rowIndex][colIndex].text = value.replaceAll(
-                    RegExp(r'[^0-9]'),
-                    '',
-                  );
-                  tableControllers[rowIndex][colIndex]
-                      .selection = TextSelection.fromPosition(
-                    TextPosition(
-                      offset: tableControllers[rowIndex][colIndex].text.length,
-                    ),
-                  );
-                }
-              },
-            ),
+  Widget _buildEditableTableCell(int row, int col) {
+    return Expanded(
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          border: Border(right: BorderSide(color: Colors.grey[400]!, width: 1)),
+        ),
+        child: TextField(
+          controller: tableControllers[row][col],
+          textAlign: TextAlign.center,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.zero,
+            isDense: true,
+            hintText: '0',
           ),
-        );
-      }),
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.black, // BLACK TEXT for editable cells
+          ),
+          onChanged: (value) {
+            if (value.isNotEmpty && !RegExp(r'^[0-9]*$').hasMatch(value)) {
+              tableControllers[row][col].text = value.replaceAll(
+                RegExp(r'[^0-9]'),
+                '',
+              );
+              tableControllers[row][col].selection = TextSelection.fromPosition(
+                TextPosition(offset: tableControllers[row][col].text.length),
+              );
+            }
+          },
+        ),
+      ),
     );
   }
 

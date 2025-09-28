@@ -33,100 +33,132 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
   Widget _buildHomeScreen() {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Column(
-        children: [
-          // JeepEZ Header with full width blue background
-          Container(
-            width: double.infinity,
-            color: const Color(0xFF0D2364),
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.directions_bus, size: 32, color: Colors.white),
-                SizedBox(width: 12),
-                Text(
-                  'JeepEZ',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Logo section with notification bell - same design as driver dashboard but with bell
+            Container(
+              width: double.infinity,
+              color: const Color(0xFF0D2364),
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Stack(
+                children: [
+                  const Center(
+                    child: Icon(
+                      Icons.directions_bus,
+                      size: 60,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-
-          // User Profile Section
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Column(
-              children: [
-                // Make the person icon clickable
-                IconButton(
-                  icon: const Icon(Icons.person, size: 50, color: Colors.black),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            PersonalDetails(user: widget.user),
+                  Positioned(
+                    right: 20,
+                    top: 0,
+                    bottom: 0,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.notifications,
+                        color: Colors.white,
+                        size: 30,
                       ),
-                    );
-                  },
+                      onPressed: () {
+                        // Add notification functionality here
+                        _showNotifications();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // User Profile Section - maintained from original inspector dashboard
+            Center(
+              child: IconButton(
+                icon: const Icon(Icons.person, color: Colors.black, size: 40),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PersonalDetails(user: widget.user),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Center(
+              child: Text(
+                widget.user.name ?? 'Ashanti Dadivo',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  widget.user.name ?? 'Ashanti Dadivo',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Date Container - maintained from original inspector dashboard
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D2364),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Today | Monday | 06/06/06',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Route Preview Map Placeholder - maintained from original inspector dashboard
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Container(
+                height: 200,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Center(
+                  child: Text(
+                    'Route Preview (Map Placeholder)',
+                    style: TextStyle(color: Colors.black54),
                   ),
                 ),
-              ],
-            ),
-          ),
-
-          // Date Container
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0D2364),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                'Today | Monday | 06/06/06',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-                textAlign: TextAlign.center,
               ),
             ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Route Preview Map Placeholder
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: Container(
-              height: 200,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Text(
-                  'Route Preview (Map Placeholder)',
-                  style: TextStyle(color: Colors.black54),
-                ),
-              ),
-            ),
-          ),
-        ],
+            const Spacer(),
+          ],
+        ),
       ),
+    );
+  }
+
+  void _showNotifications() {
+    // Temporary notification dialog - you can replace this with your actual notification screen
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Notifications'),
+          content: const Text('No new notifications'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 
