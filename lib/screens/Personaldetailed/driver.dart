@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
-import 'dart:developer';
+// Import your login screen
+import '../../screens/login_screen.dart'; // Make sure to import your login screen
 
 class PersonalDetails extends StatefulWidget {
   final AppUser user;
@@ -27,6 +28,16 @@ class _PersonalDetailsState extends State<PersonalDetails> {
       // show loading for 3 seconds before signing out
       await Future.delayed(const Duration(seconds: 3));
       await AuthService().logout();
+
+      // After logout, navigate to login screen and clear navigation stack
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LoginScreen(),
+        ), // Use your actual LoginScreen widget
+        (Route<dynamic> route) => false, // This removes all previous routes
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -87,10 +98,7 @@ class _PersonalDetailsState extends State<PersonalDetails> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF0D2364),
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Colors.white,
-          ), // WHITE back icon
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.pop(context);
           },

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/app_user.dart';
-import 'dart:developer';
+import '../../services/auth_service.dart';
+// Import your login screen
+import '../../screens/login_screen.dart'; // Make sure to import your login screen
 
 class PersonalDetails extends StatefulWidget {
   final AppUser user;
@@ -15,22 +17,72 @@ class _PersonalDetailsState extends State<PersonalDetails> {
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool _isLoggingOut = false;
 
+  /// ---------------- SIGN OUT  ----------------
   Future<void> _signOut() async {
+    if (_isLoggingOut) return;
+    setState(() => _isLoggingOut = true);
+
     try {
-      await _auth.signOut();
-      // Navigate to login screen and remove all previous routes
-      if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-      }
+      // show loading for 3 seconds before signing out
+      await Future.delayed(const Duration(seconds: 3));
+      await AuthService().logout();
+
+      // After logout, navigate to login screen and clear navigation stack
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LoginScreen(),
+        ), // Use your actual LoginScreen widget
+        (Route<dynamic> route) => false, // This removes all previous routes
+      );
     } catch (e) {
-      log('Error signing out: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error signing out: $e")));
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to sign out: $e')));
+      setState(() => _isLoggingOut = false);
     }
+  }
+
+  void _showLogoutConfirmation() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Log Out"),
+          content: const Text("Are you sure you want to log out?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+                _signOut();
+              },
+              child: _isLoggingOut
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text("Log Out"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -46,10 +98,7 @@ class _PersonalDetailsState extends State<PersonalDetails> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF0D2364),
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Colors.white,
-          ), // WHITE back icon
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -297,55 +346,35 @@ class _PersonalDetailsState extends State<PersonalDetails> {
                       SizedBox(
                         width: double.infinity,
                         height: 50,
-                        child: TextButton(
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return AlertDialog(
-                                  title: const Text("Log Out"),
-                                  content: const Text(
-                                    "Are you sure you want to log out?",
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                      },
-                                      child: const Text("Cancel"),
-                                    ),
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                        _signOut();
-                                      },
-                                      child: const Text(
-                                        "Log Out",
-                                        style: TextStyle(color: Colors.red),
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
-                          },
-                          style: TextButton.styleFrom(
+                        child: ElevatedButton(
+                          onPressed: _isLoggingOut
+                              ? null
+                              : _showLogoutConfirmation,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8.0),
-                              side: BorderSide(
-                                color: Colors.red.withAlpha(5),
-                                width: 1.0,
-                              ),
                             ),
                           ),
-                          child: const Text(
-                            "Log out",
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                          child: _isLoggingOut
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : const Text(
+                                  "Log out",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                         ),
                       ),
                     ],
