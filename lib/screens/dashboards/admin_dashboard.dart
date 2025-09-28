@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
 import '../admin/employeelist.dart';
@@ -20,6 +24,7 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   bool _isLoggingOut = false;
 
+  /// ---------------- SING OUT FUNCTION ----------------
   Future<void> _signOut() async {
     if (_isLoggingOut) return;
     setState(() => _isLoggingOut = true);
@@ -57,6 +62,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
+  /// ---------------- ICON TYPE ----------------
   IconData _getIconForType(String type) {
     switch (type) {
       case 'system':
@@ -70,6 +76,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
+  /// ---------------- COLOR TYPE ----------------
   Color _getColorForType(String type) {
     switch (type) {
       case 'system':
@@ -94,7 +101,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     for (var doc in query.docs) {
       // Check if document has 'read' field, if not, create it
-      final data = doc.data() as Map<String, dynamic>;
+      final data = doc.data();
       if (!data.containsKey('read')) {
         batch.update(doc.reference, {'read': true});
       } else if (data['read'] == false) {
@@ -227,6 +234,122 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  /// ---------------- GET TODAY DATE ----------------
+  String getTodayAbbrev() {
+    final now = DateTime.now();
+    const days = {
+      1: 'Mon',
+      2: 'Tue',
+      3: 'Wed',
+      4: 'Thu',
+      5: 'Fri',
+      6: 'Sat',
+      7: 'Sun',
+    };
+    return days[now.weekday]!;
+  }
+
+  /// ---------------- GET TODAY VEHICLE ASSIGN ----------------
+  Stream<List<Map<String, dynamic>>> getTodayVehicleAssignments() {
+    final today = getTodayAbbrev();
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .where('status', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'name': data['name'],
+          'assignedVehicle': data['assignedVehicle'],
+          'schedule': data['schedule'],
+          'role': data['role'],
+        };
+      }).where((user) {
+        final schedule = user['schedule'] as String? ?? '';
+        final role = user['role'] as String? ?? '';
+        return role == 'driver' && schedule.contains(today);
+      }).toList();
+    });
+  }
+
+  /// Fetch and process attendance logs from backend
+  Future<List<Map<String, dynamic>>> fetchAttendance(DateTime targetDate,) async {
+    final response = await http.get(
+      Uri.parse("https://jeepez-attendance.onrender.com/api/logs"),
+    );
+
+    if (response.statusCode == 200) {
+      final List data = json.decode(response.body);
+
+      final filterDate = DateFormat('yyyy-MM-dd').format(targetDate);
+
+      // Group logs by name and date
+      final Map<String, List<Map<String, dynamic>>> grouped = {};
+      for (var log in data) {
+        final logDate = DateFormat(
+          'yyyy-MM-dd',
+        ).format(DateTime.parse(log['timestamp']).toLocal());
+
+        if (logDate == filterDate) {
+          final key = "${log['name']}_$logDate";
+          grouped.putIfAbsent(key, () => []).add(log);
+        }
+      }
+
+      final List<Map<String, dynamic>> attendance = [];
+
+      grouped.forEach((key, logs) {
+        logs.sort(
+              (a, b) => DateTime.parse(
+            a['timestamp'],
+          ).compareTo(DateTime.parse(b['timestamp'])),
+        );
+
+        String name = logs.first['name'];
+        String date = logs.first['date'];
+        int inCount = 0, outCount = 0;
+
+        Map<String, dynamic>? currentIn;
+
+        for (var log in logs) {
+          if (log['type'] == 'tap-in' && inCount < 4) {
+            currentIn = log;
+            inCount++;
+          } else if (log['type'] == 'tap-out' &&
+              currentIn != null &&
+              outCount < 4) {
+            attendance.add({
+              "name": name,
+              "date": date,
+              "timeIn": currentIn['timestamp'],
+              "timeOut": log['timestamp'],
+              "unit": log["unit"] ?? "",
+            });
+            outCount++;
+            currentIn = null;
+          }
+        }
+
+        // If ended with tap-in without tap-out
+        if (currentIn != null && inCount <= 4) {
+          attendance.add({
+            "name": name,
+            "date": date,
+            "timeIn": currentIn['timestamp'],
+            "timeOut": null,
+            "unit": currentIn["unit"] ?? "",
+          });
+        }
+      });
+
+      return attendance;
+    } else {
+      throw Exception("Failed to load attendance");
+    }
+  }
+
   /// ---------------- DRAWER ITEM ----------------
   Widget _drawerItem(BuildContext context, String title, VoidCallback onTap) {
     return ListTile(
@@ -278,8 +401,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 }).length;
               }
 
-              return Container(
-                width: 50, // FIX: Constrain the container width
+              return SizedBox(
+                width: 50,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
@@ -432,32 +555,117 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ],
         ),
       ),
-      body: const HomeScreen(),
+      body: HomeScreen(
+        vehicleStream: getTodayVehicleAssignments(),
+        attendanceFuture: fetchAttendance(DateTime.now()),
+      ),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  final Stream<List<Map<String, dynamic>>> vehicleStream;
+  final Future<List<Map<String, dynamic>>> attendanceFuture;
 
-  Widget _buildVehicleItem(String unit) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(
-              color: Colors.green,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(unit, style: const TextStyle(fontSize: 16)),
-        ],
-      ),
-    );
+  const HomeScreen({
+    super.key,
+    required this.vehicleStream,
+    required this.attendanceFuture,
+  });
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late Stream<List<Map<String, dynamic>>> _attendanceStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _attendanceStream = Stream.periodic(
+      const Duration(seconds: 5),
+    ).asyncMap((_) => fetchAttendanceNow());
+  }
+
+  /// Refresh dashboard when user pulls down
+  Future<void> _refreshDashboard() async {
+    setState(() {});
+    await Future.delayed(const Duration(milliseconds: 800));
+  }
+
+  /// Get the latest attendance
+  Future<List<Map<String, dynamic>>> fetchAttendanceNow() {
+    return http
+        .get(Uri.parse("https://jeepez-attendance.onrender.com/api/logs"))
+        .then((response) {
+      if (response.statusCode != 200) throw Exception("Failed to load attendance");
+      final List data = json.decode(response.body);
+      final filterDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+      // same grouping logic here — or better, call a shared function from AdminDashboard
+      final Map<String, List<Map<String, dynamic>>> grouped = {};
+      for (var log in data) {
+        final logDate = DateFormat('yyyy-MM-dd')
+            .format(DateTime.parse(log['timestamp']).toLocal());
+        if (logDate == filterDate) {
+          final key = "${log['name']}_$logDate";
+          grouped.putIfAbsent(key, () => []).add(log);
+        }
+      }
+
+      final List<Map<String, dynamic>> attendance = [];
+      grouped.forEach((key, logs) {
+        logs.sort((a, b) => DateTime.parse(a['timestamp'])
+            .compareTo(DateTime.parse(b['timestamp'])));
+
+        String name = logs.first['name'];
+        String date = logs.first['date'];
+        int inCount = 0, outCount = 0;
+        Map<String, dynamic>? currentIn;
+
+        for (var log in logs) {
+          if (log['type'] == 'tap-in' && inCount < 4) {
+            currentIn = log;
+            inCount++;
+          } else if (log['type'] == 'tap-out' &&
+              currentIn != null &&
+              outCount < 4) {
+            attendance.add({
+              "name": name,
+              "date": date,
+              "timeIn": currentIn['timestamp'],
+              "timeOut": log['timestamp'],
+              "unit": log["unit"] ?? "",
+            });
+            outCount++;
+            currentIn = null;
+          }
+        }
+
+        if (currentIn != null && inCount <= 4) {
+          attendance.add({
+            "name": name,
+            "date": date,
+            "timeIn": currentIn['timestamp'],
+            "timeOut": null,
+            "unit": currentIn["unit"] ?? "",
+          });
+        }
+      });
+
+      return attendance;
+    });
+  }
+
+  /// Get today's label
+  String getTodayLabel() {
+    final now = DateTime.now();
+    const weekdays = [
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday',
+      'Friday', 'Saturday', 'Sunday'
+    ];
+    return 'Today | ${weekdays[now.weekday - 1]}';
   }
 
   TableRow _buildEmployeeRow(String name, String time) {
@@ -470,7 +678,6 @@ class HomeScreen extends StatelessWidget {
               const Icon(Icons.email, color: Colors.white, size: 20),
               const SizedBox(width: 8),
               Expanded(
-                // FIX: Added Expanded to prevent overflow
                 child: Text(
                   name,
                   style: const TextStyle(fontSize: 16, color: Colors.white),
@@ -499,61 +706,24 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Welcome to Admin Dashboard',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-          // Vehicle Schedule Card
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+    return RefreshIndicator(
+      onRefresh: _refreshDashboard,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Welcome to Admin Dashboard',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Vehicle Schedule',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0D2364),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Today | Monday | 06/06/06',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  _buildVehicleItem('UNIT 20'),
-                  _buildVehicleItem('UNIT 21'),
-                  _buildVehicleItem('UNIT 02'),
-                  _buildVehicleItem('UNIT 05'),
-                  _buildVehicleItem('UNIT 10'),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Employee Tracking Card
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF0D2364),
+            const SizedBox(height: 20),
+
+            // --- Vehicle Schedule ---
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Padding(
@@ -562,36 +732,133 @@ class HomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Employee Tracking',
+                      'Vehicle Schedule',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Color(0xFF0D2364),
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Today | Monday | 06/06/06',
-                      style: TextStyle(fontSize: 14, color: Colors.white70),
-                    ),
-                    const SizedBox(height: 12),
-                    Table(
-                      columnWidths: const {
-                        0: FlexColumnWidth(2),
-                        1: FlexColumnWidth(1),
+                    Text(getTodayLabel(),
+                        style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    StreamBuilder<List<Map<String, dynamic>>>(
+                      stream: widget.vehicleStream,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return const Text(
+                            'No vehicle schedules for today',
+                            style: TextStyle(color: Colors.grey),
+                          );
+                        }
+
+                        final assignments = snapshot.data!;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: assignments.map((item) {
+                            final vehicleId =
+                                item['assignedVehicle']?.toString() ?? 'Unknown';
+                            final driverName = item['name'] ?? 'Unknown Driver';
+                            return Text('$driverName — UNIT $vehicleId');
+                          }).toList(),
+                        );
                       },
-                      children: [
-                        _buildEmployeeRow('Jenny Tarog', '9:00am'),
-                        _buildEmployeeRow('Jeanne Russelle', '9:10am'),
-                        _buildEmployeeRow('Ashanti Naomi', '10:00am'),
-                      ],
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-        ],
+
+            const SizedBox(height: 20),
+
+            // --- Employee Tracking ---
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D2364),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Employee Tracking',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        getTodayLabel(),
+                        style: const TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 12),
+                      StreamBuilder<List<Map<String, dynamic>>>(
+                        stream: _attendanceStream,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const SizedBox(
+                              height: 120,
+                              child: Center(
+                                child: CircularProgressIndicator(color: Colors.white),
+                              ),
+                            );
+                          }
+
+                          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                            return const SizedBox(
+                              height: 120,
+                              child: Center(
+                                child: Text(
+                                  "No tap-in records yet",
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                              ),
+                            );
+                          }
+
+                          final attendance = snapshot.data!;
+                          return SizedBox(
+                            height: 150,
+                            child: SingleChildScrollView(
+                              child: Table(
+                                columnWidths: const {
+                                  0: FlexColumnWidth(2),
+                                  1: FlexColumnWidth(1),
+                                },
+                                children: attendance.map((log) {
+                                  final name = log['name'] ?? '';
+                                  final timeIn = DateTime.parse(log['timeIn']).toLocal();
+                                  final formattedTime =
+                                  TimeOfDay.fromDateTime(timeIn).format(context);
+                                  return _buildEmployeeRow(name, formattedTime);
+                                }).toList(),
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

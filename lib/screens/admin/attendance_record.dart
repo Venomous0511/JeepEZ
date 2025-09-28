@@ -129,10 +129,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         .snapshots();
   }
 
-  String formatDateTime(DateTime dateTime) {
-    final time = DateFormat('hh:mm:ss a').format(dateTime);
-    final date = DateFormat('yyyy-MM-dd').format(dateTime);
-    return "$time\t$date";
+  String formatTime(DateTime dateTime) {
+    return DateFormat('hh:mm:ss a').format(dateTime);
+  }
+
+  String formatDate(DateTime dateTime) {
+    return DateFormat('yyyy-MM-dd').format(dateTime);
   }
 
   @override
@@ -230,6 +232,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             DataColumn(label: Text("Employee's ID")),
                             DataColumn(label: Text("Employee's Name")),
                             DataColumn(label: Text("Vehicle Unit")),
+                            DataColumn(label: Text("Date")),
                             DataColumn(label: Text("Time In")),
                             DataColumn(label: Text("Time Out")),
                           ],
@@ -247,6 +250,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             }
 
                             return matches.map((match) {
+                              final dateString = match['timeIn'] != null
+                                  ? formatDate(DateTime.parse(match['timeIn']).toLocal())
+                                  : (match['timeOut'] != null
+                                  ? formatDate(DateTime.parse(match['timeOut']).toLocal())
+                                  : '');
+
+                              final timeInString = match['timeIn'] != null
+                                  ? formatTime(DateTime.parse(match['timeIn']).toLocal())
+                                  : '';
+
+                              final timeOutString = match['timeOut'] != null
+                                  ? formatTime(DateTime.parse(match['timeOut']).toLocal())
+                                  : '';
+
                               return DataRow(
                                 cells: [
                                   DataCell(
@@ -255,38 +272,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                   DataCell(Text(name)),
                                   DataCell(
                                     Text(
-                                      match['unit'] != null &&
-                                              match['unit']
-                                                  .toString()
-                                                  .isNotEmpty
+                                      match['unit'] != null && match['unit'].toString().isNotEmpty
                                           ? "Unit ${match['unit']}"
                                           : (user['assignedVehicle'] != null
-                                                ? "Unit ${user['assignedVehicle']}"
-                                                : ''),
+                                          ? "Unit ${user['assignedVehicle']}"
+                                          : ''),
                                     ),
                                   ),
-                                  DataCell(
-                                    Text(
-                                      match['timeIn'] != null
-                                          ? formatDateTime(
-                                              DateTime.parse(
-                                                match['timeIn'],
-                                              ).toLocal(),
-                                            )
-                                          : '',
-                                    ),
-                                  ),
-                                  DataCell(
-                                    Text(
-                                      match['timeOut'] != null
-                                          ? formatDateTime(
-                                              DateTime.parse(
-                                                match['timeOut'],
-                                              ).toLocal(),
-                                            )
-                                          : '',
-                                    ),
-                                  ),
+                                  DataCell(Text(dateString)),
+                                  DataCell(Text(timeInString)),
+                                  DataCell(Text(timeOutString)),
                                 ],
                               );
                             });
