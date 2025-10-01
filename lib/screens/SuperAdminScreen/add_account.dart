@@ -21,6 +21,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
 
   bool loading = false;
   String role = "conductor";
+  bool _obscurePassword = true; // Added for show/hide password
 
   /// ----------- GET AND CREATE SECONDARY FUNCTION -----------
   Future<FirebaseApp> _getOrCreateSecondaryApp() async {
@@ -74,18 +75,102 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     });
   }
 
+  /// ----------- VALIDATE GMAIL FUNCTION -----------
+  bool _isValidGmail(String email) {
+    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@gmail\.com$');
+    return emailRegex.hasMatch(email);
+  }
+
+  /// ----------- VALIDATE PASSWORD FUNCTION -----------
+  String? _validatePassword(String password) {
+    if (password.isEmpty) {
+      return 'Password is required';
+    }
+
+    if (password.length < 8) {
+      return 'Password must be at least 8 characters';
+    }
+
+    // Check for uppercase letters
+    if (!RegExp(r'[A-Z]').hasMatch(password)) {
+      return 'Password must contain at least one uppercase letter';
+    }
+
+    // Check for lowercase letters
+    if (!RegExp(r'[a-z]').hasMatch(password)) {
+      return 'Password must contain at least one lowercase letter';
+    }
+
+    // Check for numbers
+    if (!RegExp(r'[0-9]').hasMatch(password)) {
+      return 'Password must contain at least one number';
+    }
+
+    // Check for special characters
+    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password)) {
+      return 'Password must contain at least one special character';
+    }
+
+    return null; // Password is valid
+  }
+
   /// ----------- CREATE FUNCTION -----------
   Future<void> _createUser() async {
-    if (emailCtrl.text.trim().isEmpty || passCtrl.text.trim().length < 8) {
+    final email = emailCtrl.text.trim();
+    final password = passCtrl.text.trim();
+    final name = nameCtrl.text.trim();
+    final employeeId = employeeIDCtrl.text.trim();
+
+    // Name validation - 20 characters limit
+    if (name.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Please enter full name')));
+      }
+      return;
+    }
+
+    if (name.length > 20) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Enter email and 8+ char password')),
+          const SnackBar(content: Text('Name must be 20 characters or less')),
         );
       }
       return;
     }
 
-    if (employeeIDCtrl.text.trim().isEmpty) {
+    // Email validation - Gmail only
+    if (email.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter email address')),
+        );
+      }
+      return;
+    }
+
+    if (!_isValidGmail(email)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Only Gmail accounts are allowed')),
+        );
+      }
+      return;
+    }
+
+    // Password validation
+    final passwordError = _validatePassword(password);
+    if (passwordError != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(passwordError)));
+      }
+      return;
+    }
+
+    if (employeeId.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Employee ID not generated')),
@@ -97,10 +182,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     setState(() => loading = true);
 
     try {
-      final email = emailCtrl.text.trim();
-      final password = passCtrl.text.trim();
-      final employeeId = employeeIDCtrl.text.trim();
-
       // Create User In Secondary Auth Instance
       final secondaryApp = await _getOrCreateSecondaryApp();
       final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
@@ -115,7 +196,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         'uid': newUid,
         'email': email,
         'employeeId': employeeId,
-        'name': nameCtrl.text.trim(),
+        'name': name,
         'role': role,
         'status': true,
         'createdAt': FieldValue.serverTimestamp(),
@@ -124,7 +205,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
 
       await FirebaseFirestore.instance.collection('notifications').add({
         'title': 'New Account Created',
-        'message': '${nameCtrl.text.trim()} has been added as $role',
+        'message': '$name has been added as $role',
         'time': FieldValue.serverTimestamp(),
         'dismissed': false,
         'type': 'updates',
@@ -220,6 +301,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
 
                   TextField(
                     controller: nameCtrl,
+                    maxLength: 36, // Added 20 character limit
                     decoration: const InputDecoration(
                       labelText: 'Full Name',
                       border: OutlineInputBorder(),
@@ -227,6 +309,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                         horizontal: 12,
                         vertical: 8,
                       ),
+                      counterText: "", // Hide character counter
                     ),
                   ),
 
@@ -242,20 +325,44 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                         vertical: 8,
                       ),
                     ),
+                    keyboardType: TextInputType.emailAddress,
                   ),
 
                   const SizedBox(height: 12),
 
                   TextField(
                     controller: passCtrl,
-                    obscureText: true,
-                    decoration: const InputDecoration(
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
                       labelText: 'Password',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
+                      hintText: 'Include A-Z, a-z, 0-9, and special characters',
+                      border: const OutlineInputBorder(),
+                      contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 8,
                       ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          color: Colors.grey,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+
+                  // Password requirements hint
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0, left: 4.0),
+                    child: Text(
+                      'Password must contain:\n• Uppercase letter (A-Z)\n• Lowercase letter (a-z)\n• Number (0-9)\n• Special character (!@#\$%^&* etc.)',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                   ),
 
@@ -273,7 +380,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                   const SizedBox(height: 12),
 
                   DropdownButtonFormField<String>(
-                    value: role,
+                    initialValue: role,
                     decoration: const InputDecoration(
                       labelText: 'Role',
                       border: OutlineInputBorder(),

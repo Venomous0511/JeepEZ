@@ -542,7 +542,7 @@ class _DriverConductorManagementScreenState
                         scrollDirection: Axis.horizontal,
                         child: DataTable(
                           columnSpacing: 16,
-                          headingRowColor: MaterialStateColor.resolveWith(
+                          headingRowColor: WidgetStateColor.resolveWith(
                             (states) => Colors.grey.shade100,
                           ),
                           columns: const [

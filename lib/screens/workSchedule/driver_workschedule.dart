@@ -9,7 +9,7 @@ class WorkScheduleScreen extends StatefulWidget {
 
 class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
   final PageController _pageController = PageController();
-  int _currentPage = 0;
+  final int _currentPage = 0;
   final List<Map<String, String>> _schedules = [
     {
       'title': 'Regular Work Shift',

@@ -8,7 +8,7 @@ class MaintenanceScreen extends StatefulWidget {
 }
 
 class _MaintenanceScreenState extends State<MaintenanceScreen> {
-  String selectedVehicle = 'UNIT 01';
+  String selectedVehicle = 'UNIT 2101';
 
   // Sample maintenance data for each vehicle unit
   final Map<String, List<Map<String, dynamic>>> maintenanceData = {
@@ -46,13 +46,13 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
         'assigned': 'mechanic',
       },
     ],
-    'UNIT 04': [],
-    'UNIT 05': [],
-    'UNIT 06': [],
-    'UNIT 07': [],
-    'UNIT 08': [],
-    'UNIT 09': [],
-    'UNIT 20': [
+    'UNIT 2104': [],
+    'UNIT 2105': [],
+    'UNIT 2106': [],
+    'UNIT 2107': [],
+    'UNIT 2108': [],
+    'UNIT 2109': [],
+    'UNIT 2120': [
       {
         'title': 'Replace Tires',
         'issueDate': 'Dec 15, 2021 12:17 AM',

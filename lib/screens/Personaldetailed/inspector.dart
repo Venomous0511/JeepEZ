@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
-// Import your login screen
-import '../../screens/login_screen.dart'; // Make sure to import your login screen
+import '../../screens/login_screen.dart';
 
 class PersonalDetails extends StatefulWidget {
   final AppUser user;

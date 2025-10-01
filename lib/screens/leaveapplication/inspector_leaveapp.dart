@@ -131,7 +131,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                         _buildFormSection(
                           label: 'Type of Leave',
                           child: DropdownButtonFormField<String>(
-                            value: _selectedLeaveType,
+                            initialValue: _selectedLeaveType,
                             decoration: InputDecoration(
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8.0),

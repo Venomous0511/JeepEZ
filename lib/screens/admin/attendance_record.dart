@@ -233,8 +233,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             DataColumn(label: Text("Employee's Name")),
                             DataColumn(label: Text("Vehicle Unit")),
                             DataColumn(label: Text("Date")),
-                            DataColumn(label: Text("Time In")),
-                            DataColumn(label: Text("Time Out")),
+                            DataColumn(label: Text("Tap In")),
+                            DataColumn(label: Text("Tap Out")),
+                            DataColumn(label: Text("Trips")),
                           ],
                           rows: docs.expand<DataRow>((doc) {
                             final user = doc.data() as Map<String, dynamic>;
@@ -251,17 +252,29 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
                             return matches.map((match) {
                               final dateString = match['timeIn'] != null
-                                  ? formatDate(DateTime.parse(match['timeIn']).toLocal())
+                                  ? formatDate(
+                                      DateTime.parse(match['timeIn']).toLocal(),
+                                    )
                                   : (match['timeOut'] != null
-                                  ? formatDate(DateTime.parse(match['timeOut']).toLocal())
-                                  : '');
+                                        ? formatDate(
+                                            DateTime.parse(
+                                              match['timeOut'],
+                                            ).toLocal(),
+                                          )
+                                        : '');
 
                               final timeInString = match['timeIn'] != null
-                                  ? formatTime(DateTime.parse(match['timeIn']).toLocal())
+                                  ? formatTime(
+                                      DateTime.parse(match['timeIn']).toLocal(),
+                                    )
                                   : '';
 
                               final timeOutString = match['timeOut'] != null
-                                  ? formatTime(DateTime.parse(match['timeOut']).toLocal())
+                                  ? formatTime(
+                                      DateTime.parse(
+                                        match['timeOut'],
+                                      ).toLocal(),
+                                    )
                                   : '';
 
                               return DataRow(
@@ -272,11 +285,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                   DataCell(Text(name)),
                                   DataCell(
                                     Text(
-                                      match['unit'] != null && match['unit'].toString().isNotEmpty
+                                      match['unit'] != null &&
+                                              match['unit']
+                                                  .toString()
+                                                  .isNotEmpty
                                           ? "Unit ${match['unit']}"
                                           : (user['assignedVehicle'] != null
-                                          ? "Unit ${user['assignedVehicle']}"
-                                          : ''),
+                                                ? "Unit ${user['assignedVehicle']}"
+                                                : ''),
                                     ),
                                   ),
                                   DataCell(Text(dateString)),

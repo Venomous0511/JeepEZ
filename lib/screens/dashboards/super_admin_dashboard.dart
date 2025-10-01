@@ -92,19 +92,23 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                   return;
                 }
 
-                await FirebaseFirestore.instance.collection('notifications').add({
-                  'title': title,
-                  'message': message,
-                  'time': FieldValue.serverTimestamp(),
-                  'dismissed': false,
-                  'type': 'system',
-                  'createdBy': widget.user.role,
-                });
+                await FirebaseFirestore.instance
+                    .collection('notifications')
+                    .add({
+                      'title': title,
+                      'message': message,
+                      'time': FieldValue.serverTimestamp(),
+                      'dismissed': false,
+                      'type': 'system',
+                      'createdBy': widget.user.role,
+                    });
 
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Notification added successfully!")),
+                    const SnackBar(
+                      content: Text("Notification added successfully!"),
+                    ),
                   );
                 }
               },
@@ -119,7 +123,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   /// ---------------- HOME SCREEN ----------------
 
   IconData _getIconForType(String type) {
-    switch (type){
+    switch (type) {
       case 'system':
         return Icons.system_update_alt;
       case 'security':
@@ -192,7 +196,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                             ),
                             title: Text(
                               data['title'],
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -214,9 +220,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                             trailing: IconButton(
                               icon: const Icon(Icons.close, size: 18),
                               onPressed: () async {
-                                await docs[index]
-                                    .reference
-                                    .update({'dismissed': true});
+                                await docs[index].reference.update({
+                                  'dismissed': true,
+                                });
                               },
                             ),
                           ),
@@ -241,7 +247,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
             tooltip: 'Add Notification',
             child: const Icon(Icons.add),
           ),
-
         ),
       ],
     );
@@ -275,8 +280,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     try {
       // show loading for 3 seconds before signing out
       await Future.delayed(const Duration(seconds: 3));
-      await AuthService()
-          .logout();
+      await AuthService().logout();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -449,60 +453,64 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   }
 }
 
-  /// ---------------- MANUAL NOTIFICATION  ----------------
-  Future<void> createSystemNotification(String title, String message, String role) async {
-    final userQuery = await FirebaseFirestore.instance
-        .collection('users')
-        .where('role', isEqualTo: role)
-        .limit(1)
-        .get();
+/// ---------------- MANUAL NOTIFICATION  ----------------
+Future<void> createSystemNotification(
+  String title,
+  String message,
+  String role,
+) async {
+  final userQuery = await FirebaseFirestore.instance
+      .collection('users')
+      .where('role', isEqualTo: role)
+      .limit(1)
+      .get();
 
-    if (userQuery.docs.isNotEmpty && role == 'super_admin') {
-      await FirebaseFirestore.instance.collection('notifications').add({
-        'title': title,
-        'message': message,
-        'time': FieldValue.serverTimestamp(),
-        'dismissed': false,
-        'type': 'system',
-        'createdBy': role,
-      });
-    } else {
-      throw Exception('Not authorized to create system notifications');
-    }
-  }
-
-  /// ---------------- AUTOMATIC NOTIFICATION  ----------------
-  Future<void> addEmployee(String name, String email) async {
-    final usersRef = FirebaseFirestore.instance.collection('users');
-
-    // Create employee
-    await usersRef.add({
-      'name': name,
-      'email': email,
-      'role': 'employee',
-      'createdAt': FieldValue.serverTimestamp(),
-      'createdBy': name
-    });
-
-    // Create system notification
+  if (userQuery.docs.isNotEmpty && role == 'super_admin') {
     await FirebaseFirestore.instance.collection('notifications').add({
-      'title': 'New Employee Registered',
-      'message': '$name has been added to the system',
-      'time': FieldValue.serverTimestamp(),
-      'dismissed': false,
-      'type': 'system',
-      'createdBy': 'system',
-    });
-  }
-
-  /// ---------------- AUTOMATIC SECURITY NOTIFICATION  ----------------
-  Future<void> logSecurityWarning(String message) async {
-    await FirebaseFirestore.instance.collection('notifications').add({
-      'title': 'Security Warning',
+      'title': title,
       'message': message,
       'time': FieldValue.serverTimestamp(),
       'dismissed': false,
-      'type': 'security',
-      'createdBy': 'system',
+      'type': 'system',
+      'createdBy': role,
     });
+  } else {
+    throw Exception('Not authorized to create system notifications');
   }
+}
+
+/// ---------------- AUTOMATIC NOTIFICATION  ----------------
+Future<void> addEmployee(String name, String email) async {
+  final usersRef = FirebaseFirestore.instance.collection('users');
+
+  // Create employee
+  await usersRef.add({
+    'name': name,
+    'email': email,
+    'role': 'employee',
+    'createdAt': FieldValue.serverTimestamp(),
+    'createdBy': name,
+  });
+
+  // Create system notification
+  await FirebaseFirestore.instance.collection('notifications').add({
+    'title': 'New Employee Registered',
+    'message': '$name has been added to the system',
+    'time': FieldValue.serverTimestamp(),
+    'dismissed': false,
+    'type': 'system',
+    'createdBy': 'system',
+  });
+}
+
+/// ---------------- AUTOMATIC SECURITY NOTIFICATION  ----------------
+Future<void> logSecurityWarning(String message) async {
+  await FirebaseFirestore.instance.collection('notifications').add({
+    'title': 'Security Warning',
+    'message': message,
+    'time': FieldValue.serverTimestamp(),
+    'dismissed': false,
+    'type': 'security',
+    'createdBy': 'system',
+  });
+}

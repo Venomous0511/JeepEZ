@@ -258,24 +258,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
         .where('status', isEqualTo: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'name': data['name'],
-          'assignedVehicle': data['assignedVehicle'],
-          'schedule': data['schedule'],
-          'role': data['role'],
-        };
-      }).where((user) {
-        final schedule = user['schedule'] as String? ?? '';
-        final role = user['role'] as String? ?? '';
-        return role == 'driver' && schedule.contains(today);
-      }).toList();
-    });
+          return snapshot.docs
+              .map((doc) {
+                final data = doc.data();
+                return {
+                  'name': data['name'],
+                  'assignedVehicle': data['assignedVehicle'],
+                  'schedule': data['schedule'],
+                  'role': data['role'],
+                };
+              })
+              .where((user) {
+                final schedule = user['schedule'] as String? ?? '';
+                final role = user['role'] as String? ?? '';
+                return role == 'driver' && schedule.contains(today);
+              })
+              .toList();
+        });
   }
 
   /// Fetch and process attendance logs from backend
-  Future<List<Map<String, dynamic>>> fetchAttendance(DateTime targetDate,) async {
+  Future<List<Map<String, dynamic>>> fetchAttendance(
+    DateTime targetDate,
+  ) async {
     final response = await http.get(
       Uri.parse("https://jeepez-attendance.onrender.com/api/logs"),
     );
@@ -302,7 +307,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
       grouped.forEach((key, logs) {
         logs.sort(
-              (a, b) => DateTime.parse(
+          (a, b) => DateTime.parse(
             a['timestamp'],
           ).compareTo(DateTime.parse(b['timestamp'])),
         );
@@ -599,71 +604,81 @@ class _HomeScreenState extends State<HomeScreen> {
     return http
         .get(Uri.parse("https://jeepez-attendance.onrender.com/api/logs"))
         .then((response) {
-      if (response.statusCode != 200) throw Exception("Failed to load attendance");
-      final List data = json.decode(response.body);
-      final filterDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+          if (response.statusCode != 200)
+            throw Exception("Failed to load attendance");
+          final List data = json.decode(response.body);
+          final filterDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-      // same grouping logic here — or better, call a shared function from AdminDashboard
-      final Map<String, List<Map<String, dynamic>>> grouped = {};
-      for (var log in data) {
-        final logDate = DateFormat('yyyy-MM-dd')
-            .format(DateTime.parse(log['timestamp']).toLocal());
-        if (logDate == filterDate) {
-          final key = "${log['name']}_$logDate";
-          grouped.putIfAbsent(key, () => []).add(log);
-        }
-      }
-
-      final List<Map<String, dynamic>> attendance = [];
-      grouped.forEach((key, logs) {
-        logs.sort((a, b) => DateTime.parse(a['timestamp'])
-            .compareTo(DateTime.parse(b['timestamp'])));
-
-        String name = logs.first['name'];
-        String date = logs.first['date'];
-        int inCount = 0, outCount = 0;
-        Map<String, dynamic>? currentIn;
-
-        for (var log in logs) {
-          if (log['type'] == 'tap-in' && inCount < 4) {
-            currentIn = log;
-            inCount++;
-          } else if (log['type'] == 'tap-out' &&
-              currentIn != null &&
-              outCount < 4) {
-            attendance.add({
-              "name": name,
-              "date": date,
-              "timeIn": currentIn['timestamp'],
-              "timeOut": log['timestamp'],
-              "unit": log["unit"] ?? "",
-            });
-            outCount++;
-            currentIn = null;
+          // same grouping logic here — or better, call a shared function from AdminDashboard
+          final Map<String, List<Map<String, dynamic>>> grouped = {};
+          for (var log in data) {
+            final logDate = DateFormat(
+              'yyyy-MM-dd',
+            ).format(DateTime.parse(log['timestamp']).toLocal());
+            if (logDate == filterDate) {
+              final key = "${log['name']}_$logDate";
+              grouped.putIfAbsent(key, () => []).add(log);
+            }
           }
-        }
 
-        if (currentIn != null && inCount <= 4) {
-          attendance.add({
-            "name": name,
-            "date": date,
-            "timeIn": currentIn['timestamp'],
-            "timeOut": null,
-            "unit": currentIn["unit"] ?? "",
+          final List<Map<String, dynamic>> attendance = [];
+          grouped.forEach((key, logs) {
+            logs.sort(
+              (a, b) => DateTime.parse(
+                a['timestamp'],
+              ).compareTo(DateTime.parse(b['timestamp'])),
+            );
+
+            String name = logs.first['name'];
+            String date = logs.first['date'];
+            int inCount = 0, outCount = 0;
+            Map<String, dynamic>? currentIn;
+
+            for (var log in logs) {
+              if (log['type'] == 'tap-in' && inCount < 4) {
+                currentIn = log;
+                inCount++;
+              } else if (log['type'] == 'tap-out' &&
+                  currentIn != null &&
+                  outCount < 4) {
+                attendance.add({
+                  "name": name,
+                  "date": date,
+                  "timeIn": currentIn['timestamp'],
+                  "timeOut": log['timestamp'],
+                  "unit": log["unit"] ?? "",
+                });
+                outCount++;
+                currentIn = null;
+              }
+            }
+
+            if (currentIn != null && inCount <= 4) {
+              attendance.add({
+                "name": name,
+                "date": date,
+                "timeIn": currentIn['timestamp'],
+                "timeOut": null,
+                "unit": currentIn["unit"] ?? "",
+              });
+            }
           });
-        }
-      });
 
-      return attendance;
-    });
+          return attendance;
+        });
   }
 
   /// Get today's label
   String getTodayLabel() {
     final now = DateTime.now();
     const weekdays = [
-      'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-      'Friday', 'Saturday', 'Sunday'
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
     ];
     return 'Today | ${weekdays[now.weekday - 1]}';
   }
@@ -740,15 +755,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(getTodayLabel(),
-                        style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                    Text(
+                      getTodayLabel(),
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
                     const Divider(),
                     const SizedBox(height: 8),
                     StreamBuilder<List<Map<String, dynamic>>>(
                       stream: widget.vehicleStream,
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
                         }
 
                         if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -763,7 +783,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: assignments.map((item) {
                             final vehicleId =
-                                item['assignedVehicle']?.toString() ?? 'Unknown';
+                                item['assignedVehicle']?.toString() ??
+                                'Unknown';
                             final driverName = item['name'] ?? 'Unknown Driver';
                             return Text('$driverName — UNIT $vehicleId');
                           }).toList(),
@@ -804,17 +825,23 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 8),
                       Text(
                         getTodayLabel(),
-                        style: const TextStyle(fontSize: 14, color: Colors.grey),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       StreamBuilder<List<Map<String, dynamic>>>(
                         stream: _attendanceStream,
                         builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
                             return const SizedBox(
                               height: 120,
                               child: Center(
-                                child: CircularProgressIndicator(color: Colors.white),
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
                               ),
                             );
                           }
@@ -842,16 +869,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                 },
                                 children: attendance.map((log) {
                                   final name = log['name'] ?? '';
-                                  final timeIn = DateTime.parse(log['timeIn']).toLocal();
-                                  final formattedTime =
-                                  TimeOfDay.fromDateTime(timeIn).format(context);
+                                  final timeIn = DateTime.parse(
+                                    log['timeIn'],
+                                  ).toLocal();
+                                  final formattedTime = TimeOfDay.fromDateTime(
+                                    timeIn,
+                                  ).format(context);
                                   return _buildEmployeeRow(name, formattedTime);
                                 }).toList(),
                               ),
                             ),
                           );
                         },
-                      )
+                      ),
                     ],
                   ),
                 ),

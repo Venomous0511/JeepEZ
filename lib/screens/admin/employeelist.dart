@@ -94,7 +94,9 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           .snapshots(),
                       builder: (context, snap) {
                         if (snap.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
                         }
                         if (!snap.hasData || snap.data!.docs.isEmpty) {
                           return const Center(child: Text('No users yet.'));
@@ -111,9 +113,15 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                         if (query.isNotEmpty) {
                           employeeDocs = employeeDocs.where((d) {
                             final data = d.data() as Map<String, dynamic>;
-                            final name = (data['name'] ?? '').toString().toLowerCase();
-                            final email = (data['email'] ?? '').toString().toLowerCase();
-                            final empId = (data['employeeId'] ?? '').toString().toLowerCase();
+                            final name = (data['name'] ?? '')
+                                .toString()
+                                .toLowerCase();
+                            final email = (data['email'] ?? '')
+                                .toString()
+                                .toLowerCase();
+                            final empId = (data['employeeId'] ?? '')
+                                .toString()
+                                .toLowerCase();
                             return name.contains(query) ||
                                 email.contains(query) ||
                                 empId.contains(query);
@@ -155,7 +163,9 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
-                                        data['status'] == true ? "Active" : "Inactive",
+                                        data['status'] == true
+                                            ? "Active"
+                                            : "Inactive",
                                         style: TextStyle(
                                           color: data['status'] == true
                                               ? Colors.green
@@ -171,12 +181,20 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                     Row(
                                       children: [
                                         IconButton(
-                                          icon: const Icon(Icons.edit, color: Colors.blue),
-                                          onPressed: () => _editUser(d.id, data),
+                                          icon: const Icon(
+                                            Icons.edit,
+                                            color: Colors.blue,
+                                          ),
+                                          onPressed: () =>
+                                              _editUser(d.id, data),
                                         ),
                                         IconButton(
-                                          icon: const Icon(Icons.delete, color: Colors.red),
-                                          onPressed: () => _deleteUser(d.id, data),
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () =>
+                                              _deleteUser(d.id, data),
                                         ),
                                       ],
                                     ),
@@ -291,12 +309,24 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: role,
+                      initialValue: role,
                       items: const [
-                        DropdownMenuItem(value: "legal_officer", child: Text("Legal Officer")),
-                        DropdownMenuItem(value: "driver", child: Text("Driver")),
-                        DropdownMenuItem(value: "conductor", child: Text("Conductor")),
-                        DropdownMenuItem(value: "inspector", child: Text("Inspector")),
+                        DropdownMenuItem(
+                          value: "legal_officer",
+                          child: Text("Legal Officer"),
+                        ),
+                        DropdownMenuItem(
+                          value: "driver",
+                          child: Text("Driver"),
+                        ),
+                        DropdownMenuItem(
+                          value: "conductor",
+                          child: Text("Conductor"),
+                        ),
+                        DropdownMenuItem(
+                          value: "inspector",
+                          child: Text("Inspector"),
+                        ),
                       ],
                       onChanged: (value) async {
                         if (value != null) {
@@ -314,13 +344,21 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       ),
                     ),
 
-                    if (role == "driver" || role == "conductor" || role == "inspector") ...[
+                    if (role == "driver" ||
+                        role == "conductor" ||
+                        role == "inspector") ...[
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        value: employmentType,
+                        initialValue: employmentType,
                         items: const [
-                          DropdownMenuItem(value: "full_time", child: Text("Full-Time")),
-                          DropdownMenuItem(value: "part_time", child: Text("Part-Time")),
+                          DropdownMenuItem(
+                            value: "full_time",
+                            child: Text("Full-Time"),
+                          ),
+                          DropdownMenuItem(
+                            value: "part_time",
+                            child: Text("Part-Time"),
+                          ),
                         ],
                         onChanged: (value) {
                           setState(() {
@@ -345,72 +383,88 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   onPressed: loading
                       ? null
                       : () async {
-                    if (emailCtrl.text.isEmpty || passCtrl.text.length < 8) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Enter email and 8+ char password")),
-                        );
-                      }
-                      return;
-                    }
+                          if (emailCtrl.text.isEmpty ||
+                              passCtrl.text.length < 8) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "Enter email and 8+ char password",
+                                  ),
+                                ),
+                              );
+                            }
+                            return;
+                          }
 
-                    if (employeeIdCtrl.text.isEmpty) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Employee ID not generated")),
-                        );
-                      }
-                      return;
-                    }
+                          if (employeeIdCtrl.text.isEmpty) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Employee ID not generated"),
+                                ),
+                              );
+                            }
+                            return;
+                          }
 
-                    setState(() => loading = true);
+                          setState(() => loading = true);
 
-                    try {
-                      final newUser = {
-                        "employeeId": employeeIdCtrl.text.trim(),
-                        "name": nameCtrl.text.trim(),
-                        "email": emailCtrl.text.trim(),
-                        "role": role,
-                        "status": true,
-                        if (employmentType != null) "employmentType": employmentType,
-                        "createdAt": FieldValue.serverTimestamp(),
-                        "createdBy": widget.user.email,
-                      };
+                          try {
+                            final newUser = {
+                              "employeeId": employeeIdCtrl.text.trim(),
+                              "name": nameCtrl.text.trim(),
+                              "email": emailCtrl.text.trim(),
+                              "role": role,
+                              "status": true,
+                              if (employmentType != null)
+                                "employmentType": employmentType,
+                              "createdAt": FieldValue.serverTimestamp(),
+                              "createdBy": widget.user.email,
+                            };
 
-                      await FirebaseFirestore.instance.collection("users").add(newUser);
+                            await FirebaseFirestore.instance
+                                .collection("users")
+                                .add(newUser);
 
-                      await FirebaseFirestore.instance.collection("notifications").add({
-                        "title": "New Account",
-                        "message":
-                        "Added account for ${nameCtrl.text.trim()} as $role",
-                        "time": FieldValue.serverTimestamp(),
-                        "dismissed": false,
-                        "type": "new",
-                        "createdBy": widget.user.email,
-                      });
+                            await FirebaseFirestore.instance
+                                .collection("notifications")
+                                .add({
+                                  "title": "New Account",
+                                  "message":
+                                      "Added account for ${nameCtrl.text.trim()} as $role",
+                                  "time": FieldValue.serverTimestamp(),
+                                  "dismissed": false,
+                                  "type": "new",
+                                  "createdBy": widget.user.email,
+                                });
 
-                      if (context.mounted) {
-                        Navigator.pop(dialogCtx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("User ${nameCtrl.text} created successfully")),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Error: $e")),
-                        );
-                      }
-                    } finally {
-                      setState(() => loading = false);
-                    }
-                  },
+                            if (context.mounted) {
+                              Navigator.pop(dialogCtx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    "User ${nameCtrl.text} created successfully",
+                                  ),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("Error: $e")),
+                              );
+                            }
+                          } finally {
+                            setState(() => loading = false);
+                          }
+                        },
                   child: loading
                       ? const SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Text("Create"),
                 ),
               ],
@@ -433,13 +487,25 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Name")),
-            TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: "Email")),
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(labelText: "Name"),
+            ),
+            TextField(
+              controller: emailCtrl,
+              decoration: const InputDecoration(labelText: "Email"),
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text("Update")),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Update"),
+          ),
         ],
       ),
     );
@@ -471,12 +537,20 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Deactivate User"),
-        content: Text("Deactivate ${data['email']}? This will archive and free the slot."),
+        content: Text(
+          "Deactivate ${data['email']}? This will archive and free the slot.",
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text("Deactivate", style: TextStyle(color: Colors.red)),
+            child: const Text(
+              "Deactivate",
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -490,12 +564,15 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       final userData = snap.data()!;
 
       // Archive the user
-      await FirebaseFirestore.instance.collection('archived_users').doc(docId).set({
-        ...userData,
-        "archivedAt": FieldValue.serverTimestamp(),
-        "archivedBy": widget.user.email,
-        "status": false,
-      });
+      await FirebaseFirestore.instance
+          .collection('archived_users')
+          .doc(docId)
+          .set({
+            ...userData,
+            "archivedAt": FieldValue.serverTimestamp(),
+            "archivedBy": widget.user.email,
+            "status": false,
+          });
 
       // Update the original user record to reflect deactivation
       await userRef.update({
@@ -515,7 +592,9 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("User ${data['email']} deactivated successfully")),
+        SnackBar(
+          content: Text("User ${data['email']} deactivated successfully"),
+        ),
       );
     }
   }
