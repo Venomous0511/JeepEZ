@@ -593,7 +593,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Google Map related
   GoogleMapController? mapController;
-  LatLngBounds? _lastBounds;
 
   @override
   void initState() {
