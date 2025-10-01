@@ -649,46 +649,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // }
 
   /// Fit all markers into view
-  // Future<void> _fitAllMarkers(Iterable<Marker> markers) async {
-  //   if (mapController == null || markers.isEmpty) return;
-  //
-  //   // compute bounds
-  //   double? north, south, east, west;
-  //   for (final m in markers) {
-  //     final lat = m.position.latitude;
-  //     final lng = m.position.longitude;
-  //     if (north == null || lat > north) north = lat;
-  //     if (south == null || lat < south) south = lat;
-  //     if (east == null || lng > east) east = lng;
-  //     if (west == null || lng < west) west = lng;
-  //   }
-  //
-  //   if (north == null || south == null || east == null || west == null) return;
-  //
-  //   final bounds = LatLngBounds(
-  //     northeast: LatLng(north, east),
-  //     southwest: LatLng(south, west),
-  //   );
-  //
-  //   // prevent frequent identical animations
-  //   if (_lastBounds != null &&
-  //       _lastBounds!.northeast == bounds.northeast &&
-  //       _lastBounds!.southwest == bounds.southwest) {
-  //     return;
-  //   }
-  //   _lastBounds = bounds;
-  //
-  //   // small padding
-  //   final padding = 80.0;
-  //   try {
-  //     await mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, padding));
-  //   } catch (e) {
-  //     // sometimes animateCamera with bounds fails if map not fully ready; fallback:
-  //     final centerLat = (north + south) / 2;
-  //     final centerLng = (east + west) / 2;
-  //     await mapController!.animateCamera(CameraUpdate.newLatLngZoom(LatLng(centerLat, centerLng), 12));
-  //   }
-  // }
   Future<void> _fitAllMarkers(Set<Marker> markers) async {
     if (markers.isEmpty || mapController == null) return;
 
