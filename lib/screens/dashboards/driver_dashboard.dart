@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../models/app_user.dart';
@@ -44,6 +46,9 @@ class _DriverDashboardState extends State<DriverDashboard> {
   int _currentIndex = 0;
   late List<Widget> _screens;
 
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
   @override
   void initState() {
     super.initState();
@@ -62,6 +67,15 @@ class _DriverDashboardState extends State<DriverDashboard> {
       const VehicleChecklistScreen(),
       const LeaveApplicationScreen(),
     ];
+  }
+
+  Stream<Position> getPositionStream() {
+    return Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10, // meters before update triggers
+      ),
+    );
   }
 
   Widget _buildHomeScreen() {
