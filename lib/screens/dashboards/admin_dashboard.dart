@@ -1,7 +1,10 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import '../../models/app_user.dart';
@@ -43,7 +46,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   /// ---------------- FETCH NOTIFICATIONS ----------------
-  Stream<QuerySnapshot> getNotificationsStream(String role) {
+  Stream<QuerySnapshot<Map<String, dynamic>>> getNotificationsStream(String role) {
     final collection = FirebaseFirestore.instance.collection('notifications');
 
     if (role == 'super_admin' || role == 'admin') {
@@ -100,7 +103,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final batch = FirebaseFirestore.instance.batch();
 
     for (var doc in query.docs) {
-      // Check if document has 'read' field, if not, create it
       final data = doc.data();
       if (!data.containsKey('read')) {
         batch.update(doc.reference, {'read': true});
@@ -127,7 +129,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           title: const Text('Notifications'),
           content: SizedBox(
             width: double.maxFinite,
-            child: StreamBuilder<QuerySnapshot>(
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: getNotificationsStream(widget.user.role),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -143,10 +145,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   shrinkWrap: true,
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
-                    final data = docs[index].data() as Map<String, dynamic>;
+                    final data = docs[index].data();
                     final type = data['type'] ?? 'updates';
                     final message = data['message'] ?? 'No message';
-                    // FIX: Safe check for 'read' field
+                    // Safe check for 'read' field
                     final isRead = data['read'] ?? false;
 
                     return Container(
@@ -258,29 +260,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
         .where('status', isEqualTo: true)
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs
-              .map((doc) {
-                final data = doc.data();
-                return {
-                  'name': data['name'],
-                  'assignedVehicle': data['assignedVehicle'],
-                  'schedule': data['schedule'],
-                  'role': data['role'],
-                };
-              })
-              .where((user) {
-                final schedule = user['schedule'] as String? ?? '';
-                final role = user['role'] as String? ?? '';
-                return role == 'driver' && schedule.contains(today);
-              })
-              .toList();
-        });
+      return snapshot.docs
+          .map((doc) {
+        final data = doc.data();
+        return {
+          'name': data['name'],
+          'assignedVehicle': data['assignedVehicle'],
+          'schedule': data['schedule'],
+          'role': data['role'],
+        };
+      })
+          .where((user) {
+        final schedule = user['schedule'] as String? ?? '';
+        final role = user['role'] as String? ?? '';
+        return role == 'driver' && schedule.contains(today);
+      })
+          .toList();
+    });
   }
 
   /// Fetch and process attendance logs from backend
   Future<List<Map<String, dynamic>>> fetchAttendance(
-    DateTime targetDate,
-  ) async {
+      DateTime targetDate,
+      ) async {
     final response = await http.get(
       Uri.parse("https://jeepez-attendance.onrender.com/api/logs"),
     );
@@ -307,7 +309,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
       grouped.forEach((key, logs) {
         logs.sort(
-          (a, b) => DateTime.parse(
+              (a, b) => DateTime.parse(
             a['timestamp'],
           ).compareTo(DateTime.parse(b['timestamp'])),
         );
@@ -394,14 +396,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          StreamBuilder<QuerySnapshot>(
+          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: getNotificationsStream(widget.user.role),
             builder: (context, snapshot) {
               int unreadCount = 0;
               if (snapshot.hasData) {
-                // FIX: Safe check for 'read' field
                 unreadCount = snapshot.data!.docs.where((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
+                  final data = doc.data();
                   return (data['read'] != true);
                 }).length;
               }
@@ -434,7 +435,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize:
-                                  8, // FIX: Smaller font to prevent overflow
+                              8, // smaller font to prevent overflow
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -515,7 +516,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       context,
                       MaterialPageRoute(
                         builder: (context) =>
-                            const DriverConductorManagementScreen(),
+                        const DriverConductorManagementScreen(),
                       ),
                     );
                   }),
@@ -549,10 +550,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
               trailing: _isLoggingOut
                   ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
                   : null,
               onTap: _isLoggingOut ? null : _signOut,
             ),
@@ -583,14 +584,34 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  /// Attendance Stream
   late Stream<List<Map<String, dynamic>>> _attendanceStream;
+
+  /// Firestore Stream
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _vehicleLocationsStream;
+
+  /// Google Map related
+  GoogleMapController? mapController;
+  LatLngBounds? _lastBounds;
 
   @override
   void initState() {
     super.initState();
+
+    /// Attendance Stream
     _attendanceStream = Stream.periodic(
       const Duration(seconds: 5),
     ).asyncMap((_) => fetchAttendanceNow());
+
+    /// Location Stream
+    _vehicleLocationsStream = _firestore.collection('vehicles_locations').snapshots();
+  }
+
+  @override
+  void dispose() {
+    mapController?.dispose();
+    super.dispose();
   }
 
   /// Refresh dashboard when user pulls down
@@ -599,73 +620,165 @@ class _HomeScreenState extends State<HomeScreen> {
     await Future.delayed(const Duration(milliseconds: 800));
   }
 
+  void _onMapCreated(GoogleMapController controller) {
+    mapController = controller;
+  }
+
+  /// Build markers from query snapshot docs
+  Set<Marker> _buildMarkersFromDocs(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    return docs.map((doc) {
+      final data = doc.data();
+      final vehicleId = data['vehicleId']?.toString() ?? 'Unknown';
+      final lat = data['lat'] as double;
+      final lng = data['lng'] as double;
+
+      return Marker(
+        markerId: MarkerId(vehicleId),
+        position: LatLng(lat, lng),
+        infoWindow: InfoWindow(
+          title: 'Jeepney #$vehicleId',
+          snippet: 'Speed: ${data['speed']} km/h',
+        ),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+      );
+    }).toSet();
+  }
+
+  // Future<void> _moveCameraTo(LatLng pos, {double zoom = 16}) async {
+  //   if (mapController == null) return;
+  //   await mapController!.animateCamera(CameraUpdate.newLatLngZoom(pos, zoom));
+  // }
+
+  /// Fit all markers into view
+  // Future<void> _fitAllMarkers(Iterable<Marker> markers) async {
+  //   if (mapController == null || markers.isEmpty) return;
+  //
+  //   // compute bounds
+  //   double? north, south, east, west;
+  //   for (final m in markers) {
+  //     final lat = m.position.latitude;
+  //     final lng = m.position.longitude;
+  //     if (north == null || lat > north) north = lat;
+  //     if (south == null || lat < south) south = lat;
+  //     if (east == null || lng > east) east = lng;
+  //     if (west == null || lng < west) west = lng;
+  //   }
+  //
+  //   if (north == null || south == null || east == null || west == null) return;
+  //
+  //   final bounds = LatLngBounds(
+  //     northeast: LatLng(north, east),
+  //     southwest: LatLng(south, west),
+  //   );
+  //
+  //   // prevent frequent identical animations
+  //   if (_lastBounds != null &&
+  //       _lastBounds!.northeast == bounds.northeast &&
+  //       _lastBounds!.southwest == bounds.southwest) {
+  //     return;
+  //   }
+  //   _lastBounds = bounds;
+  //
+  //   // small padding
+  //   final padding = 80.0;
+  //   try {
+  //     await mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, padding));
+  //   } catch (e) {
+  //     // sometimes animateCamera with bounds fails if map not fully ready; fallback:
+  //     final centerLat = (north + south) / 2;
+  //     final centerLng = (east + west) / 2;
+  //     await mapController!.animateCamera(CameraUpdate.newLatLngZoom(LatLng(centerLat, centerLng), 12));
+  //   }
+  // }
+  Future<void> _fitAllMarkers(Set<Marker> markers) async {
+    if (markers.isEmpty || mapController == null) return;
+
+    LatLngBounds bounds;
+    if (markers.length == 1) {
+      final m = markers.first.position;
+      bounds = LatLngBounds(
+        southwest: LatLng(m.latitude - 0.01, m.longitude - 0.01),
+        northeast: LatLng(m.latitude + 0.01, m.longitude + 0.01),
+      );
+    } else {
+      final latitudes = markers.map((m) => m.position.latitude).toList();
+      final longitudes = markers.map((m) => m.position.longitude).toList();
+      bounds = LatLngBounds(
+        southwest: LatLng(latitudes.reduce((a, b) => a < b ? a : b),
+            longitudes.reduce((a, b) => a < b ? a : b)),
+        northeast: LatLng(latitudes.reduce((a, b) => a > b ? a : b),
+            longitudes.reduce((a, b) => a > b ? a : b)),
+      );
+    }
+
+    await mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
+  }
+
   /// Get the latest attendance
   Future<List<Map<String, dynamic>>> fetchAttendanceNow() {
     return http
         .get(Uri.parse("https://jeepez-attendance.onrender.com/api/logs"))
         .then((response) {
-          if (response.statusCode != 200)
-            throw Exception("Failed to load attendance");
-          final List data = json.decode(response.body);
-          final filterDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      if (response.statusCode != 200) throw Exception("Failed to load attendance");
+      final List data = json.decode(response.body);
+      final filterDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-          // same grouping logic here — or better, call a shared function from AdminDashboard
-          final Map<String, List<Map<String, dynamic>>> grouped = {};
-          for (var log in data) {
-            final logDate = DateFormat(
-              'yyyy-MM-dd',
-            ).format(DateTime.parse(log['timestamp']).toLocal());
-            if (logDate == filterDate) {
-              final key = "${log['name']}_$logDate";
-              grouped.putIfAbsent(key, () => []).add(log);
-            }
-          }
+      final Map<String, List<Map<String, dynamic>>> grouped = {};
+      for (var log in data) {
+        final logDate = DateFormat(
+          'yyyy-MM-dd',
+        ).format(DateTime.parse(log['timestamp']).toLocal());
+        if (logDate == filterDate) {
+          final key = "${log['name']}_$logDate";
+          grouped.putIfAbsent(key, () => []).add(log);
+        }
+      }
 
-          final List<Map<String, dynamic>> attendance = [];
-          grouped.forEach((key, logs) {
-            logs.sort(
+      final List<Map<String, dynamic>> attendance = [];
+      grouped.forEach((key, logs) {
+        logs.sort(
               (a, b) => DateTime.parse(
-                a['timestamp'],
-              ).compareTo(DateTime.parse(b['timestamp'])),
-            );
+            a['timestamp'],
+          ).compareTo(DateTime.parse(b['timestamp'])),
+        );
 
-            String name = logs.first['name'];
-            String date = logs.first['date'];
-            int inCount = 0, outCount = 0;
-            Map<String, dynamic>? currentIn;
+        String name = logs.first['name'];
+        String date = logs.first['date'];
+        int inCount = 0, outCount = 0;
+        Map<String, dynamic>? currentIn;
 
-            for (var log in logs) {
-              if (log['type'] == 'tap-in' && inCount < 4) {
-                currentIn = log;
-                inCount++;
-              } else if (log['type'] == 'tap-out' &&
-                  currentIn != null &&
-                  outCount < 4) {
-                attendance.add({
-                  "name": name,
-                  "date": date,
-                  "timeIn": currentIn['timestamp'],
-                  "timeOut": log['timestamp'],
-                  "unit": log["unit"] ?? "",
-                });
-                outCount++;
-                currentIn = null;
-              }
-            }
+        for (var log in logs) {
+          if (log['type'] == 'tap-in' && inCount < 4) {
+            currentIn = log;
+            inCount++;
+          } else if (log['type'] == 'tap-out' &&
+              currentIn != null &&
+              outCount < 4) {
+            attendance.add({
+              "name": name,
+              "date": date,
+              "timeIn": currentIn['timestamp'],
+              "timeOut": log['timestamp'],
+              "unit": log["unit"] ?? "",
+            });
+            outCount++;
+            currentIn = null;
+          }
+        }
 
-            if (currentIn != null && inCount <= 4) {
-              attendance.add({
-                "name": name,
-                "date": date,
-                "timeIn": currentIn['timestamp'],
-                "timeOut": null,
-                "unit": currentIn["unit"] ?? "",
-              });
-            }
+        if (currentIn != null && inCount <= 4) {
+          attendance.add({
+            "name": name,
+            "date": date,
+            "timeIn": currentIn['timestamp'],
+            "timeOut": null,
+            "unit": currentIn["unit"] ?? "",
           });
+        }
+      });
 
-          return attendance;
-        });
+      return attendance;
+    });
   }
 
   /// Get today's label
@@ -733,6 +846,78 @@ class _HomeScreenState extends State<HomeScreen> {
               'Welcome to Admin Dashboard',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
+
+            const SizedBox(height: 20),
+
+            /// --- MAP SECTION  ---
+            SizedBox(
+              height: 550,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  children: [
+                    StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      stream: _vehicleLocationsStream,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return const Center(
+                            child: Text('No vehicle locations available'),
+                          );
+                        }
+
+                        final markers = _buildMarkersFromDocs(snapshot.data!.docs);
+
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _fitAllMarkers(markers);
+                        });
+
+                        return GoogleMap(
+                          onMapCreated: _onMapCreated,
+                          initialCameraPosition: const CameraPosition(
+                            target: LatLng(14.8287, 121.0549),
+                            zoom: 13,
+                          ),
+                          markers: markers,
+                          mapType: MapType.normal,
+                          myLocationEnabled: false,
+                          zoomGesturesEnabled: true,
+                          scrollGesturesEnabled: true,
+                          rotateGesturesEnabled: true,
+                          tiltGesturesEnabled: true,
+
+                          gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                            Factory<OneSequenceGestureRecognizer>(
+                                  () => EagerGestureRecognizer(),
+                            ),
+                          },
+                        );
+                      },
+                    ),
+
+                    // Floating Action Button — Recenter
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: FloatingActionButton(
+                        backgroundColor: const Color(0xFF0D2364),
+                        foregroundColor: const Color(0xffffffff),
+                        onPressed: () async {
+                          final snap = await _firestore.collection('vehicles_locations').get();
+                          final markers = _buildMarkersFromDocs(snap.docs);
+                          await _fitAllMarkers(markers);
+                        },
+                        child: const Icon(Icons.center_focus_strong),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             const SizedBox(height: 20),
 
             // --- Vehicle Schedule ---
@@ -783,9 +968,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: assignments.map((item) {
                             final vehicleId =
-                                item['assignedVehicle']?.toString() ??
-                                'Unknown';
-                            final driverName = item['name'] ?? 'Unknown Driver';
+                                item['assignedVehicle']?.toString() ?? 'Unknown';
+                            final driverName =
+                                item['name'] ?? 'Unknown Driver';
                             return Text('$driverName — UNIT $vehicleId');
                           }).toList(),
                         );
@@ -798,7 +983,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 20),
 
-            // --- Employee Tracking ---
+            // --- Employee Tracking (unchanged) ---
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -872,10 +1057,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                   final timeIn = DateTime.parse(
                                     log['timeIn'],
                                   ).toLocal();
-                                  final formattedTime = TimeOfDay.fromDateTime(
-                                    timeIn,
-                                  ).format(context);
-                                  return _buildEmployeeRow(name, formattedTime);
+                                  final formattedTime =
+                                  TimeOfDay.fromDateTime(timeIn)
+                                      .format(context);
+                                  return _buildEmployeeRow(
+                                      name, formattedTime);
                                 }).toList(),
                               ),
                             ),

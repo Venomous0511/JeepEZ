@@ -134,7 +134,7 @@ Project initialization
       subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
       value: value,
       onChanged: onChanged,
-      activeThumbColor: const Color(0xFF0D2364),
+      activeTrackColor: const Color(0xFF0D2364),
     );
   }
 
@@ -149,7 +149,7 @@ Project initialization
         labelText: title,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
       ),
-      initialValue: value,
+      value: value,
       items: options.map((String option) {
         return DropdownMenuItem(value: option, child: Text(option));
       }).toList(),
@@ -163,7 +163,7 @@ Project initialization
         labelText: 'Select Version',
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
       ),
-      initialValue: _selectedChangelog,
+      value: _selectedChangelog,
       items: _changelogData.keys.map((String version) {
         return DropdownMenuItem(value: version, child: Text(version));
       }).toList(),

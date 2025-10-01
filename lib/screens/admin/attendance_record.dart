@@ -80,6 +80,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         String name = logs.first['name'];
         String date = logs.first['date'];
         int inCount = 0, outCount = 0;
+        int tripNumber = 1;
 
         Map<String, dynamic>? currentIn;
 
@@ -96,8 +97,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               "timeIn": currentIn['timestamp'],
               "timeOut": log['timestamp'],
               "unit": log["unit"] ?? "",
+              "tripNumber": tripNumber,
             });
             outCount++;
+            tripNumber++;
             currentIn = null;
           }
         }
@@ -110,6 +113,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             "timeIn": currentIn['timestamp'],
             "timeOut": null,
             "unit": currentIn["unit"] ?? "",
+            "tripNumber": tripNumber,
           });
         }
       });
@@ -277,6 +281,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                     )
                                   : '';
 
+                              String ordinal(int number) {
+                                if (number == 1) return "1st Trip";
+                                if (number == 2) return "2nd Trip";
+                                if (number == 3) return "3rd Trip";
+                                return "${number}th Trip";
+                              }
+
                               return DataRow(
                                 cells: [
                                   DataCell(
@@ -298,6 +309,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                   DataCell(Text(dateString)),
                                   DataCell(Text(timeInString)),
                                   DataCell(Text(timeOutString)),
+                                  DataCell(Text(ordinal(match['tripNumber']))),
                                 ],
                               );
                             });
