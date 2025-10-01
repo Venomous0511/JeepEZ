@@ -16,11 +16,19 @@ class DriverDashboard extends StatefulWidget {
 
 class _DriverDashboardState extends State<DriverDashboard> {
   int _currentIndex = 0;
-  late final List<Widget> _screens;
+  late List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
+    // Initialize with empty screens first, will be updated in didChangeDependencies
+    _screens = [];
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Initialize screens here where context is available
     _screens = [
       _buildHomeScreen(),
       const WorkScheduleScreen(),
@@ -31,134 +39,226 @@ class _DriverDashboardState extends State<DriverDashboard> {
   }
 
   Widget _buildHomeScreen() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Logo section with notification bell at the top
-            Stack(
-              children: [
-                Container(
-                  width: double.infinity,
-                  color: const Color(0xFF0D2364),
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: const Center(
-                    child: Icon(
-                      Icons.directions_bus,
-                      size: 60,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                // Notification Bell at the top right corner
-                Positioned(
-                  right: 20,
-                  top: 20,
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.notifications,
-                      color: Colors
-                          .white, // White color to contrast with blue background
-                      size: 30,
-                    ),
-                    onPressed: () {
-                      _showNotifications();
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Profile Section - centered
-            Center(
-              child: Column(
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.person,
-                      color: Colors.black,
-                      size: 40,
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              PersonalDetails(user: widget.user),
-                        ),
-                      );
-                    },
-                  ),
-                  Text(
-                    widget.user.name ?? "Driver",
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Container(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Logo section at the top
+              Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0D2364),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  "View More",
-                  style: TextStyle(
-                    color: Color(0xFF0D2364),
-                    fontSize: 14,
-                    decoration: TextDecoration.underline,
+                color: const Color(0xFF0D2364),
+                padding: EdgeInsets.symmetric(vertical: isMobile ? 20 : 30),
+                child: const Center(
+                  child: Icon(
+                    Icons.directions_bus,
+                    size: 60,
+                    color: Colors.white,
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0D2364),
-                  borderRadius: BorderRadius.circular(8),
+              SizedBox(height: isMobile ? 20 : 30),
+
+              // Profile Section with notification
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 16.0 : 24.0,
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.access_time, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text(
-                      "Time Logs",
-                      style: TextStyle(color: Colors.white, fontSize: 18),
+                    // Person Icon (clickable)
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                PersonalDetails(user: widget.user),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0D2364).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                        child: Icon(
+                          Icons.person,
+                          color: const Color(0xFF0D2364),
+                          size: isMobile ? 40 : 50,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: isMobile ? 12 : 16),
+
+                    // Name and Employee ID
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.user.name ?? "Driver",
+                            style: TextStyle(
+                              fontSize: isMobile ? 18 : 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Employee ID: ${widget.user.employeeId ?? 'N/A'}",
+                            style: TextStyle(
+                              fontSize: isMobile ? 13 : 15,
+                              color: Colors.grey[600],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Notification Icon
+                    IconButton(
+                      icon: Icon(
+                        Icons.notifications_outlined,
+                        color: const Color(0xFF0D2364),
+                        size: isMobile ? 28 : 32,
+                      ),
+                      onPressed: () {
+                        _showNotifications();
+                      },
                     ),
                   ],
                 ),
               ),
-            ),
-            const Spacer(),
-          ],
+              SizedBox(height: isMobile ? 24 : 32),
+
+              // View More Button
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 16.0 : 24.0,
+                ),
+                child: InkWell(
+                  onTap: () {
+                    // Add navigation or action here
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(isMobile ? 16 : 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFF0D2364),
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "View More",
+                          style: TextStyle(
+                            color: const Color(0xFF0D2364),
+                            fontSize: isMobile ? 16 : 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_forward_ios,
+                          color: Color(0xFF0D2364),
+                          size: 18,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: isMobile ? 16 : 20),
+
+              // Time Logs Card
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 16.0 : 24.0,
+                ),
+                child: InkWell(
+                  onTap: () {
+                    // Add navigation to time logs
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(isMobile ? 16 : 20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0D2364),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          color: Colors.white,
+                          size: isMobile ? 24 : 28,
+                        ),
+                        SizedBox(width: isMobile ? 12 : 16),
+                        Text(
+                          "Time Logs",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isMobile ? 16 : 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Spacer(),
+                        const Icon(
+                          Icons.arrow_forward_ios,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: isMobile ? 24 : 32),
+            ],
+          ),
         ),
       ),
     );
   }
 
   void _showNotifications() {
-    // Temporary notification dialog - you can replace this with your actual notification screen
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final isMobile = screenWidth < 600;
+
         return AlertDialog(
-          title: const Text('Notifications'),
+          title: Row(
+            children: [
+              const Icon(Icons.notifications, color: Color(0xFF0D2364)),
+              const SizedBox(width: 8),
+              Text(
+                'Notifications',
+                style: TextStyle(fontSize: isMobile ? 16 : 18),
+              ),
+            ],
+          ),
           content: const Text('No new notifications'),
           actions: [
             TextButton(
@@ -175,12 +275,21 @@ class _DriverDashboardState extends State<DriverDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    // Check if screens are initialized, if not show loading
+    if (_screens.isEmpty) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
         type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(0xFF0D2364),
+        unselectedItemColor: Colors.grey,
+        selectedFontSize: 12,
+        unselectedFontSize: 11,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
