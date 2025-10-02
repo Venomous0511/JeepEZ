@@ -30,189 +30,116 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         backgroundColor: const Color(0xFF0D2364),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return Column(
-            children: [
-              // ---------------- SEARCH BAR ----------------
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8.0),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withAlpha(40),
-                        spreadRadius: 1,
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: searchController,
-                    decoration: const InputDecoration(
-                      hintText: 'Search employees...',
-                      prefixIcon: Icon(Icons.search),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(
-                        vertical: 12.0,
-                        horizontal: 16.0,
-                      ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ---------------- SEARCH BAR ----------------
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8.0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withAlpha(40),
+                      spreadRadius: 1,
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
                     ),
-                    onChanged: (_) {
-                      setState(() {}); // rebuild when typing
-                    },
+                  ],
+                ),
+                child: TextField(
+                  controller: searchController,
+                  decoration: const InputDecoration(
+                    hintText: 'Search employees...',
+                    prefixIcon: Icon(Icons.search),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 12.0,
+                      horizontal: 16.0,
+                    ),
                   ),
+                  onChanged: (_) {
+                    setState(() {}); // rebuild when typing
+                  },
                 ),
               ),
+            ),
 
-              // ---------------- LIST ----------------
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Container(
-                    width: constraints.maxWidth,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8.0),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withAlpha(30),
-                          spreadRadius: 2,
-                          blurRadius: 7,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('users')
-                          .orderBy('createdAt', descending: true)
-                          .snapshots(),
-                      builder: (context, snap) {
-                        if (snap.connectionState == ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
+            // ---------------- MAIN CONTENT ----------------
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .orderBy('createdAt', descending: true)
+                      .snapshots(),
+                  builder: (context, snap) {
+                    if (snap.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (!snap.hasData || snap.data!.docs.isEmpty) {
+                      return const Center(child: Text('No users yet.'));
+                    }
+
+                    // get docs
+                    var employeeDocs = snap.data!.docs.where((d) {
+                      final data = d.data() as Map<String, dynamic>;
+                      return data['status'] == true;
+                    }).toList();
+
+                    // apply search filter
+                    final query = searchController.text.toLowerCase();
+                    if (query.isNotEmpty) {
+                      employeeDocs = employeeDocs.where((d) {
+                        final data = d.data() as Map<String, dynamic>;
+                        final name = (data['name'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        final email = (data['email'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        final empId = (data['employeeId'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        return name.contains(query) ||
+                            email.contains(query) ||
+                            empId.contains(query);
+                      }).toList();
+                    }
+
+                    if (employeeDocs.isEmpty) {
+                      return const Center(
+                        child: Text('No employees match your search.'),
+                      );
+                    }
+
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final bool isMobile = constraints.maxWidth < 600;
+                        final bool isTablet = constraints.maxWidth < 900;
+
+                        if (isMobile) {
+                          return _buildMobileList(employeeDocs);
+                        } else if (isTablet) {
+                          return _buildTabletView(employeeDocs);
+                        } else {
+                          return _buildDesktopView(employeeDocs);
                         }
-                        if (!snap.hasData || snap.data!.docs.isEmpty) {
-                          return const Center(child: Text('No users yet.'));
-                        }
-
-                        // get docs
-                        var employeeDocs = snap.data!.docs.where((d) {
-                          final data = d.data() as Map<String, dynamic>;
-                          return data['status'] == true;
-                        }).toList();
-
-                        // apply search filter
-                        final query = searchController.text.toLowerCase();
-                        if (query.isNotEmpty) {
-                          employeeDocs = employeeDocs.where((d) {
-                            final data = d.data() as Map<String, dynamic>;
-                            final name = (data['name'] ?? '')
-                                .toString()
-                                .toLowerCase();
-                            final email = (data['email'] ?? '')
-                                .toString()
-                                .toLowerCase();
-                            final empId = (data['employeeId'] ?? '')
-                                .toString()
-                                .toLowerCase();
-                            return name.contains(query) ||
-                                email.contains(query) ||
-                                empId.contains(query);
-                          }).toList();
-                        }
-
-                        return SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: DataTable(
-                            columnSpacing: 20,
-                            headingRowColor: WidgetStateProperty.all(
-                              const Color(0xFFF5F7FA),
-                            ),
-                            columns: const [
-                              DataColumn(label: Text("Employee ID")),
-                              DataColumn(label: Text("Employee Name")),
-                              DataColumn(label: Text("Status")),
-                              DataColumn(label: Text("Email")),
-                              DataColumn(label: Text("Role")),
-                              DataColumn(label: Text("Actions")),
-                            ],
-                            rows: employeeDocs.map((d) {
-                              final data = d.data() as Map<String, dynamic>;
-
-                              return DataRow(
-                                cells: [
-                                  DataCell(Text(data['employeeId'].toString())),
-                                  DataCell(Text(data['name'] ?? '')),
-                                  DataCell(
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: data['status'] == true
-                                            ? Colors.green.withAlpha(1)
-                                            : Colors.red.withAlpha(1),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        data['status'] == true
-                                            ? "Active"
-                                            : "Inactive",
-                                        style: TextStyle(
-                                          color: data['status'] == true
-                                              ? Colors.green
-                                              : Colors.red,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  DataCell(Text(data['email'] ?? '')),
-                                  DataCell(Text(data['role'] ?? '')),
-                                  DataCell(
-                                    Row(
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.edit,
-                                            color: Colors.blue,
-                                          ),
-                                          onPressed: () =>
-                                              _editUser(d.id, data),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.delete,
-                                            color: Colors.red,
-                                          ),
-                                          onPressed: () =>
-                                              _deleteUser(d.id, data),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }).toList(),
-                          ),
-                        );
                       },
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
-              const SizedBox(height: 16),
-            ],
-          );
-        },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
 
       // ---------------- ADD BUTTON ----------------
@@ -223,6 +150,308 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         child: const Icon(Icons.add),
       ),
     );
+  }
+
+  /// Mobile View - Card List
+  Widget _buildMobileList(List<QueryDocumentSnapshot> employeeDocs) {
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 16),
+      itemCount: employeeDocs.length,
+      itemBuilder: (context, index) {
+        final doc = employeeDocs[index];
+        final data = doc.data() as Map<String, dynamic>;
+
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Row
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Colors.blue[100],
+                      child: Text(
+                        data['name']?.toString().isNotEmpty == true
+                            ? data['name']
+                                  .toString()
+                                  .substring(0, 1)
+                                  .toUpperCase()
+                            : 'U',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            data['name'] ?? 'No Name',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            data['email'] ?? 'No Email',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: data['status'] == true
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        data['status'] == true ? "Active" : "Inactive",
+                        style: TextStyle(
+                          color: data['status'] == true
+                              ? Colors.green
+                              : Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+
+                // Details
+                _buildMobileDetailRow(
+                  "Employee ID",
+                  data['employeeId']?.toString() ?? 'N/A',
+                ),
+                _buildMobileDetailRow(
+                  "Role",
+                  _capitalizeRole(data['role'] ?? 'N/A'),
+                ),
+                if (data['employmentType'] != null)
+                  _buildMobileDetailRow(
+                    "Employment Type",
+                    _capitalizeEmploymentType(data['employmentType']),
+                  ),
+
+                // Actions
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.blue),
+                      onPressed: () => _editUser(doc.id, data),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _deleteUser(doc.id, data),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMobileDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              "$label:",
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(color: Colors.grey[700], fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Tablet View - Compact DataTable
+  Widget _buildTabletView(List<QueryDocumentSnapshot> employeeDocs) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Container(
+          width: MediaQuery.of(context).size.width,
+          padding: const EdgeInsets.only(bottom: 16),
+          child: DataTable(
+            columnSpacing: 12,
+            horizontalMargin: 8,
+            headingRowColor: WidgetStateProperty.all(const Color(0xFFF5F7FA)),
+            columns: const [
+              DataColumn(label: Text("ID")),
+              DataColumn(label: Text("Name")),
+              DataColumn(label: Text("Status")),
+              DataColumn(label: Text("Email")),
+              DataColumn(label: Text("Role")),
+              DataColumn(label: Text("Actions")),
+            ],
+            rows: employeeDocs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return _buildDataRow(doc.id, data, isCompact: true);
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Desktop View - Full DataTable
+  Widget _buildDesktopView(List<QueryDocumentSnapshot> employeeDocs) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Container(
+          width: MediaQuery.of(context).size.width,
+          padding: const EdgeInsets.only(bottom: 16),
+          child: DataTable(
+            columnSpacing: 20,
+            horizontalMargin: 12,
+            headingRowColor: WidgetStateProperty.all(const Color(0xFFF5F7FA)),
+            columns: const [
+              DataColumn(label: Text("Employee ID")),
+              DataColumn(label: Text("Employee Name")),
+              DataColumn(label: Text("Status")),
+              DataColumn(label: Text("Email")),
+              DataColumn(label: Text("Role")),
+              DataColumn(label: Text("Actions")),
+            ],
+            rows: employeeDocs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return _buildDataRow(doc.id, data, isCompact: false);
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Helper method to build DataRows for both tablet and desktop
+  DataRow _buildDataRow(
+    String docId,
+    Map<String, dynamic> data, {
+    bool isCompact = false,
+  }) {
+    return DataRow(
+      cells: [
+        DataCell(
+          Text(
+            data['employeeId'].toString(),
+            style: isCompact ? const TextStyle(fontSize: 12) : null,
+          ),
+        ),
+        DataCell(
+          Text(
+            data['name'] ?? '',
+            style: isCompact ? const TextStyle(fontSize: 12) : null,
+          ),
+        ),
+        DataCell(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: data['status'] == true
+                  ? Colors.green.withOpacity(0.1)
+                  : Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              data['status'] == true ? "Active" : "Inactive",
+              style: TextStyle(
+                color: data['status'] == true ? Colors.green : Colors.red,
+                fontWeight: FontWeight.bold,
+                fontSize: isCompact ? 11 : 12,
+              ),
+            ),
+          ),
+        ),
+        DataCell(
+          Text(
+            data['email'] ?? '',
+            style: isCompact ? const TextStyle(fontSize: 12) : null,
+          ),
+        ),
+        DataCell(
+          Text(
+            _capitalizeRole(data['role'] ?? ''),
+            style: isCompact ? const TextStyle(fontSize: 12) : null,
+          ),
+        ),
+        DataCell(
+          Row(
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.edit,
+                  color: Colors.blue,
+                  size: isCompact ? 18 : 24,
+                ),
+                onPressed: () => _editUser(docId, data),
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.delete,
+                  color: Colors.red,
+                  size: isCompact ? 18 : 24,
+                ),
+                onPressed: () => _deleteUser(docId, data),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _capitalizeRole(String role) {
+    if (role.isEmpty) return '';
+    final parts = role.split('_');
+    return parts
+        .map((part) => part[0].toUpperCase() + part.substring(1))
+        .join(' ');
+  }
+
+  String _capitalizeEmploymentType(String? employmentType) {
+    if (employmentType == null) return '';
+    return employmentType
+        .split('_')
+        .map((part) => part[0].toUpperCase() + part.substring(1))
+        .join(' ');
   }
 
   /// ---------------- ADD NEW USER ----------------
@@ -271,107 +500,113 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
             return AlertDialog(
               title: const Text("Add New User"),
               content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameCtrl,
-                      decoration: const InputDecoration(
-                        labelText: "Full Name",
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: emailCtrl,
-                      decoration: const InputDecoration(
-                        labelText: "Email",
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: passCtrl,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: "Password",
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: employeeIdCtrl,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: "Employee ID (auto-generated)",
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: role,
-                      items: const [
-                        DropdownMenuItem(
-                          value: "legal_officer",
-                          child: Text("Legal Officer"),
-                        ),
-                        DropdownMenuItem(
-                          value: "driver",
-                          child: Text("Driver"),
-                        ),
-                        DropdownMenuItem(
-                          value: "conductor",
-                          child: Text("Conductor"),
-                        ),
-                        DropdownMenuItem(
-                          value: "inspector",
-                          child: Text("Inspector"),
-                        ),
-                      ],
-                      onChanged: (value) async {
-                        if (value != null) {
-                          final newId = await generateEmployeeId(value);
-                          setState(() {
-                            role = value;
-                            employeeIdCtrl.text = newId;
-                            employmentType = null;
-                          });
-                        }
-                      },
-                      decoration: const InputDecoration(
-                        labelText: "Role",
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-
-                    if (role == "driver" ||
-                        role == "conductor" ||
-                        role == "inspector") ...[
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        initialValue: employmentType,
-                        items: const [
-                          DropdownMenuItem(
-                            value: "full_time",
-                            child: Text("Full-Time"),
-                          ),
-                          DropdownMenuItem(
-                            value: "part_time",
-                            child: Text("Part-Time"),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            employmentType = value;
-                          });
-                        },
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.8,
+                    maxHeight: MediaQuery.of(context).size.height * 0.7,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: nameCtrl,
                         decoration: const InputDecoration(
-                          labelText: "Employment Type",
+                          labelText: "Full Name",
                           border: OutlineInputBorder(),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: emailCtrl,
+                        decoration: const InputDecoration(
+                          labelText: "Email",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: passCtrl,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: "Password",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: employeeIdCtrl,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: "Employee ID (auto-generated)",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: role,
+                        items: const [
+                          DropdownMenuItem(
+                            value: "legal_officer",
+                            child: Text("Legal Officer"),
+                          ),
+                          DropdownMenuItem(
+                            value: "driver",
+                            child: Text("Driver"),
+                          ),
+                          DropdownMenuItem(
+                            value: "conductor",
+                            child: Text("Conductor"),
+                          ),
+                          DropdownMenuItem(
+                            value: "inspector",
+                            child: Text("Inspector"),
+                          ),
+                        ],
+                        onChanged: (value) async {
+                          if (value != null) {
+                            final newId = await generateEmployeeId(value);
+                            setState(() {
+                              role = value;
+                              employeeIdCtrl.text = newId;
+                              employmentType = null;
+                            });
+                          }
+                        },
+                        decoration: const InputDecoration(
+                          labelText: "Role",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+
+                      if (role == "driver" ||
+                          role == "conductor" ||
+                          role == "inspector") ...[
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          initialValue: employmentType,
+                          items: const [
+                            DropdownMenuItem(
+                              value: "full_time",
+                              child: Text("Full-Time"),
+                            ),
+                            DropdownMenuItem(
+                              value: "part_time",
+                              child: Text("Part-Time"),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              employmentType = value;
+                            });
+                          },
+                          decoration: const InputDecoration(
+                            labelText: "Employment Type",
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
               actions: [
@@ -491,6 +726,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
               controller: nameCtrl,
               decoration: const InputDecoration(labelText: "Name"),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: emailCtrl,
               decoration: const InputDecoration(labelText: "Email"),

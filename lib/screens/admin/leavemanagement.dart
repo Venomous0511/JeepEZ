@@ -126,95 +126,294 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         ),
         backgroundColor: const Color(0xFF0D2364),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [const SizedBox(height: 24), _buildVacationTable(context)],
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 16),
+            Expanded(child: _buildMainContent()),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildVacationTable(BuildContext context) {
-    final isWideScreen = MediaQuery.of(context).size.width > 600;
-    return SizedBox(
-      width: double.infinity,
-      child: Column(
+  Widget _buildMainContent() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isMobile = constraints.maxWidth < 600;
+        final bool isTablet = constraints.maxWidth < 900;
+
+        if (isMobile) {
+          return _buildMobileView();
+        } else if (isTablet) {
+          return _buildTabletView();
+        } else {
+          return _buildDesktopView();
+        }
+      },
+    );
+  }
+
+  /// Mobile View - Card List
+  Widget _buildMobileView() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _leaveRequests.length,
+      itemBuilder: (context, index) {
+        final request = _leaveRequests[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with checkbox and name
+                Row(
+                  children: [
+                    Checkbox(
+                      value: request['selected'],
+                      onChanged: (value) {
+                        setState(() {
+                          request['selected'] = value;
+                        });
+                      },
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    Expanded(
+                      child: Text(
+                        request['name'],
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, size: 20),
+                      itemBuilder: (BuildContext context) => [
+                        const PopupMenuItem(
+                          value: 'calendar',
+                          child: Text('View Calendar'),
+                        ),
+                        if (request['status'] == 'Pending')
+                          const PopupMenuItem(
+                            value: 'approve',
+                            child: Text('Approve'),
+                          ),
+                        if (request['status'] == 'Pending')
+                          const PopupMenuItem(
+                            value: 'reject',
+                            child: Text('Reject'),
+                          ),
+                      ],
+                      onSelected: (String value) {
+                        if (value == 'calendar') {
+                          _showCalendarDialog(context, index);
+                        } else if (value == 'approve') {
+                          _approveRequest(index);
+                        } else if (value == 'reject') {
+                          _rejectRequest(index);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+
+                // Leave details
+                _buildMobileDetailRow('From', request['from']),
+                _buildMobileDetailRow('To', request['to']),
+                _buildMobileDetailRow('Total Time', request['totalTime']),
+                const SizedBox(height: 8),
+
+                // Status
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(request['status']).withAlpha(128),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    request['status'],
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _getStatusColor(request['status']),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMobileDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(padding: EdgeInsets.all(16.0)),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minWidth: isWideScreen
-                    ? MediaQuery.of(context).size.width * 0.9
-                    : 700,
-              ),
-              child: Table(
-                border: TableBorder.all(
-                  color: Colors.grey.shade300,
-                  width: 1.0,
-                ),
-                columnWidths: {
-                  0: const FlexColumnWidth(2.5),
-                  1: const FlexColumnWidth(1.2),
-                  2: const FlexColumnWidth(1.2),
-                  3: const FlexColumnWidth(1.2),
-                  4: const FlexColumnWidth(1.5),
-                  5: const FixedColumnWidth(60),
-                },
-                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                children: [
-                  TableRow(
-                    decoration: BoxDecoration(color: Colors.grey.shade100),
-                    children: [
-                      _buildHeaderCell('Name'),
-                      _buildHeaderCell('From'),
-                      _buildHeaderCell('To'),
-                      _buildHeaderCell('Total Time'),
-                      _buildHeaderCell('Status'),
-                      _buildHeaderCell(''),
-                    ],
-                  ),
-                  ..._leaveRequests.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final request = entry.value;
-                    return TableRow(
-                      decoration: const BoxDecoration(color: Colors.white),
-                      children: [
-                        _buildNameCell(request, index),
-                        _buildDateCell(request['from']),
-                        _buildDateCell(request['to']),
-                        _buildTimeCell(request['totalTime']),
-                        _buildStatusCell(request['status']),
-                        _buildActionCell(context, index),
-                      ],
-                    );
-                  }),
-                ],
+          SizedBox(
+            width: 80,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+                fontSize: 14,
               ),
             ),
           ),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 14))),
         ],
       ),
     );
   }
 
-  Widget _buildHeaderCell(String text) {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+  /// Tablet View - Compact Table
+  Widget _buildTabletView() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Container(
+          width: MediaQuery.of(context).size.width,
+          padding: const EdgeInsets.all(16),
+          child: Table(
+            border: TableBorder.all(color: Colors.grey.shade300, width: 1.0),
+            columnWidths: {
+              0: const FlexColumnWidth(2),
+              1: const FlexColumnWidth(1),
+              2: const FlexColumnWidth(1),
+              3: const FlexColumnWidth(1),
+              4: const FlexColumnWidth(1.2),
+              5: const FixedColumnWidth(50),
+            },
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            children: [
+              TableRow(
+                decoration: BoxDecoration(color: Colors.grey.shade100),
+                children: [
+                  _buildHeaderCell('Name', isCompact: true),
+                  _buildHeaderCell('From', isCompact: true),
+                  _buildHeaderCell('To', isCompact: true),
+                  _buildHeaderCell('Time', isCompact: true),
+                  _buildHeaderCell('Status', isCompact: true),
+                  _buildHeaderCell('', isCompact: true),
+                ],
+              ),
+              ..._leaveRequests.asMap().entries.map((entry) {
+                final index = entry.key;
+                final request = entry.value;
+                return TableRow(
+                  decoration: const BoxDecoration(color: Colors.white),
+                  children: [
+                    _buildNameCell(request, index, isCompact: true),
+                    _buildDateCell(request['from'], isCompact: true),
+                    _buildDateCell(request['to'], isCompact: true),
+                    _buildTimeCell(request['totalTime'], isCompact: true),
+                    _buildStatusCell(request['status'], isCompact: true),
+                    _buildActionCell(context, index, isCompact: true),
+                  ],
+                );
+              }),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildNameCell(Map<String, dynamic> request, int index) {
+  /// Desktop View - Full Table
+  Widget _buildDesktopView() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Container(
+          width: MediaQuery.of(context).size.width,
+          padding: const EdgeInsets.all(16),
+          child: Table(
+            border: TableBorder.all(color: Colors.grey.shade300, width: 1.0),
+            columnWidths: {
+              0: const FlexColumnWidth(2.5),
+              1: const FlexColumnWidth(1.2),
+              2: const FlexColumnWidth(1.2),
+              3: const FlexColumnWidth(1.2),
+              4: const FlexColumnWidth(1.5),
+              5: const FixedColumnWidth(60),
+            },
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            children: [
+              TableRow(
+                decoration: BoxDecoration(color: Colors.grey.shade100),
+                children: [
+                  _buildHeaderCell('Name'),
+                  _buildHeaderCell('From'),
+                  _buildHeaderCell('To'),
+                  _buildHeaderCell('Total Time'),
+                  _buildHeaderCell('Status'),
+                  _buildHeaderCell(''),
+                ],
+              ),
+              ..._leaveRequests.asMap().entries.map((entry) {
+                final index = entry.key;
+                final request = entry.value;
+                return TableRow(
+                  decoration: const BoxDecoration(color: Colors.white),
+                  children: [
+                    _buildNameCell(request, index),
+                    _buildDateCell(request['from']),
+                    _buildDateCell(request['to']),
+                    _buildTimeCell(request['totalTime']),
+                    _buildStatusCell(request['status']),
+                    _buildActionCell(context, index),
+                  ],
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderCell(String text, {bool isCompact = false}) {
     return Padding(
-      padding: const EdgeInsets.all(8.0),
+      padding: isCompact
+          ? const EdgeInsets.all(8.0)
+          : const EdgeInsets.all(12.0),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: isCompact ? 12 : 14,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNameCell(
+    Map<String, dynamic> request,
+    int index, {
+    bool isCompact = false,
+  }) {
+    return Padding(
+      padding: isCompact
+          ? const EdgeInsets.all(4.0)
+          : const EdgeInsets.all(8.0),
       child: Row(
         children: [
           Checkbox(
@@ -230,7 +429,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
           Expanded(
             child: Text(
               request['name'],
-              style: const TextStyle(fontSize: 14),
+              style: TextStyle(fontSize: isCompact ? 12 : 14),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -239,50 +438,48 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  Widget _buildDateCell(String date) {
+  Widget _buildDateCell(String date, {bool isCompact = false}) {
     return Padding(
-      padding: const EdgeInsets.all(12.0),
+      padding: isCompact
+          ? const EdgeInsets.all(8.0)
+          : const EdgeInsets.all(12.0),
       child: Text(
         date,
-        style: const TextStyle(fontSize: 14),
+        style: TextStyle(fontSize: isCompact ? 12 : 14),
         textAlign: TextAlign.center,
       ),
     );
   }
 
-  Widget _buildTimeCell(String time) {
+  Widget _buildTimeCell(String time, {bool isCompact = false}) {
     return Padding(
-      padding: const EdgeInsets.all(12.0),
+      padding: isCompact
+          ? const EdgeInsets.all(8.0)
+          : const EdgeInsets.all(12.0),
       child: Text(
         time,
-        style: const TextStyle(fontSize: 14),
+        style: TextStyle(fontSize: isCompact ? 12 : 14),
         textAlign: TextAlign.center,
       ),
     );
   }
 
-  Widget _buildStatusCell(String status) {
+  Widget _buildStatusCell(String status, {bool isCompact = false}) {
     return Padding(
-      padding: const EdgeInsets.all(8.0),
+      padding: isCompact
+          ? const EdgeInsets.all(4.0)
+          : const EdgeInsets.all(8.0),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: status == 'Pending'
-              ? Colors.orange.withAlpha(128)
-              : status == 'Approved'
-              ? Colors.green.withAlpha(128)
-              : Colors.red.withAlpha(128),
+          color: _getStatusColor(status).withAlpha(128),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
           status,
           style: TextStyle(
-            fontSize: 12,
-            color: status == 'Pending'
-                ? Colors.orange
-                : status == 'Approved'
-                ? Colors.green
-                : Colors.red,
+            fontSize: isCompact ? 10 : 12,
+            color: _getStatusColor(status),
             fontWeight: FontWeight.w500,
           ),
           textAlign: TextAlign.center,
@@ -291,11 +488,17 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  Widget _buildActionCell(BuildContext context, int index) {
+  Widget _buildActionCell(
+    BuildContext context,
+    int index, {
+    bool isCompact = false,
+  }) {
     return Padding(
-      padding: const EdgeInsets.all(8.0),
+      padding: isCompact
+          ? const EdgeInsets.all(4.0)
+          : const EdgeInsets.all(8.0),
       child: PopupMenuButton<String>(
-        icon: const Icon(Icons.more_vert, size: 20),
+        icon: Icon(Icons.more_vert, size: isCompact ? 16 : 20),
         itemBuilder: (BuildContext context) => [
           const PopupMenuItem(value: 'calendar', child: Text('View Calendar')),
           if (_leaveRequests[index]['status'] == 'Pending')
@@ -316,6 +519,14 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
+  Color _getStatusColor(String status) {
+    return status == 'Pending'
+        ? Colors.orange
+        : status == 'Approved'
+        ? Colors.green
+        : Colors.red;
+  }
+
   Widget _buildCalendarDialog(BuildContext context, int index) {
     final request = _leaveRequests[index];
 
@@ -325,7 +536,12 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
           title: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('${request['name']}\'s Leave Request'),
+              Expanded(
+                child: Text(
+                  '${request['name']}\'s Leave Request',
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
               IconButton(
                 icon: const Icon(Icons.close),
                 onPressed: () => Navigator.pop(context),

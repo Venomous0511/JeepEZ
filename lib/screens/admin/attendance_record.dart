@@ -156,174 +156,425 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           style: TextStyle(color: Colors.white),
         ),
         backgroundColor: const Color(0xFF0D2364),
-        automaticallyImplyLeading:
-            false, // Ito ang nagtatanggal ng hamburger menu
+        automaticallyImplyLeading: false,
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ChoiceChip(
-                  label: const Text("Today"),
-                  selected: mode == "today",
-                  onSelected: (_) => setState(() => mode = "today"),
-                ),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: const Text("Yesterday"),
-                  selected: mode == "yesterday",
-                  onSelected: (_) => setState(() => mode = "yesterday"),
-                ),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: Text(
-                    mode == "custom"
-                        ? DateFormat("yyyy-MM-dd").format(selectedDate)
-                        : "Pick Date",
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Date Selection Row
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.grey[50],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ChoiceChip(
+                    label: const Text("Today"),
+                    selected: mode == "today",
+                    onSelected: (_) => setState(() => mode = "today"),
                   ),
-                  selected: mode == "custom",
-                  onSelected: (_) => _pickDate(),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    label: const Text("Yesterday"),
+                    selected: mode == "yesterday",
+                    onSelected: (_) => setState(() => mode = "yesterday"),
+                  ),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    label: Text(
+                      mode == "custom"
+                          ? DateFormat("MMM d, yyyy").format(selectedDate)
+                          : "Pick Date",
+                    ),
+                    selected: mode == "custom",
+                    onSelected: (_) => _pickDate(),
+                  ),
+                ],
+              ),
+            ),
+
+            // Main Content
+            Expanded(
+              child: FutureBuilder<List<Map<String, dynamic>>>(
+                future: fetchAttendance(targetDate),
+                builder: (context, attendanceSnapshot) {
+                  if (attendanceSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (attendanceSnapshot.hasError) {
+                    return Center(
+                      child: Text("Error: ${attendanceSnapshot.error}"),
+                    );
+                  }
+
+                  final attendanceData = attendanceSnapshot.data ?? [];
+
+                  return StreamBuilder<QuerySnapshot>(
+                    stream: employeesStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (snapshot.hasError) {
+                        return Center(child: Text("Error: ${snapshot.error}"));
+                      }
+
+                      final docs = snapshot.data?.docs ?? [];
+                      if (docs.isEmpty) {
+                        return const Center(child: Text("No employees found"));
+                      }
+
+                      return LayoutBuilder(
+                        builder: (context, constraints) {
+                          final bool isMobile = constraints.maxWidth < 600;
+                          final bool isTablet = constraints.maxWidth < 900;
+
+                          if (isMobile) {
+                            return _buildMobileView(docs, attendanceData);
+                          } else if (isTablet) {
+                            return _buildTabletView(docs, attendanceData);
+                          } else {
+                            return _buildDesktopView(docs, attendanceData);
+                          }
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Mobile View - Card List
+  Widget _buildMobileView(
+    List<QueryDocumentSnapshot> docs,
+    List<Map<String, dynamic>> attendanceData,
+  ) {
+    final employeesWithAttendance = docs.where((doc) {
+      final user = doc.data() as Map<String, dynamic>;
+      final name = user['name']?.toString() ?? '';
+      return attendanceData.any((a) => a['name'] == name);
+    }).toList();
+
+    if (employeesWithAttendance.isEmpty) {
+      return const Center(
+        child: Text("No attendance records found for selected date"),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: employeesWithAttendance.length,
+      itemBuilder: (context, index) {
+        final doc = employeesWithAttendance[index];
+        final user = doc.data() as Map<String, dynamic>;
+        final name = user['name']?.toString() ?? '';
+        final matches = attendanceData.where((a) => a['name'] == name).toList();
+
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Employee Info
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Colors.blue[100],
+                      child: Text(
+                        user['employeeId']?.toString().isNotEmpty == true
+                            ? user['employeeId'].toString().substring(0, 1)
+                            : 'U',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            'ID: ${user['employeeId']?.toString() ?? 'N/A'}',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 12),
+                const Divider(),
+
+                // Attendance Records
+                ...matches.map((match) {
+                  final timeInString = match['timeIn'] != null
+                      ? formatTime(DateTime.parse(match['timeIn']).toLocal())
+                      : '';
+                  final timeOutString = match['timeOut'] != null
+                      ? formatTime(DateTime.parse(match['timeOut']).toLocal())
+                      : '';
+
+                  String ordinal(int number) {
+                    if (number == 1) return "1st Trip";
+                    if (number == 2) return "2nd Trip";
+                    if (number == 3) return "3rd Trip";
+                    return "${number}th Trip";
+                  }
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                ordinal(match['tripNumber']),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.login,
+                                    size: 14,
+                                    color: Colors.green,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(child: Text('In: $timeInString')),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.logout,
+                                    size: 14,
+                                    color: Colors.red,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(child: Text('Out: $timeOutString')),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[100],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            match['unit']?.toString().isNotEmpty == true
+                                ? "Unit ${match['unit']}"
+                                : (user['assignedVehicle'] != null
+                                      ? "Unit ${user['assignedVehicle']}"
+                                      : 'N/A'),
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
               ],
             ),
           ),
+        );
+      },
+    );
+  }
 
-          Expanded(
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: fetchAttendance(targetDate),
-              builder: (context, attendanceSnapshot) {
-                if (attendanceSnapshot.connectionState ==
-                    ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (attendanceSnapshot.hasError) {
-                  return Center(
-                    child: Text("Error: ${attendanceSnapshot.error}"),
-                  );
-                }
+  /// Tablet View - Compact DataTable
+  Widget _buildTabletView(
+    List<QueryDocumentSnapshot> docs,
+    List<Map<String, dynamic>> attendanceData,
+  ) {
+    final rows = _buildDataRows(docs, attendanceData, isCompact: true);
 
-                final attendanceData = attendanceSnapshot.data ?? [];
-
-                return StreamBuilder<QuerySnapshot>(
-                  stream: employeesStream,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snapshot.hasError) {
-                      return Center(child: Text("Error: ${snapshot.error}"));
-                    }
-
-                    final docs = snapshot.data?.docs ?? [];
-                    if (docs.isEmpty) {
-                      return const Center(child: Text("No employees found"));
-                    }
-
-                    return SingleChildScrollView(
-                      padding: const EdgeInsets.all(12),
-                      scrollDirection: Axis.vertical,
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          columnSpacing: 16,
-                          headingRowColor: WidgetStateProperty.all(
-                            Colors.blue[50],
-                          ),
-                          columns: const [
-                            DataColumn(label: Text("Employee's ID")),
-                            DataColumn(label: Text("Employee's Name")),
-                            DataColumn(label: Text("Vehicle Unit")),
-                            DataColumn(label: Text("Date")),
-                            DataColumn(label: Text("Tap In")),
-                            DataColumn(label: Text("Tap Out")),
-                            DataColumn(label: Text("Trips")),
-                          ],
-                          rows: docs.expand<DataRow>((doc) {
-                            final user = doc.data() as Map<String, dynamic>;
-                            final name = user['name']?.toString() ?? '';
-
-                            // Find attendance logs for this employee
-                            final matches = attendanceData
-                                .where((a) => a['name'] == name)
-                                .toList();
-
-                            if (matches.isEmpty) {
-                              return [];
-                            }
-
-                            return matches.map((match) {
-                              final dateString = match['timeIn'] != null
-                                  ? formatDate(
-                                      DateTime.parse(match['timeIn']).toLocal(),
-                                    )
-                                  : (match['timeOut'] != null
-                                        ? formatDate(
-                                            DateTime.parse(
-                                              match['timeOut'],
-                                            ).toLocal(),
-                                          )
-                                        : '');
-
-                              final timeInString = match['timeIn'] != null
-                                  ? formatTime(
-                                      DateTime.parse(match['timeIn']).toLocal(),
-                                    )
-                                  : '';
-
-                              final timeOutString = match['timeOut'] != null
-                                  ? formatTime(
-                                      DateTime.parse(
-                                        match['timeOut'],
-                                      ).toLocal(),
-                                    )
-                                  : '';
-
-                              String ordinal(int number) {
-                                if (number == 1) return "1st Trip";
-                                if (number == 2) return "2nd Trip";
-                                if (number == 3) return "3rd Trip";
-                                return "${number}th Trip";
-                              }
-
-                              return DataRow(
-                                cells: [
-                                  DataCell(
-                                    Text(user['employeeId']?.toString() ?? ''),
-                                  ),
-                                  DataCell(Text(name)),
-                                  DataCell(
-                                    Text(
-                                      match['unit'] != null &&
-                                              match['unit']
-                                                  .toString()
-                                                  .isNotEmpty
-                                          ? "Unit ${match['unit']}"
-                                          : (user['assignedVehicle'] != null
-                                                ? "Unit ${user['assignedVehicle']}"
-                                                : ''),
-                                    ),
-                                  ),
-                                  DataCell(Text(dateString)),
-                                  DataCell(Text(timeInString)),
-                                  DataCell(Text(timeOutString)),
-                                  DataCell(Text(ordinal(match['tripNumber']))),
-                                ],
-                              );
-                            });
-                          }).toList(), // Flatten rows
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Container(
+          width: MediaQuery.of(context).size.width,
+          padding: const EdgeInsets.all(8),
+          child: DataTable(
+            columnSpacing: 12,
+            horizontalMargin: 8,
+            headingRowColor: WidgetStateProperty.all(Colors.blue[50]),
+            columns: const [
+              DataColumn(label: Text("ID")),
+              DataColumn(label: Text("Name")),
+              DataColumn(label: Text("Unit")),
+              DataColumn(label: Text("Date")),
+              DataColumn(label: Text("Time In")),
+              DataColumn(label: Text("Time Out")),
+              DataColumn(label: Text("Trip")),
+            ],
+            rows: rows,
           ),
-        ],
+        ),
       ),
     );
+  }
+
+  /// Desktop View - Full DataTable
+  Widget _buildDesktopView(
+    List<QueryDocumentSnapshot> docs,
+    List<Map<String, dynamic>> attendanceData,
+  ) {
+    final rows = _buildDataRows(docs, attendanceData, isCompact: false);
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Container(
+          width: MediaQuery.of(context).size.width,
+          padding: const EdgeInsets.all(16),
+          child: DataTable(
+            columnSpacing: 20,
+            horizontalMargin: 12,
+            headingRowColor: WidgetStateProperty.all(Colors.blue[50]),
+            columns: const [
+              DataColumn(label: Text("Employee's ID")),
+              DataColumn(label: Text("Employee's Name")),
+              DataColumn(label: Text("Vehicle Unit")),
+              DataColumn(label: Text("Date")),
+              DataColumn(label: Text("Tap In")),
+              DataColumn(label: Text("Tap Out")),
+              DataColumn(label: Text("Trips")),
+            ],
+            rows: rows,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Helper method to build DataRows for both tablet and desktop
+  List<DataRow> _buildDataRows(
+    List<QueryDocumentSnapshot> docs,
+    List<Map<String, dynamic>> attendanceData, {
+    bool isCompact = false,
+  }) {
+    return docs.expand<DataRow>((doc) {
+      final user = doc.data() as Map<String, dynamic>;
+      final name = user['name']?.toString() ?? '';
+
+      final matches = attendanceData.where((a) => a['name'] == name).toList();
+
+      if (matches.isEmpty) {
+        return [];
+      }
+
+      return matches.map((match) {
+        final dateString = match['timeIn'] != null
+            ? formatDate(DateTime.parse(match['timeIn']).toLocal())
+            : (match['timeOut'] != null
+                  ? formatDate(DateTime.parse(match['timeOut']).toLocal())
+                  : '');
+
+        final timeInString = match['timeIn'] != null
+            ? formatTime(DateTime.parse(match['timeIn']).toLocal())
+            : '';
+
+        final timeOutString = match['timeOut'] != null
+            ? formatTime(DateTime.parse(match['timeOut']).toLocal())
+            : '';
+
+        String ordinal(int number) {
+          if (number == 1) return "1st Trip";
+          if (number == 2) return "2nd Trip";
+          if (number == 3) return "3rd Trip";
+          return "${number}th Trip";
+        }
+
+        return DataRow(
+          cells: [
+            DataCell(
+              Text(
+                user['employeeId']?.toString() ?? '',
+                style: isCompact ? const TextStyle(fontSize: 12) : null,
+              ),
+            ),
+            DataCell(
+              Text(
+                name,
+                style: isCompact ? const TextStyle(fontSize: 12) : null,
+              ),
+            ),
+            DataCell(
+              Text(
+                match['unit'] != null && match['unit'].toString().isNotEmpty
+                    ? "Unit ${match['unit']}"
+                    : (user['assignedVehicle'] != null
+                          ? "Unit ${user['assignedVehicle']}"
+                          : ''),
+                style: isCompact ? const TextStyle(fontSize: 12) : null,
+              ),
+            ),
+            DataCell(
+              Text(
+                dateString,
+                style: isCompact ? const TextStyle(fontSize: 12) : null,
+              ),
+            ),
+            DataCell(
+              Text(
+                timeInString,
+                style: isCompact ? const TextStyle(fontSize: 12) : null,
+              ),
+            ),
+            DataCell(
+              Text(
+                timeOutString,
+                style: isCompact ? const TextStyle(fontSize: 12) : null,
+              ),
+            ),
+            DataCell(
+              Text(
+                ordinal(match['tripNumber']),
+                style: isCompact ? const TextStyle(fontSize: 12) : null,
+              ),
+            ),
+          ],
+        );
+      });
+    }).toList();
   }
 }

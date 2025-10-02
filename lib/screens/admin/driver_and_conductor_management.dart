@@ -133,7 +133,9 @@ class _DriverConductorManagementScreenState
     return docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
       final name = data['name']?.toString().toLowerCase() ?? '';
-      return name.contains(searchQuery.toLowerCase());
+      final employeeId = data['employeeId']?.toString().toLowerCase() ?? '';
+      return name.contains(searchQuery.toLowerCase()) ||
+          employeeId.contains(searchQuery.toLowerCase());
     }).toList();
   }
 
@@ -386,16 +388,27 @@ class _DriverConductorManagementScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header with name and action button
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
-                    data['name']?.toString() ?? '',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        data['name']?.toString() ?? 'No Name',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'ID: ${data['employeeId']?.toString() ?? 'N/A'}',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(
@@ -405,12 +418,18 @@ class _DriverConductorManagementScreenState
               ],
             ),
             const SizedBox(height: 8),
-            _buildInfoRow('Employee ID', data['employeeId']?.toString() ?? ''),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+
+            // Employee details
             _buildInfoRow(
               'Employment Type',
-              data['employmentType']?.toString() ?? '',
+              data['employmentType']?.toString() ?? 'N/A',
             ),
-            _buildInfoRow('Role', data['role']?.toString() ?? ''),
+            _buildInfoRow(
+              'Role',
+              _capitalizeRole(data['role']?.toString() ?? 'N/A'),
+            ),
             _buildInfoRow(
               'Vehicle',
               data['assignedVehicle'] != null
@@ -429,7 +448,7 @@ class _DriverConductorManagementScreenState
 
   Widget _buildInfoRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -440,13 +459,25 @@ class _DriverConductorManagementScreenState
               style: const TextStyle(
                 fontWeight: FontWeight.w500,
                 color: Colors.grey,
+                fontSize: 14,
               ),
             ),
           ),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 14))),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 14),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  String _capitalizeRole(String role) {
+    if (role.isEmpty) return '';
+    return role[0].toUpperCase() + role.substring(1);
   }
 
   @override
@@ -460,211 +491,298 @@ class _DriverConductorManagementScreenState
         backgroundColor: const Color(0xFF0D2364),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Search Bar
-            TextField(
-              controller: searchCtrl,
-              decoration: InputDecoration(
-                labelText: 'Search by name',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onChanged: (value) => setState(() => searchQuery = value),
-            ),
-            const SizedBox(height: 16),
-
-            // Data Container with responsive layout
             Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withAlpha(128),
-                    spreadRadius: 1,
-                    blurRadius: 3,
-                    offset: const Offset(0, 1),
+              padding: const EdgeInsets.all(16),
+              child: TextField(
+                controller: searchCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Search by name or ID',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ],
+                ),
+                onChanged: (value) => setState(() => searchQuery = value),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Text(
-                      'Employees',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1565C0),
-                      ),
-                    ),
-                  ),
+            ),
 
-                  // StreamBuilder for real-time data
-                  StreamBuilder<QuerySnapshot>(
-                    stream: employeesStream,
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        return Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text('Error: ${snapshot.error}'),
-                        );
-                      }
+            // Main Content
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: employeesStream,
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    }
 
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      }
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-                      final docs = snapshot.data?.docs ?? [];
-                      final filteredDocs = _filterEmployees(docs);
+                    final docs = snapshot.data?.docs ?? [];
+                    final filteredDocs = _filterEmployees(docs);
 
-                      if (filteredDocs.isEmpty) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Text('No employees found'),
-                        );
-                      }
+                    if (filteredDocs.isEmpty) {
+                      return const Center(child: Text('No employees found'));
+                    }
 
-                      // Horizontally scrollable table for all screen sizes
-                      return SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          columnSpacing: 16,
-                          headingRowColor: WidgetStateColor.resolveWith(
-                            (states) => Colors.grey.shade100,
-                          ),
-                          columns: const [
-                            DataColumn(
-                              label: Text(
-                                'Name',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            DataColumn(
-                              label: Text(
-                                'Employee ID',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            DataColumn(
-                              label: Text(
-                                'Employment Type',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            DataColumn(
-                              label: Text(
-                                'Role',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            DataColumn(
-                              label: Text(
-                                'Vehicle',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            DataColumn(
-                              label: Text(
-                                'Schedule',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            DataColumn(
-                              label: Text(
-                                'Actions',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ],
-                          rows: filteredDocs.map((doc) {
-                            final data = doc.data() as Map<String, dynamic>;
-                            return DataRow(
-                              cells: [
-                                DataCell(
-                                  SizedBox(
-                                    width: 120,
-                                    child: Text(
-                                      data['name']?.toString() ?? '',
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  SizedBox(
-                                    width: 80,
-                                    child: Text(
-                                      data['employeeId']?.toString() ?? '',
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  SizedBox(
-                                    width: 100,
-                                    child: Text(
-                                      data['employmentType']?.toString() ?? '',
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  SizedBox(
-                                    width: 80,
-                                    child: Text(data['role']?.toString() ?? ''),
-                                  ),
-                                ),
-                                DataCell(
-                                  SizedBox(
-                                    width: 80,
-                                    child: Text(
-                                      data['assignedVehicle'] != null
-                                          ? 'UNIT ${data['assignedVehicle']}'
-                                          : 'Not assigned',
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  SizedBox(
-                                    width: 120,
-                                    child: Text(
-                                      data['schedule']?.toString() ?? 'Not set',
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  IconButton(
-                                    icon: const Icon(Icons.more_vert, size: 20),
-                                    onPressed: () =>
-                                        _showActionMenu(context, doc),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }).toList(),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final bool isMobile = constraints.maxWidth < 600;
+                        final bool isTablet = constraints.maxWidth < 900;
+
+                        if (isMobile) {
+                          return _buildMobileView(filteredDocs);
+                        } else if (isTablet) {
+                          return _buildTabletView(filteredDocs);
+                        } else {
+                          return _buildDesktopView(filteredDocs);
+                        }
+                      },
+                    );
+                  },
+                ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  /// Mobile View - Card List
+  Widget _buildMobileView(List<QueryDocumentSnapshot> filteredDocs) {
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 16),
+      itemCount: filteredDocs.length,
+      itemBuilder: (context, index) {
+        return _buildEmployeeCard(filteredDocs[index]);
+      },
+    );
+  }
+
+  /// Tablet View - Compact DataTable
+  Widget _buildTabletView(List<QueryDocumentSnapshot> filteredDocs) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Container(
+          width: MediaQuery.of(context).size.width,
+          padding: const EdgeInsets.only(bottom: 16),
+          child: DataTable(
+            columnSpacing: 12,
+            horizontalMargin: 8,
+            headingRowColor: WidgetStateColor.resolveWith(
+              (states) => Colors.grey.shade100,
+            ),
+            columns: const [
+              DataColumn(
+                label: Text(
+                  'Name',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'Emp ID',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'Type',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'Role',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'Vehicle',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'Schedule',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'Actions',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+            rows: filteredDocs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return _buildDataRow(doc, data, isCompact: true);
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Desktop View - Full DataTable
+  Widget _buildDesktopView(List<QueryDocumentSnapshot> filteredDocs) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Container(
+          width: MediaQuery.of(context).size.width,
+          padding: const EdgeInsets.only(bottom: 16),
+          child: DataTable(
+            columnSpacing: 20,
+            horizontalMargin: 12,
+            headingRowColor: WidgetStateColor.resolveWith(
+              (states) => Colors.grey.shade100,
+            ),
+            columns: const [
+              DataColumn(
+                label: Text(
+                  'Name',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'Employee ID',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'Employment Type',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'Role',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'Vehicle',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'Schedule',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'Actions',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+            rows: filteredDocs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return _buildDataRow(doc, data, isCompact: false);
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Helper method to build DataRows for both tablet and desktop
+  DataRow _buildDataRow(
+    QueryDocumentSnapshot doc,
+    Map<String, dynamic> data, {
+    bool isCompact = false,
+  }) {
+    return DataRow(
+      cells: [
+        DataCell(
+          SizedBox(
+            width: isCompact ? 120 : 150,
+            child: Text(
+              data['name']?.toString() ?? '',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: isCompact ? 12 : 14),
+            ),
+          ),
+        ),
+        DataCell(
+          SizedBox(
+            width: isCompact ? 80 : 100,
+            child: Text(
+              data['employeeId']?.toString() ?? '',
+              style: TextStyle(fontSize: isCompact ? 12 : 14),
+            ),
+          ),
+        ),
+        DataCell(
+          SizedBox(
+            width: isCompact ? 80 : 120,
+            child: Text(
+              data['employmentType']?.toString() ?? '',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: isCompact ? 12 : 14),
+            ),
+          ),
+        ),
+        DataCell(
+          SizedBox(
+            width: isCompact ? 80 : 100,
+            child: Text(
+              _capitalizeRole(data['role']?.toString() ?? ''),
+              style: TextStyle(fontSize: isCompact ? 12 : 14),
+            ),
+          ),
+        ),
+        DataCell(
+          SizedBox(
+            width: isCompact ? 80 : 100,
+            child: Text(
+              data['assignedVehicle'] != null
+                  ? 'UNIT ${data['assignedVehicle']}'
+                  : 'Not assigned',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: isCompact ? 12 : 14),
+            ),
+          ),
+        ),
+        DataCell(
+          SizedBox(
+            width: isCompact ? 120 : 150,
+            child: Text(
+              data['schedule']?.toString() ?? 'Not set',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: isCompact ? 12 : 14),
+            ),
+          ),
+        ),
+        DataCell(
+          IconButton(
+            icon: Icon(Icons.more_vert, size: isCompact ? 18 : 24),
+            onPressed: () => _showActionMenu(context, doc),
+          ),
+        ),
+      ],
     );
   }
 
