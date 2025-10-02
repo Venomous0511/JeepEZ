@@ -160,7 +160,7 @@ class _IncidentReportManagementScreenState
     return FilterChip(
       label: Text(label, style: TextStyle(fontSize: isMobile ? 11 : 13)),
       selected: isSelected,
-      selectedColor: const Color(0xFF0D2364).withOpacity(0.2),
+      selectedColor: const Color(0xFF0D2364).withAlpha(2),
       checkmarkColor: const Color(0xFF0D2364),
       onSelected: (bool value) {
         setState(() {
@@ -269,7 +269,7 @@ class _IncidentReportManagementScreenState
                         decoration: BoxDecoration(
                           color: _getStatusColor(
                             incident['status'] as String,
-                          ).withOpacity(0.1),
+                          ).withAlpha(1),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: _getStatusColor(
@@ -435,7 +435,7 @@ class _IncidentReportManagementScreenState
                       decoration: BoxDecoration(
                         color: _getStatusColor(
                           incident['status'] as String,
-                        ).withOpacity(0.1),
+                        ).withAlpha(1),
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
                           color: _getStatusColor(incident['status'] as String),

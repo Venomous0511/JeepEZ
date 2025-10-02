@@ -349,11 +349,6 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
             color: isChecked ? Colors.green : Colors.black,
           ),
         ),
-        trailing: Icon(
-          isChecked ? Icons.check_circle : Icons.radio_button_unchecked,
-          color: isChecked ? Colors.green : Colors.grey,
-          size: isMobile ? 20 : 24,
-        ),
       ),
     );
   }
@@ -444,7 +439,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: Padding(
-        padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
+        padding: EdgeInsets.all(isMobile ? 16.0 : 20.0),
         child: isMobile
             ? Column(
                 children: [
@@ -497,121 +492,131 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
 
   // Mobile card view
   Widget _buildCandidateCards() {
-    return Column(
-      children: candidates.asMap().entries.map((entry) {
-        int index = entry.key;
-        Candidate candidate = entry.value;
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: candidates.asMap().entries.map((entry) {
+            int index = entry.key;
+            Candidate candidate = entry.value;
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.star, color: Colors.amber, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        candidate.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0D2364),
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.star, color: Colors.amber, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          candidate.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0D2364),
+                          ),
                         ),
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _getCompletionColor(candidate).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getCompletionColor(candidate).withAlpha(1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _getCompletionColor(candidate),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.checklist,
+                          size: 16,
                           color: _getCompletionColor(candidate),
                         ),
                       ),
-                      child: Icon(
-                        Icons.checklist,
-                        size: 16,
-                        color: _getCompletionColor(candidate),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _buildCardInfoRow(Icons.work, 'Position', candidate.position),
-                const SizedBox(height: 8),
-                _buildCardInfoRow(
-                  Icons.calendar_today,
-                  'Interview Date',
-                  candidate.interviewDate,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => _uploadResume(index),
-                      icon: Icon(
-                        Icons.upload,
-                        size: 18,
-                        color: candidate.resumeFile != null
-                            ? Colors.green
-                            : null,
-                      ),
-                      label: Text(
-                        'Upload',
-                        style: TextStyle(
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildCardInfoRow(Icons.work, 'Position', candidate.position),
+                  const SizedBox(height: 8),
+                  _buildCardInfoRow(
+                    Icons.calendar_today,
+                    'Interview Date',
+                    candidate.interviewDate,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _uploadResume(index),
+                        icon: Icon(
+                          Icons.upload,
+                          size: 18,
                           color: candidate.resumeFile != null
                               ? Colors.green
                               : null,
                         ),
+                        label: Text(
+                          'Upload',
+                          style: TextStyle(
+                            color: candidate.resumeFile != null
+                                ? Colors.green
+                                : null,
+                          ),
+                        ),
                       ),
-                    ),
-                    TextButton.icon(
-                      onPressed: () => _viewResume(index),
-                      icon: Icon(
-                        Icons.visibility,
-                        size: 18,
-                        color: candidate.resumeFile != null
-                            ? const Color(0xFF0D2364)
-                            : Colors.grey,
-                      ),
-                      label: Text(
-                        'View',
-                        style: TextStyle(
+                      TextButton.icon(
+                        onPressed: () => _viewResume(index),
+                        icon: Icon(
+                          Icons.visibility,
+                          size: 18,
                           color: candidate.resumeFile != null
                               ? const Color(0xFF0D2364)
                               : Colors.grey,
                         ),
+                        label: Text(
+                          'View',
+                          style: TextStyle(
+                            color: candidate.resumeFile != null
+                                ? const Color(0xFF0D2364)
+                                : Colors.grey,
+                          ),
+                        ),
                       ),
-                    ),
-                    TextButton.icon(
-                      onPressed: () => _showRequirementsChecklist(index),
-                      icon: Icon(
-                        Icons.checklist,
-                        size: 18,
-                        color: _getCompletionColor(candidate),
+                      TextButton.icon(
+                        onPressed: () => _showRequirementsChecklist(index),
+                        icon: Icon(
+                          Icons.checklist,
+                          size: 18,
+                          color: _getCompletionColor(candidate),
+                        ),
+                        label: Text(
+                          'Check',
+                          style: TextStyle(
+                            color: _getCompletionColor(candidate),
+                          ),
+                        ),
                       ),
-                      label: Text(
-                        'Check',
-                        style: TextStyle(color: _getCompletionColor(candidate)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 
@@ -647,186 +652,125 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: Padding(
-        padding: EdgeInsets.all(isTablet ? 12.0 : 16.0),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            columnSpacing: isTablet ? 16 : 20,
-            dataRowMinHeight: 48,
-            dataRowMaxHeight: 56,
-            headingRowColor: WidgetStateProperty.all(
-              const Color(0xFF0D2364).withOpacity(0.1),
-            ),
-            columns: [
-              DataColumn(
-                label: Text(
-                  'NAME',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: isTablet ? 13 : 14,
-                    color: const Color(0xFF0D2364),
-                  ),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  'POSITION',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: isTablet ? 13 : 14,
-                    color: const Color(0xFF0D2364),
-                  ),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  'FINAL INTERVIEW DATE',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: isTablet ? 12 : 14,
-                    color: const Color(0xFF0D2364),
-                  ),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  'ACTIONS',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: isTablet ? 12 : 14,
-                    color: const Color(0xFF0D2364),
-                  ),
-                ),
-              ),
-            ],
-            rows: candidates.asMap().entries.map((entry) {
-              int index = entry.key;
-              Candidate candidate = entry.value;
+        padding: EdgeInsets.all(isTablet ? 16.0 : 20.0),
+        child: Column(
+          children: candidates.asMap().entries.map((entry) {
+            int index = entry.key;
+            Candidate candidate = entry.value;
 
-              return DataRow(
-                cells: [
-                  DataCell(
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 16),
-                        const SizedBox(width: 8),
-                        Text(
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.star, color: Colors.amber, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
                           candidate.name,
-                          style: TextStyle(
-                            fontSize: isTablet ? 12 : 14,
-                            fontWeight: FontWeight.w600,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0D2364),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      candidate.position,
-                      style: TextStyle(fontSize: isTablet ? 12 : 14),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      candidate.interviewDate,
-                      style: TextStyle(fontSize: isTablet ? 12 : 14),
-                    ),
-                  ),
-                  DataCell(
-                    PopupMenuButton<String>(
-                      icon: Icon(
-                        Icons.more_vert,
-                        size: isTablet ? 18 : 20,
-                        color: const Color(0xFF0D2364),
                       ),
-                      itemBuilder: (BuildContext context) => [
-                        PopupMenuItem<String>(
-                          value: 'upload',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.upload,
-                                size: 20,
-                                color: candidate.resumeFile != null
-                                    ? Colors.green
-                                    : null,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Upload Resume',
-                                style: TextStyle(
-                                  color: candidate.resumeFile != null
-                                      ? Colors.green
-                                      : null,
-                                ),
-                              ),
-                            ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getCompletionColor(candidate).withAlpha(1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _getCompletionColor(candidate),
                           ),
                         ),
-                        PopupMenuItem<String>(
-                          value: 'view',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.visibility,
-                                size: 20,
-                                color: candidate.resumeFile != null
-                                    ? const Color(0xFF0D2364)
-                                    : Colors.grey,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'View Resume',
-                                style: TextStyle(
-                                  color: candidate.resumeFile != null
-                                      ? const Color(0xFF0D2364)
-                                      : Colors.grey,
-                                ),
-                              ),
-                            ],
+                        child: Icon(
+                          Icons.checklist,
+                          size: 16,
+                          color: _getCompletionColor(candidate),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildCardInfoRow(Icons.work, 'Position', candidate.position),
+                  const SizedBox(height: 8),
+                  _buildCardInfoRow(
+                    Icons.calendar_today,
+                    'Interview Date',
+                    candidate.interviewDate,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _uploadResume(index),
+                        icon: Icon(
+                          Icons.upload,
+                          size: 18,
+                          color: candidate.resumeFile != null
+                              ? Colors.green
+                              : null,
+                        ),
+                        label: Text(
+                          'Upload',
+                          style: TextStyle(
+                            color: candidate.resumeFile != null
+                                ? Colors.green
+                                : null,
                           ),
                         ),
-                        const PopupMenuDivider(),
-                        PopupMenuItem<String>(
-                          value: 'checklist',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.checklist,
-                                size: 20,
-                                color: _getCompletionColor(candidate),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Requirements Checklist',
-                                style: TextStyle(
-                                  color: _getCompletionColor(candidate),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _viewResume(index),
+                        icon: Icon(
+                          Icons.visibility,
+                          size: 18,
+                          color: candidate.resumeFile != null
+                              ? const Color(0xFF0D2364)
+                              : Colors.grey,
+                        ),
+                        label: Text(
+                          'View',
+                          style: TextStyle(
+                            color: candidate.resumeFile != null
+                                ? const Color(0xFF0D2364)
+                                : Colors.grey,
                           ),
                         ),
-                      ],
-                      onSelected: (String value) {
-                        switch (value) {
-                          case 'upload':
-                            _uploadResume(index);
-                            break;
-                          case 'view':
-                            _viewResume(index);
-                            break;
-                          case 'checklist':
-                            _showRequirementsChecklist(index);
-                            break;
-                        }
-                      },
-                    ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _showRequirementsChecklist(index),
+                        icon: Icon(
+                          Icons.checklist,
+                          size: 18,
+                          color: _getCompletionColor(candidate),
+                        ),
+                        label: Text(
+                          'Check',
+                          style: TextStyle(
+                            color: _getCompletionColor(candidate),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              );
-            }).toList(),
-          ),
+              ),
+            );
+          }).toList(),
         ),
       ),
     );

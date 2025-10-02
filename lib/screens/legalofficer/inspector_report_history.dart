@@ -142,7 +142,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: width,
-        padding: EdgeInsets.all(isMobile ? 16.0 : 20.0),
+        padding: EdgeInsets.all(isMobile ? 20.0 : 24.0),
         decoration: BoxDecoration(
           color: const Color(0xFF0D2364),
           borderRadius: BorderRadius.circular(8),
@@ -156,25 +156,28 @@ class InspectorReportHistoryScreen extends StatelessWidget {
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               title,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: isMobile ? 13 : 14,
+                fontSize: isMobile ? 14 : 16,
                 fontWeight: FontWeight.w500,
+                height: 1.2,
               ),
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            SizedBox(height: isMobile ? 8 : 12),
+            SizedBox(height: isMobile ? 12 : 16),
             Text(
               value,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: isMobile ? 28 : 32,
+                fontSize: isMobile ? 32 : 36,
                 fontWeight: FontWeight.bold,
+                height: 1.0,
               ),
             ),
           ],
@@ -218,7 +221,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
   Widget _styledCardWhite(Widget child, bool isMobile) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(isMobile ? 8.0 : 12.0),
+      padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
@@ -267,12 +270,12 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 4,
+                          vertical: 6,
                         ),
                         decoration: BoxDecoration(
                           color: _getStatusColor(
                             report['status'] as String,
-                          ).withOpacity(0.1),
+                          ).withAlpha(1),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: _getStatusColor(report['status'] as String),
@@ -290,7 +293,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
 
                   // Report details
                   _buildInfoRow(
@@ -298,19 +301,19 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                     report['date'] as String,
                     Icons.calendar_today,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   _buildInfoRow(
                     'Inspector',
                     report['inspector'] as String,
                     Icons.person,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   _buildInfoRow(
                     'Violations',
                     report['violations'].toString(),
                     Icons.warning,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
 
                   // Action button
                   Align(
@@ -323,6 +326,10 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                       label: const Text('View Details'),
                       style: TextButton.styleFrom(
                         foregroundColor: const Color(0xFF0D2364),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                       ),
                     ),
                   ),
@@ -338,25 +345,31 @@ class InspectorReportHistoryScreen extends StatelessWidget {
   Widget _buildInfoRow(String label, String value, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
-        const SizedBox(width: 8),
-        Text(
-          '$label: ',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[600],
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        Icon(icon, size: 18, color: Colors.grey[600]),
+        const SizedBox(width: 12),
         Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.black87,
-              fontWeight: FontWeight.w600,
-            ),
-            overflow: TextOverflow.ellipsis,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w600,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ),
       ],
@@ -368,165 +381,165 @@ class InspectorReportHistoryScreen extends StatelessWidget {
     final isTablet = screenWidth >= 600 && screenWidth < 1024;
     final reports = _getSampleReports();
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Container(
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
-          headingTextStyle: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-            fontSize: isTablet ? 13 : 14,
+    return DataTable(
+      headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
+      headingTextStyle: TextStyle(
+        fontWeight: FontWeight.bold,
+        color: Colors.black87,
+        fontSize: isTablet ? 14 : 16,
+      ),
+      dataTextStyle: TextStyle(
+        fontSize: isTablet ? 13 : 15,
+        color: Colors.black87,
+      ),
+      dataRowColor: WidgetStateProperty.resolveWith<Color>((
+        Set<WidgetState> states,
+      ) {
+        if (states.contains(WidgetState.selected)) {
+          return Theme.of(context).colorScheme.primary.withAlpha(8);
+        }
+        return Colors.white;
+      }),
+      columnSpacing: isTablet ? 20 : 24,
+      horizontalMargin: isTablet ? 16 : 20,
+      dataRowMinHeight: 60,
+      dataRowMaxHeight: 60,
+      columns: [
+        DataColumn(
+          label: SizedBox(
+            width: isTablet ? 120 : 140,
+            child: const Text('Report ID', overflow: TextOverflow.ellipsis),
           ),
-          dataTextStyle: TextStyle(fontSize: isTablet ? 12 : 14),
-          dataRowColor: WidgetStateProperty.resolveWith<Color>((
-            Set<WidgetState> states,
-          ) {
-            if (states.contains(WidgetState.selected)) {
-              return Theme.of(context).colorScheme.primary.withOpacity(0.08);
-            }
-            return Colors.white;
-          }),
-          columnSpacing: isTablet ? 16 : 20,
-          horizontalMargin: isTablet ? 8 : 12,
-          dataRowMinHeight: 48,
-          dataRowMaxHeight: 56,
-          columns: [
-            DataColumn(
-              label: SizedBox(
+        ),
+        DataColumn(
+          label: SizedBox(
+            width: isTablet ? 100 : 120,
+            child: const Text('Date', overflow: TextOverflow.ellipsis),
+          ),
+        ),
+        DataColumn(
+          label: SizedBox(
+            width: isTablet ? 120 : 140,
+            child: const Text('Inspector', overflow: TextOverflow.ellipsis),
+          ),
+        ),
+        DataColumn(
+          label: SizedBox(
+            width: isTablet ? 80 : 100,
+            child: const Text('Violations', overflow: TextOverflow.ellipsis),
+          ),
+        ),
+        DataColumn(
+          label: SizedBox(
+            width: isTablet ? 100 : 120,
+            child: const Text('Status', overflow: TextOverflow.ellipsis),
+          ),
+        ),
+        DataColumn(
+          label: SizedBox(
+            width: isTablet ? 80 : 100,
+            child: const Text('Actions', overflow: TextOverflow.ellipsis),
+          ),
+        ),
+      ],
+      rows: reports.map((report) {
+        return DataRow(
+          cells: [
+            DataCell(
+              SizedBox(
+                width: isTablet ? 120 : 140,
+                child: Text(
+                  report['id'] as String,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            DataCell(
+              SizedBox(
                 width: isTablet ? 100 : 120,
-                child: const Text('Report ID', overflow: TextOverflow.ellipsis),
-              ),
-            ),
-            DataColumn(
-              label: SizedBox(
-                width: isTablet ? 90 : 100,
-                child: const Text('Date', overflow: TextOverflow.ellipsis),
-              ),
-            ),
-            DataColumn(
-              label: SizedBox(
-                width: isTablet ? 100 : 120,
-                child: const Text('Inspector', overflow: TextOverflow.ellipsis),
-              ),
-            ),
-            DataColumn(
-              label: SizedBox(
-                width: isTablet ? 70 : 80,
-                child: const Text(
-                  'Violations',
+                child: Text(
+                  report['date'] as String,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
-            DataColumn(
-              label: SizedBox(
-                width: isTablet ? 90 : 100,
-                child: const Text('Status', overflow: TextOverflow.ellipsis),
+            DataCell(
+              SizedBox(
+                width: isTablet ? 120 : 140,
+                child: Text(
+                  report['inspector'] as String,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
-            DataColumn(
-              label: SizedBox(
-                width: isTablet ? 70 : 80,
-                child: const Text('Actions', overflow: TextOverflow.ellipsis),
+            DataCell(
+              SizedBox(
+                width: isTablet ? 80 : 100,
+                child: Center(
+                  child: Text(
+                    report['violations'].toString(),
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: isTablet ? 14 : 16,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            DataCell(
+              SizedBox(
+                width: isTablet ? 100 : 120,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(
+                      report['status'] as String,
+                    ).withAlpha(1),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: _getStatusColor(report['status'] as String),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Text(
+                    report['status'] as String,
+                    style: TextStyle(
+                      color: _getStatusColor(report['status'] as String),
+                      fontWeight: FontWeight.bold,
+                      fontSize: isTablet ? 12 : 13,
+                    ),
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ),
+            DataCell(
+              SizedBox(
+                width: isTablet ? 80 : 100,
+                child: Center(
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.visibility,
+                      size: isTablet ? 20 : 22,
+                      color: const Color(0xFF0D2364),
+                    ),
+                    onPressed: () {
+                      // Navigate to report details
+                    },
+                    tooltip: 'View Details',
+                  ),
+                ),
               ),
             ),
           ],
-          rows: reports.map((report) {
-            return DataRow(
-              cells: [
-                DataCell(
-                  SizedBox(
-                    width: isTablet ? 100 : 120,
-                    child: Text(
-                      report['id'] as String,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  SizedBox(
-                    width: isTablet ? 90 : 100,
-                    child: Text(
-                      report['date'] as String,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  SizedBox(
-                    width: isTablet ? 100 : 120,
-                    child: Text(
-                      report['inspector'] as String,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  SizedBox(
-                    width: isTablet ? 70 : 80,
-                    child: Center(
-                      child: Text(
-                        report['violations'].toString(),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ),
-                DataCell(
-                  SizedBox(
-                    width: isTablet ? 90 : 100,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(
-                          report['status'] as String,
-                        ).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: _getStatusColor(report['status'] as String),
-                        ),
-                      ),
-                      child: Text(
-                        report['status'] as String,
-                        style: TextStyle(
-                          color: _getStatusColor(report['status'] as String),
-                          fontWeight: FontWeight.bold,
-                          fontSize: isTablet ? 11 : 12,
-                        ),
-                        textAlign: TextAlign.center,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ),
-                DataCell(
-                  SizedBox(
-                    width: isTablet ? 70 : 80,
-                    child: Center(
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.visibility,
-                          size: isTablet ? 18 : 20,
-                          color: const Color(0xFF0D2364),
-                        ),
-                        onPressed: () {
-                          // Navigate to report details
-                        },
-                        tooltip: 'View Details',
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          }).toList(),
-        ),
-      ),
+        );
+      }).toList(),
     );
   }
 
