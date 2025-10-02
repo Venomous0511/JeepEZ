@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +13,145 @@ import '../leaveapplication/driverleaveapp.dart';
 class DriverDashboard extends StatefulWidget {
   final AppUser user;
   const DriverDashboard({super.key, required this.user});
+
+  @override
+  State<DriverDashboard> createState() => _DriverDashboardState();
+}
+
+class TrackingService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  StreamSubscription<Position>? _positionSubscription;
+
+  /// Start live GPS tracking
+  Future<void> startTracking() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    // Get user data
+    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    if (!userDoc.exists) return;
+
+    final data = userDoc.data();
+    final vehicleId = data?['assignedVehicle']?.toString();
+    final employeeId = data?['employeeId']?.toString();
+
+    if (vehicleId == null || employeeId == null) return;
+
+    // Location settings
+    final locationSettings = const LocationSettings(
+      accuracy: LocationAccuracy.bestForNavigation,
+      distanceFilter: 5,
+    );
+
+    // Start position stream
+    _positionSubscription = Geolocator.getPositionStream(
+      locationSettings: locationSettings,
+    ).listen(
+          (position) async {
+        await _firestore.collection('vehicles_locations').doc(employeeId).set({
+          'vehicleId': vehicleId,
+          'driverId': employeeId,
+          'lat': position.latitude,
+          'lng': position.longitude,
+          'speed': position.speed * 3.6,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      },
+      onError: (error) {
+        debugPrint('Tracking error: $error');
+      },
+    );
+
+    debugPrint('Tracking started for $employeeId | Vehicle $vehicleId');
+  }
+
+  /// Stop live GPS tracking
+  Future<void> stopTracking() async {
+    await _positionSubscription?.cancel();
+    _positionSubscription = null;
+    debugPrint('Tracking stopped');
+  }
+
+  /// Logout user + stop tracking + remove location marker
+  Future<void> logout() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    final employeeId = userDoc.data()?['employeeId']?.toString();
+
+    // Stop tracking
+    await stopTracking();
+
+    // Remove driver location
+    if (employeeId != null) {
+      await _firestore.collection('vehicles_locations').doc(employeeId).delete();
+      debugPrint('Location removed for $employeeId');
+    }
+
+    // Sign out
+    await _auth.signOut();
+    debugPrint('User logged out');
+  }
+}
+
+class _DriverDashboardState extends State<DriverDashboard> with WidgetsBindingObserver {
+  int _currentIndex = 0;
+  late List<Widget> _screens;
+
+  final TrackingService trackingService = TrackingService();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _screens = [];
+    _initializeTracking();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Initialize screens here where context is available
+    _screens = [
+      _buildHomeScreen(),
+      const WorkScheduleScreen(),
+      const IncidentReportScreen(),
+      const VehicleChecklistScreen(),
+      const LeaveApplicationScreen(),
+    ];
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Stop tracking when app goes into background
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      trackingService.stopTracking();
+    } else if (state == AppLifecycleState.resumed) {
+      _initializeTracking();
+    }
+  }
+
+  Future<void> _initializeTracking() async {
+    try {
+      await handleLocationPermission();
+
+      // Ensure location service is enabled
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        await Geolocator.openLocationSettings();
+        return;
+      }
+
+      // Start tracking after checks
+      await trackingService.startTracking();
+      _showErrorSnackBar('Tracking started successfully.');
+    } catch (e) {
+      _showErrorSnackBar('Failed to start tracking: $e');
+    }
+  }
 
   Future<void> handleLocationPermission() async {
     bool serviceEnabled;
@@ -39,43 +179,68 @@ class DriverDashboard extends StatefulWidget {
   }
 
   @override
-  State<DriverDashboard> createState() => _DriverDashboardState();
-}
-
-class _DriverDashboardState extends State<DriverDashboard> {
-  int _currentIndex = 0;
-  late List<Widget> _screens;
-
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  @override
-  void initState() {
-    super.initState();
-    // Initialize with empty screens first, will be updated in didChangeDependencies
-    _screens = [];
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    trackingService.stopTracking();
+    super.dispose();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Initialize screens here where context is available
-    _screens = [
-      _buildHomeScreen(),
-      const WorkScheduleScreen(),
-      const IncidentReportScreen(),
-      const VehicleChecklistScreen(),
-      const LeaveApplicationScreen(),
-    ];
-  }
-
-  Stream<Position> getPositionStream() {
-    return Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // meters before update triggers
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
       ),
     );
+  }
+
+  /// ---------------- FETCH NOTIFICATIONS ----------------
+  Stream<QuerySnapshot<Map<String, dynamic>>> getNotificationsStream(String role) {
+    final collection = FirebaseFirestore.instance.collection('notifications');
+
+    if (role == 'super_admin' || role == 'admin') {
+      // Super_Admin & Admin → See ALL (system + security)
+      return collection
+          .where('dismissed', isEqualTo: false)
+          .orderBy('time', descending: true)
+          .snapshots();
+    } else {
+      // Others → See only system notifications
+      return collection
+          .where('dismissed', isEqualTo: false)
+          .where('type', isEqualTo: 'system')
+          .orderBy('time', descending: true)
+          .snapshots();
+    }
+  }
+
+  /// ---------------- ICON TYPE ----------------
+  IconData _getIconForType(String type) {
+    switch (type) {
+      case 'system':
+        return Icons.system_update_alt;
+      case 'security':
+        return Icons.warning;
+      case 'updates':
+        return Icons.notifications_on;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  /// ---------------- COLOR TYPE ----------------
+  Color _getColorForType(String type) {
+    switch (type) {
+      case 'system':
+        return Colors.blue;
+      case 'security':
+        return Colors.red;
+      case 'updates':
+        return Colors.green;
+      default:
+        return const Color(0xFF0D2364);
+    }
   }
 
   Widget _buildHomeScreen() {
@@ -181,6 +346,21 @@ class _DriverDashboardState extends State<DriverDashboard> {
                 ),
               ),
               SizedBox(height: isMobile ? 24 : 32),
+
+              // Tracking status
+              Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 16.0 : 24.0,
+                  ),
+                  child: const Text(
+                    '📍 Tracking in progress...',
+                    style: TextStyle(fontSize: 16, color: Colors.green),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 32),
 
               // View More Button
               Padding(
@@ -301,7 +481,46 @@ class _DriverDashboardState extends State<DriverDashboard> {
               ),
             ],
           ),
-          content: const Text('No new notifications'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: getNotificationsStream(widget.user.role),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return const Text('Failed to load notifications.');
+                }
+
+                final docs = snapshot.data?.docs ?? [];
+                if (docs.isEmpty) {
+                  return const Text('No new notifications');
+                }
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final data = docs[index].data();
+                    final title = data['title'] ?? 'No title';
+                    final message = data['message'] ?? '';
+                    final type = data['type'] ?? 'system';
+
+                    return ListTile(
+                      leading: Icon(
+                        _getIconForType(type),
+                        color: _getColorForType(type),
+                      ),
+                      title: Text(title),
+                      subtitle: Text(message),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
           actions: [
             TextButton(
               onPressed: () {

@@ -500,6 +500,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
             return AlertDialog(
               title: const Text("Add New User"),
               content: SingleChildScrollView(
+<<<<<<< HEAD
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
                     maxWidth: MediaQuery.of(context).size.width * 0.8,
@@ -510,6 +511,102 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     children: [
                       TextField(
                         controller: nameCtrl,
+=======
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: "Full Name",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: emailCtrl,
+                      decoration: const InputDecoration(
+                        labelText: "Email",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: passCtrl,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: "Password",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: employeeIdCtrl,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: "Employee ID (auto-generated)",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: role,
+                      items: const [
+                        DropdownMenuItem(
+                          value: "legal_officer",
+                          child: Text("Legal Officer"),
+                        ),
+                        DropdownMenuItem(
+                          value: "driver",
+                          child: Text("Driver"),
+                        ),
+                        DropdownMenuItem(
+                          value: "conductor",
+                          child: Text("Conductor"),
+                        ),
+                        DropdownMenuItem(
+                          value: "inspector",
+                          child: Text("Inspector"),
+                        ),
+                      ],
+                      onChanged: (value) async {
+                        if (value != null) {
+                          final newId = await generateEmployeeId(value);
+                          setState(() {
+                            role = value;
+                            employeeIdCtrl.text = newId;
+                            employmentType = null;
+                          });
+                        }
+                      },
+                      decoration: const InputDecoration(
+                        labelText: "Role",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+
+                    if (role == "driver" ||
+                        role == "conductor" ||
+                        role == "inspector") ...[
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: employmentType,
+                        items: const [
+                          DropdownMenuItem(
+                            value: "full_time",
+                            child: Text("Full-Time"),
+                          ),
+                          DropdownMenuItem(
+                            value: "part_time",
+                            child: Text("Part-Time"),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            employmentType = value;
+                          });
+                        },
+>>>>>>> 965e97ae695e1569c92d27bb86c5a76fd828f427
                         decoration: const InputDecoration(
                           labelText: "Full Name",
                           border: OutlineInputBorder(),
