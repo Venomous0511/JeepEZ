@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../models/app_user.dart';
 import '../Personaldetailed/driver.dart';
 import '../workSchedule/driver_workschedule.dart';
@@ -9,6 +10,31 @@ import '../leaveapplication/driverleaveapp.dart';
 class DriverDashboard extends StatefulWidget {
   final AppUser user;
   const DriverDashboard({super.key, required this.user});
+
+  Future<void> handleLocationPermission() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Check if location service is enabled
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      await Geolocator.openLocationSettings();
+      return Future.error('Location services are disabled.');
+    }
+
+    // Check permissions
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permissions are denied');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error('Location permissions are permanently denied.');
+    }
+  }
 
   @override
   State<DriverDashboard> createState() => _DriverDashboardState();
@@ -85,7 +111,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0D2364).withOpacity(0.1),
+                          color: const Color(0xFF0D2364).withAlpha(1),
                           borderRadius: BorderRadius.circular(50),
                         ),
                         child: Icon(
@@ -113,7 +139,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            "Employee ID: ${widget.user.employeeId ?? 'N/A'}",
+                            "Employee ID: ${widget.user.employeeId}",
                             style: TextStyle(
                               fontSize: isMobile ? 13 : 15,
                               color: Colors.grey[600],
@@ -123,6 +149,8 @@ class _DriverDashboardState extends State<DriverDashboard> {
                         ],
                       ),
                     ),
+
+
 
                     // Notification Icon
                     IconButton(
@@ -200,7 +228,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withAlpha(1),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
