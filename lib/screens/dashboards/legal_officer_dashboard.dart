@@ -73,6 +73,14 @@ class _LegalOfficerDashboardScreenState
       'priority': 'Low',
       'status': 'Closed',
     },
+    {
+      'id': 'INC-004',
+      'date': '2025-09-04',
+      'assigned': 'Juan Dela Cruz',
+      'type': 'Fare / Ticket Issue',
+      'priority': 'Medium',
+      'status': 'Open',
+    },
   ];
 
   void _onItemTapped(int index) {
@@ -474,7 +482,7 @@ class _LegalOfficerDashboardScreenState
         const SizedBox(height: 24),
         _sectionTitle('Incident Tracking'),
         const SizedBox(height: 8),
-        _buildIncidentTableWithScroll(),
+        _buildIncidentTable(),
         const SizedBox(height: 24),
         _sectionTitle('Violations by Type'),
         const SizedBox(height: 8),
@@ -506,7 +514,7 @@ class _LegalOfficerDashboardScreenState
                 children: [
                   _sectionTitle('Incident Tracking'),
                   const SizedBox(height: 8),
-                  _buildIncidentTableWithScroll(),
+                  _buildIncidentTable(),
                 ],
               ),
             ),
@@ -638,7 +646,7 @@ class _LegalOfficerDashboardScreenState
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: priorityColor.withOpacity(0.2),
+                        color: priorityColor.withAlpha(2),
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(color: priorityColor),
                       ),
@@ -846,7 +854,8 @@ class _LegalOfficerDashboardScreenState
     );
   }
 
-  Widget _buildIncidentTableWithScroll() {
+  // FIXED INCIDENT TABLE - HINDI NA SCROLLABLE
+  Widget _buildIncidentTable() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600 && screenWidth < 1024;
 
@@ -859,138 +868,132 @@ class _LegalOfficerDashboardScreenState
           BoxShadow(color: Colors.grey, blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minWidth: isTablet ? 700 : 800),
-          child: DataTable(
-            headingRowColor: WidgetStateProperty.all(Colors.grey.shade300),
-            columnSpacing: isTablet ? 12 : 20,
-            dataRowMinHeight: 48,
-            dataRowMaxHeight: 64,
-            columns: [
-              DataColumn(
-                label: Text(
-                  'ID',
+      child: DataTable(
+        headingRowColor: WidgetStateProperty.all(Colors.grey.shade300),
+        columnSpacing: isTablet ? 12 : 20,
+        dataRowMinHeight: 48,
+        dataRowMaxHeight: 64,
+        columns: [
+          DataColumn(
+            label: Text(
+              'ID',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+                fontSize: isTablet ? 12 : 14,
+              ),
+            ),
+          ),
+          DataColumn(
+            label: Text(
+              'Date',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+                fontSize: isTablet ? 12 : 14,
+              ),
+            ),
+          ),
+          DataColumn(
+            label: Text(
+              'Assigned',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+                fontSize: isTablet ? 12 : 14,
+              ),
+            ),
+          ),
+          DataColumn(
+            label: Text(
+              'Incident Type',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+                fontSize: isTablet ? 12 : 14,
+              ),
+            ),
+          ),
+          DataColumn(
+            label: Text(
+              'Priority',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+                fontSize: isTablet ? 12 : 14,
+              ),
+            ),
+          ),
+          DataColumn(
+            label: Text(
+              'Status',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+                fontSize: isTablet ? 12 : 14,
+              ),
+            ),
+          ),
+        ],
+        rows: incidents.map((i) {
+          Color priorityColor = Colors.black;
+          switch (i['priority']) {
+            case 'Critical':
+              priorityColor = Colors.red;
+              break;
+            case 'Medium':
+              priorityColor = Colors.orange;
+              break;
+            case 'Low':
+              priorityColor = Colors.green;
+              break;
+          }
+
+          return DataRow(
+            cells: [
+              DataCell(
+                Text(
+                  i['id'] as String,
+                  style: TextStyle(fontSize: isTablet ? 12 : 14),
+                ),
+              ),
+              DataCell(
+                Text(
+                  i['date'] as String,
+                  style: TextStyle(fontSize: isTablet ? 12 : 14),
+                ),
+              ),
+              DataCell(
+                Text(
+                  i['assigned'] as String,
+                  style: TextStyle(fontSize: isTablet ? 12 : 14),
+                ),
+              ),
+              DataCell(
+                Text(
+                  i['type'] as String,
+                  style: TextStyle(fontSize: isTablet ? 12 : 14),
+                ),
+              ),
+              DataCell(
+                Text(
+                  i['priority'] as String,
                   style: TextStyle(
+                    color: priorityColor,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
                     fontSize: isTablet ? 12 : 14,
                   ),
                 ),
               ),
-              DataColumn(
-                label: Text(
-                  'Date',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                    fontSize: isTablet ? 12 : 14,
-                  ),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  'Assigned',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                    fontSize: isTablet ? 12 : 14,
-                  ),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  'Incident Type',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                    fontSize: isTablet ? 12 : 14,
-                  ),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  'Priority',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                    fontSize: isTablet ? 12 : 14,
-                  ),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  'Status',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                    fontSize: isTablet ? 12 : 14,
-                  ),
+              DataCell(
+                Text(
+                  i['status'] as String,
+                  style: TextStyle(fontSize: isTablet ? 12 : 14),
                 ),
               ),
             ],
-            rows: incidents.map((i) {
-              Color priorityColor = Colors.black;
-              switch (i['priority']) {
-                case 'Critical':
-                  priorityColor = Colors.red;
-                  break;
-                case 'Medium':
-                  priorityColor = Colors.orange;
-                  break;
-                case 'Low':
-                  priorityColor = Colors.green;
-                  break;
-              }
-
-              return DataRow(
-                cells: [
-                  DataCell(
-                    Text(
-                      i['id'] as String,
-                      style: TextStyle(fontSize: isTablet ? 12 : 14),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      i['date'] as String,
-                      style: TextStyle(fontSize: isTablet ? 12 : 14),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      i['assigned'] as String,
-                      style: TextStyle(fontSize: isTablet ? 12 : 14),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      i['type'] as String,
-                      style: TextStyle(fontSize: isTablet ? 12 : 14),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      i['priority'] as String,
-                      style: TextStyle(
-                        color: priorityColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: isTablet ? 12 : 14,
-                      ),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      i['status'] as String,
-                      style: TextStyle(fontSize: isTablet ? 12 : 14),
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
-          ),
-        ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -1011,20 +1014,18 @@ class _LegalOfficerDashboardScreenState
           ),
         ),
         SizedBox(height: isMobile ? 8 : 12),
-        _buildViolationItem('Overloading', 30),
+        _buildViolationItem('Accident / Collision', 25),
         SizedBox(height: isMobile ? 8 : 12),
-        _buildViolationItem('Other Violations', 20),
+        _buildViolationItem('Traffic Violation', 40),
+        SizedBox(height: isMobile ? 8 : 12),
+        _buildViolationItem('Passenger Misconduct', 20),
+        SizedBox(height: isMobile ? 8 : 12),
+        _buildViolationItem('Fare / Ticket Issue', 15),
         SizedBox(height: isMobile ? 12 : 16),
         Wrap(
           alignment: WrapAlignment.spaceEvenly,
           spacing: isMobile ? 6 : 8,
           runSpacing: isMobile ? 6 : 8,
-          children: [
-            _buildChartLegend(Colors.blue, 'Traffic Violation'),
-            _buildChartLegend(Colors.green, 'Passenger Misconduct'),
-            _buildChartLegend(Colors.orange, 'Overloading'),
-            _buildChartLegend(Colors.red, 'Other Violations'),
-          ],
         ),
       ],
     );
@@ -1052,7 +1053,7 @@ class _LegalOfficerDashboardScreenState
             Expanded(
               child: LinearProgressIndicator(
                 value: percentage / 100,
-                backgroundColor: Colors.white.withOpacity(0.5),
+                backgroundColor: Colors.white.withAlpha(5),
                 valueColor: AlwaysStoppedAnimation<Color>(
                   _getColorForViolationType(label),
                 ),
@@ -1078,14 +1079,16 @@ class _LegalOfficerDashboardScreenState
 
   Color _getColorForViolationType(String type) {
     switch (type) {
+      case '':
+        return Colors.red;
       case 'Traffic Violation':
         return Colors.blue;
       case 'Passenger Misconduct':
         return Colors.green;
-      case 'Overloading':
+      case 'Fare / Ticket Issue':
         return Colors.orange;
       default:
-        return Colors.red;
+        return Colors.grey;
     }
   }
 

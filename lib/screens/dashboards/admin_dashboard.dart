@@ -595,7 +595,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Google Map related
   GoogleMapController? mapController;
-  bool _mapReady = false;
 
   @override
   void initState() {
@@ -607,7 +606,9 @@ class _HomeScreenState extends State<HomeScreen> {
     ).asyncMap((_) => fetchAttendanceNow());
 
     /// Location Stream
-    _vehicleLocationsStream = _firestore.collection('vehicles_locations').snapshots();
+    _vehicleLocationsStream = _firestore
+        .collection('vehicles_locations')
+        .snapshots();
   }
 
   @override
@@ -647,6 +648,11 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }).toSet();
   }
+
+  // Future<void> _moveCameraTo(LatLng pos, {double zoom = 16}) async {
+  //   if (mapController == null) return;
+  //   await mapController!.animateCamera(CameraUpdate.newLatLngZoom(pos, zoom));
+  // }
 
   /// Fit all markers into view
   Future<void> _fitAllMarkers(Set<Marker> markers) async {
@@ -802,23 +808,22 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       onRefresh: _refreshDashboard,
-      child: Column(
-        children: [
-          const SizedBox(height: 10),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Welcome to Admin Dashboard',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
 
-          const Text(
-            'Welcome to Admin Dashboard',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
+            const SizedBox(height: 20),
 
-          const SizedBox(height: 10),
-
-          /// --- MAP SECTION ---
-          SizedBox(
-            height: 550,
-            width: double.infinity,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+            /// --- MAP SECTION  ---
+            SizedBox(
+              height: 550,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Stack(
@@ -834,7 +839,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
 
                         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                          return const Center(child: Text('No vehicle locations available'));
+                          return const Center(
+                            child: Text('No vehicle locations available'),
+                          );
                         }
 
                         final markers = _buildMarkersFromDocs(
@@ -845,8 +852,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _fitAllMarkers(markers);
                         });
 
-                        return _mapReady
-                            ? GoogleMap(
+                        return GoogleMap(
                           onMapCreated: _onMapCreated,
                           initialCameraPosition: const CameraPosition(
                             target: LatLng(14.8287, 121.0549),
@@ -860,22 +866,23 @@ class _HomeScreenState extends State<HomeScreen> {
                           rotateGesturesEnabled: true,
                           tiltGesturesEnabled: true,
 
-                          gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-                            Factory<OneSequenceGestureRecognizer>(
+                          gestureRecognizers:
+                              <Factory<OneSequenceGestureRecognizer>>{
+                                Factory<OneSequenceGestureRecognizer>(
                                   () => EagerGestureRecognizer(),
-                            ),
-                          },
+                                ),
+                              },
                         );
                       },
                     ),
 
-                    /// Floating Action Button — Recenter
+                    // Floating Action Button — Recenter
                     Positioned(
                       top: 12,
                       right: 12,
                       child: FloatingActionButton(
                         backgroundColor: const Color(0xFF0D2364),
-                        foregroundColor: Colors.white,
+                        foregroundColor: const Color(0xffffffff),
                         onPressed: () async {
                           final snap = await _firestore
                               .collection('vehicles_locations')
@@ -890,64 +897,60 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-          ),
 
-          /// --- CONTENT SECTION ---
-          Expanded(
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  /// --- Vehicle Schedule ---
-                  Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+            const SizedBox(height: 20),
+
+            // --- Vehicle Schedule ---
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Vehicle Schedule',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0D2364),
+                      ),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Vehicle Schedule',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0D2364),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            getTodayLabel(),
-                            style: const TextStyle(fontSize: 14, color: Colors.grey),
-                          ),
-                          const Divider(),
-                          const SizedBox(height: 8),
-                          StreamBuilder<List<Map<String, dynamic>>>(
-                            stream: widget.vehicleStream,
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting) {
-                                return const Center(child: CircularProgressIndicator());
-                              }
+                    const SizedBox(height: 8),
+                    Text(
+                      getTodayLabel(),
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    StreamBuilder<List<Map<String, dynamic>>>(
+                      stream: widget.vehicleStream,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
 
-                              if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                                return const Text(
-                                  'No vehicle schedules for today',
-                                  style: TextStyle(color: Colors.grey),
-                                );
-                              }
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return const Text(
+                            'No vehicle schedules for today',
+                            style: TextStyle(color: Colors.grey),
+                          );
+                        }
 
                         final assignments = snapshot.data!;
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: assignments.map((item) {
                             final vehicleId =
-                                item['assignedVehicle']?.toString() ?? 'Unknown';
-                            final driverName =
-                                item['name'] ?? 'Unknown Driver';
+                                item['assignedVehicle']?.toString() ??
+                                'Unknown';
+                            final driverName = item['name'] ?? 'Unknown Driver';
                             return Text('$driverName — UNIT $vehicleId');
                           }).toList(),
                         );
@@ -958,64 +961,67 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-                  const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-                  /// --- Employee Tracking ---
-                  Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0D2364),
-                        borderRadius: BorderRadius.circular(12),
+            // --- Employee Tracking (unchanged) ---
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D2364),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Employee Tracking',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Employee Tracking',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                      const SizedBox(height: 8),
+                      Text(
+                        getTodayLabel(),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      StreamBuilder<List<Map<String, dynamic>>>(
+                        stream: _attendanceStream,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const SizedBox(
+                              height: 120,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              getTodayLabel(),
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            StreamBuilder<List<Map<String, dynamic>>>(
-                              stream: _attendanceStream,
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState == ConnectionState.waiting) {
-                                  return const SizedBox(
-                                    height: 120,
-                                    child: Center(
-                                      child: CircularProgressIndicator(color: Colors.white),
-                                    ),
-                                  );
-                                }
+                            );
+                          }
 
-                                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                                  return const SizedBox(
-                                    height: 120,
-                                    child: Center(
-                                      child: Text(
-                                        "No tap-in records yet",
-                                        style: TextStyle(color: Colors.white70),
-                                      ),
-                                    ),
-                                  );
-                                }
+                          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                            return const SizedBox(
+                              height: 120,
+                              child: Center(
+                                child: Text(
+                                  "No tap-in records yet",
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                              ),
+                            );
+                          }
 
                           final attendance = snapshot.data!;
                           return SizedBox(
@@ -1031,11 +1037,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                   final timeIn = DateTime.parse(
                                     log['timeIn'],
                                   ).toLocal();
-                                  final formattedTime =
-                                  TimeOfDay.fromDateTime(timeIn)
-                                      .format(context);
-                                  return _buildEmployeeRow(
-                                      name, formattedTime);
+                                  final formattedTime = TimeOfDay.fromDateTime(
+                                    timeIn,
+                                  ).format(context);
+                                  return _buildEmployeeRow(name, formattedTime);
                                 }).toList(),
                               ),
                             ),

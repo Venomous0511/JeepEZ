@@ -97,6 +97,10 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
     final isTablet = screenWidth >= 600 && screenWidth < 1024;
+    final isDesktop = screenWidth >= 1024;
+
+    // Constrain content width on larger screens for consistency
+    final maxContentWidth = isDesktop ? 1400.0 : double.infinity;
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -117,78 +121,87 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
         ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Container(
-        padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Search Header
-            Text(
-              'Search',
-              style: TextStyle(
-                fontSize: isMobile ? 18 : 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: isMobile ? 12 : 16),
-
-            // Search Bar
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search employee name...',
-                hintStyle: TextStyle(fontSize: isMobile ? 14 : 16),
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF0D2364)),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: const BorderSide(
-                    color: Color(0xFF0D2364),
-                    width: 2,
-                  ),
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  vertical: isMobile ? 12 : 16,
-                  horizontal: 16,
-                ),
-              ),
-              onChanged: (value) {
-                // Implement search functionality here
-              },
-            ),
-            SizedBox(height: isMobile ? 16 : 24),
-
-            // Employee count badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0D2364).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF0D2364)),
-              ),
-              child: Text(
-                'Total Employees: ${employees.length}',
+      body: Center(
+        child: Container(
+          constraints: BoxConstraints(maxWidth: maxContentWidth),
+          padding: EdgeInsets.all(isMobile ? 12.0 : (isTablet ? 20.0 : 24.0)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Search Header
+              Text(
+                'Search',
                 style: TextStyle(
-                  fontSize: isMobile ? 12 : 14,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF0D2364),
+                  fontSize: isMobile ? 18 : 20,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-            SizedBox(height: isMobile ? 12 : 16),
+              SizedBox(height: isMobile ? 12 : 16),
 
-            // Employees List
-            Expanded(
-              child: isMobile
-                  ? _buildEmployeeCards()
-                  : _buildEmployeeTable(isTablet),
-            ),
-          ],
+              // Search Bar
+              TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search employee name...',
+                  hintStyle: TextStyle(fontSize: isMobile ? 14 : 16),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: Color(0xFF0D2364),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(
+                      color: Color(0xFF0D2364),
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: isMobile ? 12 : 16,
+                    horizontal: 16,
+                  ),
+                ),
+                onChanged: (value) {
+                  // Implement search functionality here
+                },
+              ),
+              SizedBox(height: isMobile ? 16 : 24),
+
+              // Employee count badge
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D2364).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFF0D2364)),
+                ),
+                child: Text(
+                  'Total Employees: ${employees.length}',
+                  style: TextStyle(
+                    fontSize: isMobile ? 12 : 14,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF0D2364),
+                  ),
+                ),
+              ),
+              SizedBox(height: isMobile ? 12 : 16),
+
+              // Employees List
+              Expanded(
+                child: isMobile
+                    ? _buildEmployeeCards()
+                    : _buildEmployeeTable(isTablet, isDesktop),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -237,34 +250,7 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: employee['status'] == 'Active'
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: employee['status'] == 'Active'
-                              ? Colors.green
-                              : Colors.red,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Text(
-                        employee['status']!,
-                        style: TextStyle(
-                          color: employee['status'] == 'Active'
-                              ? Colors.green
-                              : Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
+                    _buildStatusBadge(employee['status']!),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -328,7 +314,7 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
   }
 
   // Tablet/Desktop table view
-  Widget _buildEmployeeTable(bool isTablet) {
+  Widget _buildEmployeeTable(bool isTablet, bool isDesktop) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -337,83 +323,92 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
           BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.vertical,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            columnSpacing: isTablet ? 16 : 20,
-            horizontalMargin: isTablet ? 12 : 16,
-            dataRowMinHeight: 48,
-            dataRowMaxHeight: 56,
-            headingRowColor: WidgetStateProperty.all(
-              const Color(0xFF0D2364).withOpacity(0.1),
-            ),
-            headingTextStyle: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: isTablet ? 13 : 14,
-              color: const Color(0xFF0D2364),
-            ),
-            dataTextStyle: TextStyle(fontSize: isTablet ? 12 : 14),
-            columns: const [
-              DataColumn(label: Text('Employee Name')),
-              DataColumn(label: Text('Joining Date')),
-              DataColumn(label: Text('Date of Birth')),
-              DataColumn(label: Text('Violation')),
-              DataColumn(label: Text('Status')),
-            ],
-            rows: employees.map((employee) {
-              return DataRow(
-                cells: [
-                  DataCell(
-                    Text(
-                      employee['name']!,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Calculate responsive column spacing based on available width
+          final columnSpacing = constraints.maxWidth > 1200
+              ? 24.0
+              : (isTablet ? 16.0 : 20.0);
+          final horizontalMargin = isDesktop ? 20.0 : (isTablet ? 12.0 : 16.0);
+
+          return SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  columnSpacing: columnSpacing,
+                  horizontalMargin: horizontalMargin,
+                  dataRowMinHeight: 48,
+                  dataRowMaxHeight: 56,
+                  headingRowColor: WidgetStateProperty.all(
+                    const Color(0xFF0D2364).withOpacity(0.1),
                   ),
-                  DataCell(Text(employee['joiningDate']!)),
-                  DataCell(Text(employee['dateOfBirth']!)),
-                  DataCell(
-                    Text(
-                      employee['violation']!,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  headingTextStyle: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: isTablet ? 13 : 14,
+                    color: const Color(0xFF0D2364),
                   ),
-                  DataCell(
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 4,
-                        horizontal: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: employee['status'] == 'Active'
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: employee['status'] == 'Active'
-                              ? Colors.green
-                              : Colors.red,
-                          width: 1,
+                  dataTextStyle: TextStyle(fontSize: isTablet ? 12 : 14),
+                  columns: const [
+                    DataColumn(label: Text('Employee Name')),
+                    DataColumn(label: Text('Joining Date')),
+                    DataColumn(label: Text('Date of Birth')),
+                    DataColumn(label: Text('Violation')),
+                    DataColumn(label: Text('Status')),
+                  ],
+                  rows: employees.map((employee) {
+                    return DataRow(
+                      cells: [
+                        DataCell(
+                          Text(
+                            employee['name']!,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        employee['status']!,
-                        style: TextStyle(
-                          color: employee['status'] == 'Active'
-                              ? Colors.green
-                              : Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: isTablet ? 11 : 12,
+                        DataCell(Text(employee['joiningDate']!)),
+                        DataCell(Text(employee['dateOfBirth']!)),
+                        DataCell(
+                          Text(
+                            employee['violation']!,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
-          ),
+                        DataCell(_buildStatusBadge(employee['status']!)),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Reusable status badge widget for consistency
+  Widget _buildStatusBadge(String status) {
+    final isActive = status == 'Active';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: isActive
+            ? Colors.green.withOpacity(0.1)
+            : Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isActive ? Colors.green : Colors.red,
+          width: 1.5,
+        ),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          color: isActive ? Colors.green : Colors.red,
+          fontWeight: FontWeight.bold,
+          fontSize: 11,
         ),
       ),
     );

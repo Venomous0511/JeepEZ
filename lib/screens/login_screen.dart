@@ -234,7 +234,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // Method to show Forgot Password dialog
   void _showForgotPasswordDialog(BuildContext context) {
     final emailController = TextEditingController();
-    final FocusNode _dialogEmailFocusNode = FocusNode();
+    final FocusNode dialogEmailFocusNode = FocusNode();
 
     showDialog(
       context: context,
@@ -250,7 +250,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: emailController,
-                focusNode: _dialogEmailFocusNode,
+                focusNode: dialogEmailFocusNode,
                 decoration: const InputDecoration(
                   labelText: "Email",
                   border: OutlineInputBorder(),
