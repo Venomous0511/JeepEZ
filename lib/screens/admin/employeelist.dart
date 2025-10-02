@@ -309,7 +309,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      initialValue: role,
+                      value: role,
                       items: const [
                         DropdownMenuItem(
                           value: "legal_officer",
@@ -349,7 +349,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                         role == "inspector") ...[
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        initialValue: employmentType,
+                        value: employmentType,
                         items: const [
                           DropdownMenuItem(
                             value: "full_time",
