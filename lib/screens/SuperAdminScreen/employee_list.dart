@@ -18,8 +18,12 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
   String role = 'conductor';
   bool loading = false;
 
+  static const double tabletBreakpoint = 600.0;
+
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -29,7 +33,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         backgroundColor: const Color(0xFF0D2364),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -59,72 +62,183 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   return const Text('No users yet.');
                 }
 
-                final employeeDocs = snap.data!.docs.where((d) {
+                final allDocs = snap.data!.docs;
+                final employeeDocs = allDocs.where((d) {
                   final data = d.data() as Map<String, dynamic>;
                   return data['status'] == true;
                 }).toList();
 
-                // Wrap DataTable in horizontal scroll
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    columnSpacing: 16,
-                    headingRowColor: WidgetStateProperty.all(Colors.blue[50]),
-                    columns: const [
-                      DataColumn(label: Text("Employee ID")),
-                      DataColumn(label: Text("Status")),
-                      DataColumn(label: Text("Name")),
-                      DataColumn(label: Text("Email")),
-                      DataColumn(label: Text("Role")),
-                      DataColumn(label: Text("Actions")),
-                    ],
-                    rows: employeeDocs.map((d) {
-                      final data = d.data() as Map<String, dynamic>;
+                if (employeeDocs.isEmpty) {
+                  return const Text('No active users.');
+                }
 
-                      return DataRow(
-                        cells: [
-                          DataCell(Text(data['employeeId'].toString())),
-                          DataCell(
-                              Text(
-                                  data['status'] == true
-                                      ? "Active"
-                                      : "Inactive",
-                                  style: TextStyle(
-                                    color: data['status'] == true
-                                        ? Colors.green
-                                        : Colors.red,
+                // Responsive layout: DataTable for larger screens, ListView for smaller
+                if (screenWidth >= tabletBreakpoint) {
+                  // Tablet/Desktop: Use DataTable (with optional horizontal scroll if needed)
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width:
+                          screenWidth * 0.9, // Constrain width for better fit
+                      child: DataTable(
+                        columnSpacing: 16,
+                        headingRowColor: WidgetStateProperty.all(
+                          Colors.blue[50],
+                        ),
+                        columns: const [
+                          DataColumn(label: Text("Employee ID")),
+                          DataColumn(label: Text("Status")),
+                          DataColumn(label: Text("Name")),
+                          DataColumn(label: Text("Email")),
+                          DataColumn(label: Text("Role")),
+                          DataColumn(label: Text("Actions")),
+                        ],
+                        rows: employeeDocs.map((d) {
+                          final data = d.data() as Map<String, dynamic>;
+
+                          return DataRow(
+                            cells: [
+                              DataCell(
+                                Text(data['employeeId']?.toString() ?? ''),
+                              ),
+                              DataCell(
+                                Text(
+                                  "Active", // Since filtered for active users
+                                  style: const TextStyle(
+                                    color: Colors.green,
                                     fontWeight: FontWeight.bold,
                                   ),
+                                ),
                               ),
-                          ),
-                          DataCell(Text(data['name'] ?? '')),
-                          DataCell(Text(data['email'] ?? '')),
-                          DataCell(Text(data['role'] ?? '')),
-                          DataCell(
-                            Row(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit,
-                                    color: Colors.blue,
-                                  ),
-                                  onPressed: () => _editUser(d.id, data),
+                              DataCell(Text(data['name'] ?? '')),
+                              DataCell(Text(data['email'] ?? '')),
+                              DataCell(Text(data['role'] ?? '')),
+                              DataCell(
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.edit,
+                                        color: Colors.blue,
+                                      ),
+                                      onPressed: () => _editUser(d.id, data),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () => _deleteUser(d.id, data),
+                                    ),
+                                  ],
                                 ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.red,
+                              ),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  );
+                } else {
+                  // Mobile: Use ListView with Cards for better readability
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: employeeDocs.length,
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final doc = employeeDocs[index];
+                      final data = doc.data() as Map<String, dynamic>;
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          data['name'] ?? '',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text('Email: ${data['email'] ?? ''}'),
+                                        Text('Role: ${data['role'] ?? ''}'),
+                                        Text(
+                                          'Employee ID: ${data['employeeId']?.toString() ?? ''}',
+                                        ),
+                                        Text(
+                                          'Status: Active',
+                                          style: TextStyle(
+                                            color: Colors.green[600],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  onPressed: () => _deleteUser(d.id, data),
-                                ),
-                              ],
-                            ),
+                                  PopupMenuButton<String>(
+                                    icon: const Icon(
+                                      Icons.more_vert,
+                                      color: Color(0xFF0D2364),
+                                    ),
+                                    onSelected: (value) {
+                                      if (value == 'edit') {
+                                        _editUser(doc.id, data);
+                                      } else if (value == 'delete') {
+                                        _deleteUser(doc.id, data);
+                                      }
+                                    },
+                                    itemBuilder: (context) => [
+                                      const PopupMenuItem(
+                                        value: 'edit',
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.edit,
+                                              color: Colors.blue,
+                                            ),
+                                            SizedBox(width: 8),
+                                            Text('Edit'),
+                                          ],
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'delete',
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.delete,
+                                              color: Colors.red,
+                                            ),
+                                            SizedBox(width: 8),
+                                            Text('Deactivate'),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       );
-                    }).toList(),
-                  ),
-                );
+                    },
+                  );
+                }
               },
             ),
           ],
@@ -135,7 +249,9 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
   /// ---------------- UPDATE USER FUNCTION ----------------
   Future<void> _editUser(String docId, Map<String, dynamic> data) async {
-    final employeeIdCtrl = TextEditingController(text: data['employeeId']?.toString());
+    final employeeIdCtrl = TextEditingController(
+      text: data['employeeId']?.toString(),
+    );
     final nameCtrl = TextEditingController(text: data['name']);
     final emailCtrl = TextEditingController(text: data['email']);
     String role = data['role'] ?? "conductor";
@@ -145,18 +261,23 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: const Text("Update User"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: "Name"),
-              ),
-              TextField(
-                controller: emailCtrl,
-                decoration: const InputDecoration(labelText: "Email"),
-              ),
-            ],
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(labelText: "Name"),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: emailCtrl,
+                  decoration: const InputDecoration(labelText: "Email"),
+                ),
+                // Note: Role and Employee ID are not editable in this dialog
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -181,7 +302,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
       await FirebaseFirestore.instance.collection('notifications').add({
         'title': 'Updated Account',
-        'message': 'Update account for ${nameCtrl.text.trim()} with an email of ${emailCtrl.text.trim()}',
+        'message':
+            'Update account for ${nameCtrl.text.trim()} with an email of ${emailCtrl.text.trim()}',
         'time': FieldValue.serverTimestamp(),
         'dismissed': false,
         'type': 'updates',
@@ -204,7 +326,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         title: const Text("Deactivate User"),
         content: Text(
           "Are you sure you want to deactivate ${data['email']}?\n\n"
-              "This will archive their info but keep the account slot reusable.",
+          "This will archive their info but keep the account slot reusable.",
         ),
         actions: [
           TextButton(
@@ -213,7 +335,10 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text("Deactivate", style: TextStyle(color: Colors.red)),
+            child: const Text(
+              "Deactivate",
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -229,10 +354,10 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           .collection('archived_users')
           .doc(docId)
           .set({
-        ...userData,
-        "archivedAt": FieldValue.serverTimestamp(),
-        "archivedBy": widget.user.email,
-      });
+            ...userData,
+            "archivedAt": FieldValue.serverTimestamp(),
+            "archivedBy": widget.user.email,
+          });
 
       await userRef.update({
         "status": false,
@@ -243,7 +368,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       await FirebaseFirestore.instance.collection('notifications').add({
         'title': 'Deactivated Account',
         'message':
-        'Deactivated account for ${data['email']}. This slot is now available for reuse.',
+            'Deactivated account for ${data['email']}. This slot is now available for reuse.',
         'time': FieldValue.serverTimestamp(),
         'dismissed': false,
         'type': 'updates',
@@ -253,8 +378,9 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-          Text("User ${data['email']} archived and deactivated successfully"),
+          content: Text(
+            "User  ${data['email']} archived and deactivated successfully",
+          ),
         ),
       );
     }
@@ -265,6 +391,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     emailCtrl.dispose();
     passCtrl.dispose();
     nameCtrl.dispose();
+    employeeIdCtrl.dispose();
     super.dispose();
   }
 }

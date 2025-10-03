@@ -556,60 +556,64 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                     candidate.interviewDate,
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton.icon(
-                        onPressed: () => _uploadResume(index),
-                        icon: Icon(
-                          Icons.upload,
-                          size: 18,
-                          color: candidate.resumeFile != null
-                              ? Colors.green
-                              : null,
-                        ),
-                        label: Text(
-                          'Upload',
-                          style: TextStyle(
+                  // FIXED: Wrap buttons in SingleChildScrollView for horizontal scrolling
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => _uploadResume(index),
+                          icon: Icon(
+                            Icons.upload,
+                            size: 18,
                             color: candidate.resumeFile != null
                                 ? Colors.green
                                 : null,
                           ),
+                          label: Text(
+                            'Upload',
+                            style: TextStyle(
+                              color: candidate.resumeFile != null
+                                  ? Colors.green
+                                  : null,
+                            ),
+                          ),
                         ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () => _viewResume(index),
-                        icon: Icon(
-                          Icons.visibility,
-                          size: 18,
-                          color: candidate.resumeFile != null
-                              ? const Color(0xFF0D2364)
-                              : Colors.grey,
-                        ),
-                        label: Text(
-                          'View',
-                          style: TextStyle(
+                        TextButton.icon(
+                          onPressed: () => _viewResume(index),
+                          icon: Icon(
+                            Icons.visibility,
+                            size: 18,
                             color: candidate.resumeFile != null
                                 ? const Color(0xFF0D2364)
                                 : Colors.grey,
                           ),
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () => _showRequirementsChecklist(index),
-                        icon: Icon(
-                          Icons.checklist,
-                          size: 18,
-                          color: _getCompletionColor(candidate),
-                        ),
-                        label: Text(
-                          'Check',
-                          style: TextStyle(
-                            color: _getCompletionColor(candidate),
+                          label: Text(
+                            'View',
+                            style: TextStyle(
+                              color: candidate.resumeFile != null
+                                  ? const Color(0xFF0D2364)
+                                  : Colors.grey,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        TextButton.icon(
+                          onPressed: () => _showRequirementsChecklist(index),
+                          icon: Icon(
+                            Icons.checklist,
+                            size: 18,
+                            color: _getCompletionColor(candidate),
+                          ),
+                          label: Text(
+                            'Check',
+                            style: TextStyle(
+                              color: _getCompletionColor(candidate),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -712,60 +716,64 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                     candidate.interviewDate,
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton.icon(
-                        onPressed: () => _uploadResume(index),
-                        icon: Icon(
-                          Icons.upload,
-                          size: 18,
-                          color: candidate.resumeFile != null
-                              ? Colors.green
-                              : null,
-                        ),
-                        label: Text(
-                          'Upload',
-                          style: TextStyle(
+                  // FIXED: Wrap buttons in SingleChildScrollView for horizontal scrolling
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => _uploadResume(index),
+                          icon: Icon(
+                            Icons.upload,
+                            size: 18,
                             color: candidate.resumeFile != null
                                 ? Colors.green
                                 : null,
                           ),
+                          label: Text(
+                            'Upload',
+                            style: TextStyle(
+                              color: candidate.resumeFile != null
+                                  ? Colors.green
+                                  : null,
+                            ),
+                          ),
                         ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () => _viewResume(index),
-                        icon: Icon(
-                          Icons.visibility,
-                          size: 18,
-                          color: candidate.resumeFile != null
-                              ? const Color(0xFF0D2364)
-                              : Colors.grey,
-                        ),
-                        label: Text(
-                          'View',
-                          style: TextStyle(
+                        TextButton.icon(
+                          onPressed: () => _viewResume(index),
+                          icon: Icon(
+                            Icons.visibility,
+                            size: 18,
                             color: candidate.resumeFile != null
                                 ? const Color(0xFF0D2364)
                                 : Colors.grey,
                           ),
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () => _showRequirementsChecklist(index),
-                        icon: Icon(
-                          Icons.checklist,
-                          size: 18,
-                          color: _getCompletionColor(candidate),
-                        ),
-                        label: Text(
-                          'Check',
-                          style: TextStyle(
-                            color: _getCompletionColor(candidate),
+                          label: Text(
+                            'View',
+                            style: TextStyle(
+                              color: candidate.resumeFile != null
+                                  ? const Color(0xFF0D2364)
+                                  : Colors.grey,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        TextButton.icon(
+                          onPressed: () => _showRequirementsChecklist(index),
+                          icon: Icon(
+                            Icons.checklist,
+                            size: 18,
+                            color: _getCompletionColor(candidate),
+                          ),
+                          label: Text(
+                            'Check',
+                            style: TextStyle(
+                              color: _getCompletionColor(candidate),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
