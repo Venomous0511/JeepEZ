@@ -46,23 +46,25 @@ class TrackingService {
     );
 
     // Start position stream
-    _positionSubscription = Geolocator.getPositionStream(
-      locationSettings: locationSettings,
-    ).listen(
+    _positionSubscription =
+        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
           (position) async {
-        await _firestore.collection('vehicles_locations').doc(employeeId).set({
-          'vehicleId': vehicleId,
-          'driverId': employeeId,
-          'lat': position.latitude,
-          'lng': position.longitude,
-          'speed': position.speed * 3.6,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      },
-      onError: (error) {
-        debugPrint('Tracking error: $error');
-      },
-    );
+            await _firestore
+                .collection('vehicles_locations')
+                .doc(employeeId)
+                .set({
+                  'vehicleId': vehicleId,
+                  'driverId': employeeId,
+                  'lat': position.latitude,
+                  'lng': position.longitude,
+                  'speed': position.speed * 3.6,
+                  'updatedAt': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
+          },
+          onError: (error) {
+            debugPrint('Tracking error: $error');
+          },
+        );
 
     debugPrint('Tracking started for $employeeId | Vehicle $vehicleId');
   }
@@ -87,7 +89,10 @@ class TrackingService {
 
     // Remove driver location
     if (employeeId != null) {
-      await _firestore.collection('vehicles_locations').doc(employeeId).delete();
+      await _firestore
+          .collection('vehicles_locations')
+          .doc(employeeId)
+          .delete();
       debugPrint('Location removed for $employeeId');
     }
 
@@ -97,7 +102,8 @@ class TrackingService {
   }
 }
 
-class _DriverDashboardState extends State<DriverDashboard> with WidgetsBindingObserver {
+class _DriverDashboardState extends State<DriverDashboard>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
   late List<Widget> _screens;
 
@@ -127,7 +133,8 @@ class _DriverDashboardState extends State<DriverDashboard> with WidgetsBindingOb
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Stop tracking when app goes into background
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
       trackingService.stopTracking();
     } else if (state == AppLifecycleState.resumed) {
       _initializeTracking();
@@ -188,15 +195,14 @@ class _DriverDashboardState extends State<DriverDashboard> with WidgetsBindingOb
   void _showErrorSnackBar(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
   /// ---------------- FETCH NOTIFICATIONS ----------------
-  Stream<QuerySnapshot<Map<String, dynamic>>> getNotificationsStream(String role) {
+  Stream<QuerySnapshot<Map<String, dynamic>>> getNotificationsStream(
+    String role,
+  ) {
     final collection = FirebaseFirestore.instance.collection('notifications');
 
     if (role == 'super_admin' || role == 'admin') {
@@ -329,8 +335,6 @@ class _DriverDashboardState extends State<DriverDashboard> with WidgetsBindingOb
                       ),
                     ),
 
-
-
                     // Notification Icon
                     IconButton(
                       icon: Icon(
@@ -381,24 +385,6 @@ class _DriverDashboardState extends State<DriverDashboard> with WidgetsBindingOb
                         color: const Color(0xFF0D2364),
                         width: 2,
                       ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "View More",
-                          style: TextStyle(
-                            color: const Color(0xFF0D2364),
-                            fontSize: isMobile ? 16 : 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Icon(
-                          Icons.arrow_forward_ios,
-                          color: Color(0xFF0D2364),
-                          size: 18,
-                        ),
-                      ],
                     ),
                   ),
                 ),

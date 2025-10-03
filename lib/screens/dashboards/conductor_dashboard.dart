@@ -225,24 +225,6 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
                         width: 2,
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "View More",
-                          style: TextStyle(
-                            color: const Color(0xFF0D2364),
-                            fontSize: isMobile ? 16 : 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Icon(
-                          Icons.arrow_forward_ios,
-                          color: Color(0xFF0D2364),
-                          size: 18,
-                        ),
-                      ],
-                    ),
                   ),
                 ),
               ),
