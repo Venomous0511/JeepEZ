@@ -33,29 +33,13 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
           'id': doc.id,
           'title': data['title'] ?? '',
           'issueDate': (data['issueDate'] as Timestamp?)?.toDate().toString() ?? '',
-          'status': data['status'] ?? '',
           'priority': data['priority'] ?? '',
-          'assigned': data['assigned'] ?? '',
+          'type': (data['checklistItems'] as List<dynamic>?)
+              ?.join(', ') ??
+              '',
         };
       }).toList();
     });
-  }
-
-  // ADD RECORD FOR MAINTENANCE
-  Future<void> _addMaintenanceRecord(String vehicleId) async {
-    await FirebaseFirestore.instance
-        .collection('vehicles')
-        .doc(vehicleId)
-        .collection('maintenance')
-        .add({
-      'title': 'Brake Check',
-      'issueDate': FieldValue.serverTimestamp(),
-      'status': 'DUE',
-      'priority': 'HIGH',
-      'assigned': 'mechanic',
-    });
-
-    _loadMaintenanceData(vehicleId);
   }
 
   @override

@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class VehicleChecklistScreen extends StatefulWidget {
@@ -8,6 +10,63 @@ class VehicleChecklistScreen extends StatefulWidget {
 }
 
 class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
+  String? _assignedVehicle;
+  bool _isLoadingVehicle = true;
+  String _currentPriority = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAssignedVehicle();
+  }
+
+  Future<void> _fetchAssignedVehicle() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        if (userDoc.exists && userDoc.data()!.containsKey('assignedVehicle')) {
+          setState(() {
+            _assignedVehicle = userDoc['assignedVehicle'].toString();
+            _isLoadingVehicle = false;
+          });
+        } else {
+          setState(() => _isLoadingVehicle = false);
+        }
+      }
+    } catch (e) {
+      setState(() => _isLoadingVehicle = false);
+      debugPrint('Error fetching vehicle: $e');
+    }
+  }
+
+  String _determinePriority(String defectText) {
+    final lower = defectText.toLowerCase();
+
+    // High Priority Issues
+    if (lower.contains('brake') ||
+        lower.contains('engine') ||
+        lower.contains('tire') ||
+        lower.contains('steering')) {
+      return 'HIGH';
+    }
+
+    // Medium Priority Issues
+    if (lower.contains('oil') ||
+        lower.contains('water') ||
+        lower.contains('battery') ||
+        lower.contains('light')) {
+      return 'MEDIUM';
+    }
+
+    // Default to Low
+    return 'LOW';
+  }
+
+
   final List<String> _inspectionItems = [
     'Battery',
     'Lights',
@@ -56,7 +115,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
     });
   }
 
-  void _submitForm() {
+  void _submitForm() async {
     if (_checklistItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please add items to the checklist')),
@@ -64,22 +123,73 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
       return;
     }
 
-    int checkedCount = _checklistItems.where((item) => item.checked).length;
+    final defects = _defectsController.text.trim();
 
-    if (checkedCount == _checklistItems.length) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Checklist completed successfully!')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${_checklistItems.length - checkedCount} items remaining',
-          ),
-        ),
-      );
+    try {
+      // Get current user
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You must be logged in.')),
+        );
+        return;
+      }
+
+      // Get assigned vehicle from user document
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!userDoc.exists || !userDoc.data()!.containsKey('assignedVehicle')) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No assigned vehicle found.')),
+          );
+        }
+        return;
+      }
+
+      final vehicleId = userDoc['assignedVehicle'].toString();
+
+      // If there are defects, add maintenance record
+      if (defects.isNotEmpty) {
+        final priority = _determinePriority(defects);
+
+        await FirebaseFirestore.instance
+            .collection('vehicles')
+            .doc(vehicleId)
+            .collection('maintenance')
+            .add({
+          'vehicleId': int.parse(vehicleId),
+          'title': defects,
+          'priority': priority,
+          'issueDate': FieldValue.serverTimestamp(),
+          'createdBy': user.email,
+          'checklistItems': _checklistItems.map((e) => e.title).toList(),
+        });
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Checklist submitted successfully!')),
+        );
+      }
+
+      setState(() {
+        _checklistItems.clear();
+        _defectsController.clear();
+      });
+
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error submitting: $e')),
+        );
+      }
     }
   }
+
 
   @override
   void dispose() {
@@ -134,7 +244,30 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                   ],
                 ),
               ),
-              SizedBox(height: isMobile ? 16 : 20),
+
+              SizedBox(height: isMobile ? 10 : 20),
+
+              if (_isLoadingVehicle)
+                const CircularProgressIndicator()
+              else if (_assignedVehicle != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: Text(
+                    'Assigned Vehicle: $_assignedVehicle',
+                    style: TextStyle(
+                      fontSize: isMobile ? 14 : 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                )
+              else
+                const Text(
+                  'No assigned vehicle found.',
+                  style: TextStyle(color: Colors.red),
+                ),
+
+              SizedBox(height: isMobile ? 5 : 20),
 
               // Dropdown Section
               Container(
@@ -145,7 +278,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                   borderRadius: BorderRadius.circular(12.0),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
+                      color: Colors.grey.withAlpha(1),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -243,7 +376,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                   borderRadius: BorderRadius.circular(12.0),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
+                      color: Colors.grey.withAlpha(1),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -382,7 +515,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                   borderRadius: BorderRadius.circular(12.0),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
+                      color: Colors.grey.withAlpha(1),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -409,8 +542,14 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                         ),
                         borderRadius: BorderRadius.circular(8.0),
                       ),
+
                       child: TextField(
                         controller: _defectsController,
+                        onChanged: (value) {
+                          setState(() {
+                            _currentPriority = _determinePriority(value);
+                          });
+                        },
                         maxLines: 3,
                         style: TextStyle(fontSize: isMobile ? 13 : 14),
                         decoration: InputDecoration(
@@ -425,6 +564,24 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                   ],
                 ),
               ),
+
+              SizedBox(height: 8),
+              if (_defectsController.text.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Priority: $_currentPriority',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: _currentPriority == 'HIGH'
+                          ? Colors.red
+                          : _currentPriority == 'MEDIUM'
+                          ? Colors.orange
+                          : Colors.green,
+                    ),
+                  ),
+                ),
+
               SizedBox(height: isMobile ? 16 : 20),
 
               // Buttons Section

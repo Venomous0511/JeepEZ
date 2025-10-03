@@ -366,31 +366,6 @@ class _DriverDashboardState extends State<DriverDashboard>
 
               const SizedBox(height: 32),
 
-              // View More Button
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isMobile ? 16.0 : 24.0,
-                ),
-                child: InkWell(
-                  onTap: () {
-                    // Add navigation or action here
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(isMobile ? 16 : 20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFF0D2364),
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: isMobile ? 16 : 20),
-
               // Time Logs Card
               Padding(
                 padding: EdgeInsets.symmetric(
