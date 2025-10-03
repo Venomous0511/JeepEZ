@@ -31,7 +31,7 @@ jobs:
       # 4. Install required Android SDK components
       - name: Install Android SDK Components
         run: |
-          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "ndk;29.0.13846066" "cmake;3.22.1" "lldb;13.1"
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "ndk;29.0.13846066"
 
       # 5. Cache Flutter dependencies
       - name: Cache Flutter Pub
