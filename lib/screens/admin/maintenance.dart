@@ -180,38 +180,17 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                             Colors.grey.shade200,
                           ),
                           columns: const [
+                            DataColumn(label: Text('Type')),
                             DataColumn(label: Text('Title')),
                             DataColumn(label: Text('Issue Date')),
-                            DataColumn(label: Text('Status')),
                             DataColumn(label: Text('Priority')),
-                            DataColumn(
-                              label: Text('Assigned'),
-                            ),
                           ],
                           rows: maintenanceList.map((issue) {
                             return DataRow(
                               cells: [
+                                DataCell(Text(issue['type'])),
                                 DataCell(Text(issue['title'])),
                                 DataCell(Text(issue['issueDate'])),
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _getStatusColor(issue['status']),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      issue['status'],
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ),
                                 DataCell(
                                   Text(
                                     issue['priority'],
@@ -222,9 +201,6 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                ),
-                                DataCell(
-                                  Text(issue['assigned']),
                                 ),
                               ],
                             );
