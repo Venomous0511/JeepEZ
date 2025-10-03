@@ -47,12 +47,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     },
   ];
 
-  // For the start day dropdown
   int? _selectedStartDay;
   final List<int> _availableDays = List.generate(31, (index) => index + 1);
 
   void _showCalendarDialog(BuildContext context, int index) {
-    // Initialize selected start day with the first day of the request
     final selectedDays = _leaveRequests[index]['selectedDays'];
     _selectedStartDay = selectedDays.isNotEmpty ? selectedDays.first : null;
 
@@ -68,7 +66,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     setState(() {
       _leaveRequests[index]['status'] = 'Approved';
     });
-    Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${_leaveRequests[index]['name']}\'s request approved'),
@@ -81,7 +78,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     setState(() {
       _leaveRequests[index]['status'] = 'Rejected';
     });
-    Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${_leaveRequests[index]['name']}\'s request rejected'),
@@ -93,19 +89,15 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
   void _updateSelectedDay(int index) {
     if (_selectedStartDay != null) {
       setState(() {
-        // For simplicity, we'll assume a fixed duration of 3 days
-        // You can modify this logic as needed
         final endDay = _selectedStartDay! + 2;
         final month = 'Dec';
 
         _leaveRequests[index]['from'] = '$month $_selectedStartDay';
         _leaveRequests[index]['to'] = '$month $endDay';
 
-        // Calculate total time (assuming 24h per day)
         final totalHours = 3 * 24;
         _leaveRequests[index]['totalTime'] = '${totalHours}h';
 
-        // Update selected days
         _leaveRequests[index]['selectedDays'] = List.generate(
           3,
           (i) => _selectedStartDay! + i,
@@ -164,25 +156,22 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
       itemCount: _leaveRequests.length,
       itemBuilder: (context, index) {
         final request = _leaveRequests[index];
+        final status = request['status'];
+
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
+          color: status == 'Approved'
+              ? Colors.green.shade50
+              : status == 'Rejected'
+              ? Colors.red.shade50
+              : Colors.white,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header with checkbox and name
                 Row(
                   children: [
-                    Checkbox(
-                      value: request['selected'],
-                      onChanged: (value) {
-                        setState(() {
-                          request['selected'] = value;
-                        });
-                      },
-                      visualDensity: VisualDensity.compact,
-                    ),
                     Expanded(
                       child: Text(
                         request['name'],
@@ -192,33 +181,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                         ),
                       ),
                     ),
-                    PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert, size: 20),
-                      itemBuilder: (BuildContext context) => [
-                        const PopupMenuItem(
-                          value: 'calendar',
-                          child: Text('View Calendar'),
-                        ),
-                        if (request['status'] == 'Pending')
-                          const PopupMenuItem(
-                            value: 'approve',
-                            child: Text('Approve'),
-                          ),
-                        if (request['status'] == 'Pending')
-                          const PopupMenuItem(
-                            value: 'reject',
-                            child: Text('Reject'),
-                          ),
-                      ],
-                      onSelected: (String value) {
-                        if (value == 'calendar') {
-                          _showCalendarDialog(context, index);
-                        } else if (value == 'approve') {
-                          _approveRequest(index);
-                        } else if (value == 'reject') {
-                          _rejectRequest(index);
-                        }
-                      },
+                    IconButton(
+                      icon: const Icon(Icons.calendar_today, size: 20),
+                      onPressed: () => _showCalendarDialog(context, index),
+                      tooltip: 'View Calendar',
                     ),
                   ],
                 ),
@@ -226,31 +192,58 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                 const Divider(height: 1),
                 const SizedBox(height: 12),
 
-                // Leave details
-                _buildMobileDetailRow('From', request['from']),
-                _buildMobileDetailRow('To', request['to']),
+                _buildMobileDetailRow(
+                  'Leave Period',
+                  '${request['from']} - ${request['to']}',
+                ),
                 _buildMobileDetailRow('Total Time', request['totalTime']),
                 const SizedBox(height: 8),
 
-                // Status
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(request['status']).withAlpha(128),
+                    color: _getStatusColor(status).withAlpha(128),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    request['status'],
+                    status,
                     style: TextStyle(
                       fontSize: 12,
-                      color: _getStatusColor(request['status']),
+                      color: _getStatusColor(status),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
+
+                if (status == 'Pending') ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _rejectRequest(index),
+                        icon: const Icon(Icons.close, size: 16),
+                        label: const Text('Reject'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        onPressed: () => _approveRequest(index),
+                        icon: const Icon(Icons.check, size: 16),
+                        label: const Text('Approve'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -266,7 +259,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 80,
+            width: 100,
             child: Text(
               '$label:',
               style: const TextStyle(
@@ -295,11 +288,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
             border: TableBorder.all(color: Colors.grey.shade300, width: 1.0),
             columnWidths: {
               0: const FlexColumnWidth(2),
-              1: const FlexColumnWidth(1),
+              1: const FlexColumnWidth(2),
               2: const FlexColumnWidth(1),
-              3: const FlexColumnWidth(1),
-              4: const FlexColumnWidth(1.2),
-              5: const FixedColumnWidth(50),
+              3: const FlexColumnWidth(1.2),
+              4: const FlexColumnWidth(2),
             },
             defaultVerticalAlignment: TableCellVerticalAlignment.middle,
             children: [
@@ -307,25 +299,37 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                 decoration: BoxDecoration(color: Colors.grey.shade100),
                 children: [
                   _buildHeaderCell('Name', isCompact: true),
-                  _buildHeaderCell('From', isCompact: true),
-                  _buildHeaderCell('To', isCompact: true),
+                  _buildHeaderCell('Leave Period', isCompact: true),
                   _buildHeaderCell('Time', isCompact: true),
                   _buildHeaderCell('Status', isCompact: true),
-                  _buildHeaderCell('', isCompact: true),
+                  _buildHeaderCell('Actions', isCompact: true),
                 ],
               ),
               ..._leaveRequests.asMap().entries.map((entry) {
                 final index = entry.key;
                 final request = entry.value;
                 return TableRow(
-                  decoration: const BoxDecoration(color: Colors.white),
+                  decoration: BoxDecoration(
+                    color: request['status'] == 'Approved'
+                        ? Colors.green.shade50
+                        : request['status'] == 'Rejected'
+                        ? Colors.red.shade50
+                        : Colors.white,
+                  ),
                   children: [
                     _buildNameCell(request, index, isCompact: true),
-                    _buildDateCell(request['from'], isCompact: true),
-                    _buildDateCell(request['to'], isCompact: true),
+                    _buildPeriodCell(
+                      '${request['from']} - ${request['to']}',
+                      isCompact: true,
+                    ),
                     _buildTimeCell(request['totalTime'], isCompact: true),
                     _buildStatusCell(request['status'], isCompact: true),
-                    _buildActionCell(context, index, isCompact: true),
+                    _buildActionButtons(
+                      context,
+                      index,
+                      request,
+                      isCompact: true,
+                    ),
                   ],
                 );
               }),
@@ -349,11 +353,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
             border: TableBorder.all(color: Colors.grey.shade300, width: 1.0),
             columnWidths: {
               0: const FlexColumnWidth(2.5),
-              1: const FlexColumnWidth(1.2),
+              1: const FlexColumnWidth(2),
               2: const FlexColumnWidth(1.2),
-              3: const FlexColumnWidth(1.2),
-              4: const FlexColumnWidth(1.5),
-              5: const FixedColumnWidth(60),
+              3: const FlexColumnWidth(1.5),
+              4: const FlexColumnWidth(2.5),
             },
             defaultVerticalAlignment: TableCellVerticalAlignment.middle,
             children: [
@@ -361,25 +364,29 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                 decoration: BoxDecoration(color: Colors.grey.shade100),
                 children: [
                   _buildHeaderCell('Name'),
-                  _buildHeaderCell('From'),
-                  _buildHeaderCell('To'),
+                  _buildHeaderCell('Leave Period'),
                   _buildHeaderCell('Total Time'),
                   _buildHeaderCell('Status'),
-                  _buildHeaderCell(''),
+                  _buildHeaderCell('Actions'),
                 ],
               ),
               ..._leaveRequests.asMap().entries.map((entry) {
                 final index = entry.key;
                 final request = entry.value;
                 return TableRow(
-                  decoration: const BoxDecoration(color: Colors.white),
+                  decoration: BoxDecoration(
+                    color: request['status'] == 'Approved'
+                        ? Colors.green.shade50
+                        : request['status'] == 'Rejected'
+                        ? Colors.red.shade50
+                        : Colors.white,
+                  ),
                   children: [
                     _buildNameCell(request, index),
-                    _buildDateCell(request['from']),
-                    _buildDateCell(request['to']),
+                    _buildPeriodCell('${request['from']} - ${request['to']}'),
                     _buildTimeCell(request['totalTime']),
                     _buildStatusCell(request['status']),
-                    _buildActionCell(context, index),
+                    _buildActionButtons(context, index, request),
                   ],
                 );
               }),
@@ -414,37 +421,21 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
       padding: isCompact
           ? const EdgeInsets.all(4.0)
           : const EdgeInsets.all(8.0),
-      child: Row(
-        children: [
-          Checkbox(
-            value: request['selected'],
-            onChanged: (value) {
-              setState(() {
-                request['selected'] = value;
-              });
-            },
-            visualDensity: VisualDensity.compact,
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              request['name'],
-              style: TextStyle(fontSize: isCompact ? 12 : 14),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
+      child: Text(
+        request['name'],
+        style: TextStyle(fontSize: isCompact ? 12 : 14),
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
 
-  Widget _buildDateCell(String date, {bool isCompact = false}) {
+  Widget _buildPeriodCell(String period, {bool isCompact = false}) {
     return Padding(
       padding: isCompact
           ? const EdgeInsets.all(8.0)
           : const EdgeInsets.all(12.0),
       child: Text(
-        date,
+        period,
         style: TextStyle(fontSize: isCompact ? 12 : 14),
         textAlign: TextAlign.center,
       ),
@@ -488,33 +479,47 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  Widget _buildActionCell(
+  Widget _buildActionButtons(
     BuildContext context,
-    int index, {
+    int index,
+    Map<String, dynamic> request, {
     bool isCompact = false,
   }) {
     return Padding(
       padding: isCompact
           ? const EdgeInsets.all(4.0)
           : const EdgeInsets.all(8.0),
-      child: PopupMenuButton<String>(
-        icon: Icon(Icons.more_vert, size: isCompact ? 16 : 20),
-        itemBuilder: (BuildContext context) => [
-          const PopupMenuItem(value: 'calendar', child: Text('View Calendar')),
-          if (_leaveRequests[index]['status'] == 'Pending')
-            const PopupMenuItem(value: 'approve', child: Text('Approve')),
-          if (_leaveRequests[index]['status'] == 'Pending')
-            const PopupMenuItem(value: 'reject', child: Text('Reject')),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: Icon(Icons.calendar_today, size: isCompact ? 16 : 20),
+            onPressed: () => _showCalendarDialog(context, index),
+            tooltip: 'View Calendar',
+          ),
+          if (request['status'] == 'Pending') ...[
+            const SizedBox(width: 4),
+            IconButton(
+              icon: Icon(
+                Icons.close,
+                size: isCompact ? 16 : 20,
+                color: Colors.red,
+              ),
+              onPressed: () => _rejectRequest(index),
+              tooltip: 'Reject',
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              icon: Icon(
+                Icons.check,
+                size: isCompact ? 16 : 20,
+                color: Colors.green,
+              ),
+              onPressed: () => _approveRequest(index),
+              tooltip: 'Approve',
+            ),
+          ],
         ],
-        onSelected: (String value) {
-          if (value == 'calendar') {
-            _showCalendarDialog(context, index);
-          } else if (value == 'approve') {
-            _approveRequest(index);
-          } else if (value == 'reject') {
-            _rejectRequest(index);
-          }
-        },
       ),
     );
   }
@@ -550,108 +555,93 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
           ),
           content: SizedBox(
             width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Start Day dropdown only
-                Row(
-                  children: [
-                    const Text('Start Day:'),
-                    const SizedBox(width: 16),
-                    DropdownButton<int>(
-                      value: _selectedStartDay,
-                      hint: const Text('Select day'),
-                      items: _availableDays.map((int day) {
-                        return DropdownMenuItem<int>(
-                          value: day,
-                          child: Text('December $day'),
-                        );
-                      }).toList(),
-                      onChanged: (int? newValue) {
-                        setState(() {
-                          _selectedStartDay = newValue;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                // Calendar view
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 7,
-                    mainAxisSpacing: 4,
-                    crossAxisSpacing: 4,
-                    childAspectRatio: 1.5,
-                  ),
-                  itemCount: 31, // December has 31 days
-                  itemBuilder: (context, dayIndex) {
-                    final day = dayIndex + 1;
-                    // For simplicity, highlight the selected start day and next 2 days
-                    final isSelected =
-                        _selectedStartDay != null &&
-                        day >= _selectedStartDay! &&
-                        day <= _selectedStartDay! + 2;
-
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? Colors.blue.withAlpha(128)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Colors.grey[300]!),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      const Text('Start Day:'),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: DropdownButton<int>(
+                          value: _selectedStartDay,
+                          hint: const Text('Select day'),
+                          isExpanded: true,
+                          items: _availableDays.map((int day) {
+                            return DropdownMenuItem<int>(
+                              value: day,
+                              child: Text('December $day'),
+                            );
+                          }).toList(),
+                          onChanged: (int? newValue) {
+                            setState(() {
+                              _selectedStartDay = newValue;
+                            });
+                          },
+                        ),
                       ),
-                      child: Center(
-                        child: Text(
-                          '$day',
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.black,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 7,
+                          mainAxisSpacing: 4,
+                          crossAxisSpacing: 4,
+                          childAspectRatio: 1.5,
+                        ),
+                    itemCount: 31,
+                    itemBuilder: (context, dayIndex) {
+                      final day = dayIndex + 1;
+                      final isSelected =
+                          _selectedStartDay != null &&
+                          day >= _selectedStartDay! &&
+                          day <= _selectedStartDay! + 2;
+
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Colors.blue.withAlpha(128)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '$day',
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.black,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
 
-                const SizedBox(height: 16),
-                if (request['status'] == 'Pending')
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      ElevatedButton(
-                        onPressed: () => _rejectRequest(index),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                        ),
-                        child: const Text('Reject'),
-                      ),
-                      ElevatedButton(
+                  const SizedBox(height: 16),
+                  if (request['status'] == 'Pending')
+                    Center(
+                      child: ElevatedButton.icon(
                         onPressed: () => _updateSelectedDay(index),
+                        icon: const Icon(Icons.save, size: 18),
+                        label: const Text('Save'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue,
                           foregroundColor: Colors.white,
                         ),
-                        child: const Text('Save'),
                       ),
-                      ElevatedButton(
-                        onPressed: () => _approveRequest(index),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                        ),
-                        child: const Text('Approve'),
-                      ),
-                    ],
-                  ),
-              ],
+                    ),
+                ],
+              ),
             ),
           ),
         );

@@ -184,124 +184,185 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   }
 
   Widget _buildHomeScreen() {
-    return Stack(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final bool isMobile = constraints.maxWidth < 768;
+
+          return Stack(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Notifications',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0D2364),
-                    ),
-                  ),
-                  StreamBuilder<QuerySnapshot>(
-                    stream: getNotificationsStream(widget.user.role),
-                    builder: (context, snapshot) {
-                      final count = snapshot.hasData
-                          ? snapshot.data!.docs.length
-                          : 0;
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0D2364),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '$count',
-                          style: const TextStyle(
-                            color: Colors.white,
+              Padding(
+                padding: isMobile
+                    ? const EdgeInsets.all(12.0)
+                    : const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Notifications',
+                          style: TextStyle(
+                            fontSize: isMobile ? 24 : 32,
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            color: const Color(0xFF0D2364),
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: getNotificationsStream(widget.user.role),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.notifications_off_outlined,
-                              size: 80,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No notifications',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 20,
+                        StreamBuilder<QuerySnapshot>(
+                          stream: getNotificationsStream(widget.user.role),
+                          builder: (context, snapshot) {
+                            final count = snapshot.hasData
+                                ? snapshot.data!.docs.length
+                                : 0;
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
                               ),
-                            ),
-                          ],
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0D2364),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '$count',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: isMobile ? 14 : 16,
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    }
+                      ],
+                    ),
+                    const SizedBox(height: 20),
 
-                    final docs = snapshot.data!.docs;
+                    // Notifications Content
+                    Expanded(
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: getNotificationsStream(widget.user.role),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
+                          if (!snapshot.hasData ||
+                              snapshot.data!.docs.isEmpty) {
+                            return Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.notifications_off_outlined,
+                                    size: isMobile ? 60 : 80,
+                                    color: Colors.grey[400],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'No notifications',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: isMobile ? 18 : 20,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
 
-                    return GridView.builder(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 4,
-                            childAspectRatio: 1.0,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                          ),
-                      padding: const EdgeInsets.all(8),
-                      itemCount: docs.length,
-                      itemBuilder: (context, index) {
-                        final data = docs[index].data() as Map<String, dynamic>;
-                        return CompactNotificationTile(
-                          data: data,
-                          docReference: docs[index].reference,
-                          getIconForType: _getIconForType,
-                          getColorForType: _getColorForType,
-                          getTypeLabel: _getTypeLabel,
-                        );
-                      },
-                    );
-                  },
+                          final docs = snapshot.data!.docs;
+
+                          if (isMobile) {
+                            return _buildMobileNotificationsList(docs);
+                          } else {
+                            return _buildDesktopNotificationsGrid(docs);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Floating Action Button - positioned differently for mobile
+              Positioned(
+                bottom: isMobile ? 16 : 24,
+                right: isMobile ? 16 : 24,
+                child: FloatingActionButton(
+                  onPressed: _showAddNotificationDialog,
+                  backgroundColor: const Color(0xFF0D2364),
+                  foregroundColor: Colors.white,
+                  tooltip: 'Add Notification',
+                  child: Icon(Icons.add, size: isMobile ? 24 : 28),
                 ),
               ),
             ],
+          );
+        },
+      ),
+    );
+  }
+
+  /// Mobile View - Vertical List
+  Widget _buildMobileNotificationsList(List<QueryDocumentSnapshot> docs) {
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 80), // Space for FAB
+      itemCount: docs.length,
+      itemBuilder: (context, index) {
+        final data = docs[index].data() as Map<String, dynamic>;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: MobileNotificationTile(
+            data: data,
+            docReference: docs[index].reference,
+            getIconForType: _getIconForType,
+            getColorForType: _getColorForType,
+            getTypeLabel: _getTypeLabel,
           ),
-        ),
-        Positioned(
-          bottom: 24,
-          right: 24,
-          child: FloatingActionButton(
-            onPressed: _showAddNotificationDialog,
-            backgroundColor: const Color(0xFF0D2364),
-            foregroundColor: Colors.white,
-            tooltip: 'Add Notification',
-            child: const Icon(Icons.add, size: 28),
+        );
+      },
+    );
+  }
+
+  /// Desktop View - Responsive Grid
+  Widget _buildDesktopNotificationsGrid(List<QueryDocumentSnapshot> docs) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double availableWidth = constraints.maxWidth;
+        final int crossAxisCount = availableWidth > 1200
+            ? 4
+            : availableWidth > 800
+            ? 3
+            : 2;
+
+        return GridView.builder(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: 1.0,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
           ),
-        ),
-      ],
+          padding: const EdgeInsets.only(bottom: 80), // Space for FAB
+          itemCount: docs.length,
+          itemBuilder: (context, index) {
+            final data = docs[index].data() as Map<String, dynamic>;
+            return DesktopNotificationTile(
+              data: data,
+              docReference: docs[index].reference,
+              getIconForType: _getIconForType,
+              getColorForType: _getColorForType,
+              getTypeLabel: _getTypeLabel,
+            );
+          },
+        );
+      },
     );
   }
 
@@ -523,15 +584,15 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   }
 }
 
-// Compact Notification Tile with larger text and standard icons
-class CompactNotificationTile extends StatelessWidget {
+// Mobile Notification Tile - Optimized for small screens
+class MobileNotificationTile extends StatelessWidget {
   final Map<String, dynamic> data;
   final DocumentReference docReference;
   final IconData Function(String) getIconForType;
   final Color Function(String) getColorForType;
   final String Function(String) getTypeLabel;
 
-  const CompactNotificationTile({
+  const MobileNotificationTile({
     super.key,
     required this.data,
     required this.docReference,
@@ -549,190 +610,331 @@ class CompactNotificationTile extends StatelessWidget {
     final message = data['message'] ?? '';
     final timestamp = data['time'] as Timestamp?;
 
-    return GestureDetector(
-      onTap: () {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Row(
+    return Card(
+      elevation: 2,
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: color, size: 24),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0D2364),
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              message,
+              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Row(
               children: [
-                Icon(icon, color: color, size: 32),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(title, style: const TextStyle(fontSize: 20)),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    getTypeLabel(type),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Icon(Icons.access_time, size: 12, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Text(
+                  timestamp != null
+                      ? DateFormat('MMM d').format(timestamp.toDate())
+                      : '',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(message, style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 20),
-                if (timestamp != null)
-                  Text(
-                    DateFormat(
-                      'MMM d, yyyy - hh:mm a',
-                    ).format(timestamp.toDate()),
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close', style: TextStyle(fontSize: 16)),
-              ),
-              TextButton(
-                onPressed: () async {
-                  await docReference.update({'dismissed': true});
-                  if (context.mounted) Navigator.pop(context);
-                },
-                child: const Text('Dismiss', style: TextStyle(fontSize: 16)),
-              ),
-            ],
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: Column(
+        onTap: () => _showNotificationDialog(
+          context,
+          title,
+          message,
+          icon,
+          color,
+          timestamp,
+        ),
+        onLongPress: () => _dismissNotification(context),
+      ),
+    );
+  }
+
+  void _showNotificationDialog(
+    BuildContext context,
+    String title,
+    String message,
+    IconData icon,
+    Color color,
+    Timestamp? timestamp,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(width: 12),
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 18))),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with icon and dismiss button
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withAlpha(1),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
-                ),
+            Text(message, style: const TextStyle(fontSize: 16)),
+            const SizedBox(height: 16),
+            if (timestamp != null)
+              Text(
+                DateFormat('MMM d, yyyy - hh:mm a').format(timestamp.toDate()),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
-              child: Row(
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          TextButton(
+            onPressed: () {
+              _dismissNotification(context);
+              Navigator.pop(context);
+            },
+            child: const Text('Dismiss'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _dismissNotification(BuildContext context) async {
+    await docReference.update({'dismissed': true});
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Notification dismissed'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+}
+
+// Desktop Notification Tile - Optimized for larger screens
+class DesktopNotificationTile extends StatelessWidget {
+  final Map<String, dynamic> data;
+  final DocumentReference docReference;
+  final IconData Function(String) getIconForType;
+  final Color Function(String) getColorForType;
+  final String Function(String) getTypeLabel;
+
+  const DesktopNotificationTile({
+    super.key,
+    required this.data,
+    required this.docReference,
+    required this.getIconForType,
+    required this.getColorForType,
+    required this.getTypeLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final type = data['type'] ?? '';
+    final color = getColorForType(type);
+    final icon = getIconForType(type);
+    final title = data['title'] ?? 'No Title';
+    final message = data['message'] ?? '';
+    final timestamp = data['time'] as Timestamp?;
+
+    return Card(
+      elevation: 4,
+      child: InkWell(
+        onTap: () => _showNotificationDialog(
+          context,
+          title,
+          message,
+          icon,
+          color,
+          timestamp,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
                 children: [
-                  Icon(icon, color: color, size: 28),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: () async {
-                      await docReference.update({'dismissed': true});
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: color.withAlpha(2),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Icon(Icons.close, color: color, size: 20),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
                     ),
+                    child: Icon(icon, color: color, size: 24),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: Icon(Icons.close, size: 18, color: Colors.grey),
+                    onPressed: () => _dismissNotification(context),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 12),
 
-            // Content
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Type badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: color.withAlpha(1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        getTypeLabel(type),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: color,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Title
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0D2364),
-                        height: 1.2,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Message preview
-                    Expanded(
-                      child: Text(
-                        message,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[700],
-                          height: 1.3,
-                        ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-
-                    // Time
-                    const Spacer(),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.access_time,
-                          size: 16,
-                          color: Colors.grey[600],
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            timestamp != null
-                                ? DateFormat(
-                                    'MMM d, HH:mm',
-                                  ).format(timestamp.toDate())
-                                : 'No date',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+              // Type Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  getTypeLabel(type),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+
+              // Title
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0D2364),
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+
+              // Message
+              Expanded(
+                child: Text(
+                  message,
+                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Footer
+              Row(
+                children: [
+                  Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 6),
+                  Text(
+                    timestamp != null
+                        ? DateFormat('MMM d, yyyy').format(timestamp.toDate())
+                        : '',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  void _showNotificationDialog(
+    BuildContext context,
+    String title,
+    String message,
+    IconData icon,
+    Color color,
+    Timestamp? timestamp,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(width: 12),
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 20))),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(message, style: const TextStyle(fontSize: 16)),
+            const SizedBox(height: 20),
+            if (timestamp != null)
+              Text(
+                DateFormat('MMM d, yyyy - hh:mm a').format(timestamp.toDate()),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          TextButton(
+            onPressed: () {
+              _dismissNotification(context);
+              Navigator.pop(context);
+            },
+            child: const Text('Dismiss'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _dismissNotification(BuildContext context) async {
+    await docReference.update({'dismissed': true});
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Notification dismissed'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 }
 
