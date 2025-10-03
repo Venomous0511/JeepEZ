@@ -246,39 +246,6 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-
-            // Divider line
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: const Divider(thickness: 1, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-
-            // View submitted form section - NOW AS A BUTTON
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    _viewSubmittedForms();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D2364), // Updated color
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  child: const Text(
-                    'View Submitted Forms',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ),
             const SizedBox(height: 20),
           ],
         ),
@@ -298,14 +265,13 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
     }
 
     _showDialog('Success', 'Violation report submitted successfully!');
-  }
 
-  void _viewSubmittedForms() {
-    // Add functionality to view submitted forms here
-    _showDialog(
-      'View Submitted Forms',
-      'This will show all submitted violation reports',
-    );
+    // Clear form after successful submission
+    _nameController.clear();
+    _positionController.clear();
+    _violationController.clear();
+    _locationController.clear();
+    _timeController.clear();
   }
 
   void _showDialog(String title, String message) {

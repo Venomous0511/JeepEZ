@@ -262,10 +262,25 @@ class _InspectorTripScreenState extends State<InspectorTripScreen> {
 
                               const SizedBox(height: 20),
 
-                              // Action Buttons - Responsive layout
-                              constraints.maxWidth < 600
-                                  ? _buildVerticalButtons()
-                                  : _buildHorizontalButtons(),
+                              // Single Save & Submit Button
+                              SizedBox(
+                                height: 50,
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: _saveAndSubmit,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF0D2364),
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Save & Submit',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -319,93 +334,6 @@ class _InspectorTripScreenState extends State<InspectorTripScreen> {
                 horizontal: 15,
                 vertical: 15,
               ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHorizontalButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: SizedBox(
-            height: 50,
-            child: ElevatedButton(
-              onPressed: _saveAndSubmit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0D2364),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'Save & Submit',
-                style: TextStyle(fontSize: 16),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 15),
-        Expanded(
-          child: SizedBox(
-            height: 50,
-            child: ElevatedButton(
-              onPressed: _viewSubmittedForms,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0D2364), // BLUE COLOR
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'View submitted form',
-                style: TextStyle(fontSize: 16),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildVerticalButtons() {
-    return Column(
-      children: [
-        SizedBox(
-          height: 50,
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _saveAndSubmit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0D2364),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Save & Submit', style: TextStyle(fontSize: 16)),
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 50,
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _viewSubmittedForms,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0D2364), // BLUE COLOR
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text(
-              'View submitted form',
-              style: TextStyle(fontSize: 16),
             ),
           ),
         ),
@@ -665,113 +593,6 @@ class _InspectorTripScreenState extends State<InspectorTripScreen> {
         content: Text('Form submitted successfully!'),
         backgroundColor: Color(0xFF0D2364),
       ),
-    );
-  }
-
-  void _viewSubmittedForms() {
-    if (submittedForms.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No forms submitted yet'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.9,
-              maxHeight: MediaQuery.of(context).size.height * 0.8,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Submitted Forms (${submittedForms.length})',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0D2364),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // FIXED: Using Expanded with proper parent constraints
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: submittedForms.length,
-                      itemBuilder: (context, index) {
-                        final form = submittedForms[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          color: Colors.grey[50],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(15),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Form ${index + 1}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF0D2364),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text('Unit: ${form['Unit Number'] ?? 'N/A'}'),
-                                Text('Driver: ${form['Driver Name'] ?? 'N/A'}'),
-                                Text(
-                                  'Conductor: ${form['Conductor Name'] ?? 'N/A'}',
-                                ),
-                                Text(
-                                  'Time: ${form['Inspection Time'] ?? 'N/A'}',
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: 120,
-                    height: 45,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0D2364),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text('Close'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }
