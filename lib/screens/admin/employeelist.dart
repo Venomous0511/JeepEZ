@@ -95,6 +95,10 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 child: StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('users')
+                      .where(
+                        'role',
+                        whereIn: ['legal_officer', 'driver', 'conductor', 'inspector'],
+                      )
                       .orderBy('createdAt', descending: true)
                       .snapshots(),
                   builder: (context, snap) {

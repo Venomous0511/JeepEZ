@@ -23,6 +23,8 @@ class Candidate {
              'NBI Clearance': false,
              'Barangay Clearance': false,
              'Medical Certificate': false,
+             'Initial Interview': false,
+             'Training': false,
            };
 }
 
@@ -264,6 +266,36 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                           setState(() {
                             candidates[index]
                                     .requirements['Medical Certificate'] =
+                                value;
+                          });
+                        });
+                      },
+                      isMobile,
+                    ),
+                    _buildRequirementItem(
+                      'Initial Interview',
+                      candidates[index].requirements['Initial Interview'] ??
+                          false,
+                      (value) {
+                        setDialogState(() {
+                          setState(() {
+                            candidates[index]
+                                    .requirements['Initial Interview'] =
+                                value;
+                          });
+                        });
+                      },
+                      isMobile,
+                    ),
+                    _buildRequirementItem(
+                      'Training',
+                      candidates[index].requirements['Training'] ??
+                          false,
+                      (value) {
+                        setDialogState(() {
+                          setState(() {
+                            candidates[index]
+                                    .requirements['Training'] =
                                 value;
                           });
                         });

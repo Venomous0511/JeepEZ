@@ -24,27 +24,22 @@ class _LegalOfficerDashboardScreenState
   bool _isLoggingOut = false;
   int _selectedIndex = 0;
 
+  // --- sample inspector data: include 'reports' and 'score' to avoid missing keys ---
   final List<Map<String, dynamic>> inspectors = const [
     {
       'name': 'Juan Dela Cruz',
       'area': 'Area A (North)',
       'inspections': 45,
-      'reports': 12,
-      'score': '20/25',
     },
     {
       'name': 'Maria Lopez',
       'area': 'Area B (East)',
       'inspections': 38,
-      'reports': 9,
-      'score': '20/25',
     },
     {
       'name': 'Pedro Santos',
       'area': 'Area C (West)',
       'inspections': 25,
-      'reports': 6,
-      'score': '20/25',
     },
   ];
 
@@ -65,22 +60,6 @@ class _LegalOfficerDashboardScreenState
       'priority': 'Medium',
       'status': 'Under Investigation',
     },
-    {
-      'id': 'INC-003',
-      'date': '2025-09-03',
-      'assigned': 'Maria Lopez',
-      'type': 'Passenger Misconduct',
-      'priority': 'Low',
-      'status': 'Closed',
-    },
-    {
-      'id': 'INC-004',
-      'date': '2025-09-04',
-      'assigned': 'Juan Dela Cruz',
-      'type': 'Fare / Ticket Issue',
-      'priority': 'Medium',
-      'status': 'Open',
-    },
   ];
 
   void _onItemTapped(int index) {
@@ -90,6 +69,25 @@ class _LegalOfficerDashboardScreenState
   }
 
   /// ---------------- NOTIFICATION FUNCTIONS  ----------------
+  Stream<QuerySnapshot<Map<String, dynamic>>> getNotificationsStream(String role,) {
+    final collection = FirebaseFirestore.instance.collection('notifications');
+
+    if (role == 'super_admin' || role == 'admin') {
+      // Super_Admin & Admin → See ALL (system + security)
+      return collection
+          .where('dismissed', isEqualTo: false)
+          .orderBy('time', descending: true)
+          .snapshots();
+    } else {
+      // Others → See only system notifications
+      return collection
+          .where('dismissed', isEqualTo: false)
+          .where('type', isEqualTo: 'system')
+          .orderBy('time', descending: true)
+          .snapshots();
+    }
+  }
+
   IconData _getIconForType(String type) {
     switch (type) {
       case 'system':
@@ -116,20 +114,30 @@ class _LegalOfficerDashboardScreenState
     }
   }
 
-  Stream<QuerySnapshot> getNotificationsStream(String role) {
-    final collection = FirebaseFirestore.instance.collection('notifications');
+  /// ---------------- MARK ALL AS READ ----------------
+  Future<void> _markAllAsRead() async {
+    final query = await FirebaseFirestore.instance
+        .collection('notifications')
+        .where('dismissed', isEqualTo: false)
+        .get();
 
-    if (role == 'super_admin' || role == 'admin') {
-      return collection
-          .where('dismissed', isEqualTo: false)
-          .orderBy('time', descending: true)
-          .snapshots();
-    } else {
-      return collection
-          .where('dismissed', isEqualTo: false)
-          .where('type', isEqualTo: 'system')
-          .orderBy('time', descending: true)
-          .snapshots();
+    final batch = FirebaseFirestore.instance.batch();
+
+    for (var doc in query.docs) {
+      final data = doc.data();
+      if (!data.containsKey('read')) {
+        batch.update(doc.reference, {'read': true});
+      } else if (data['read'] == false) {
+        batch.update(doc.reference, {'read': true});
+      }
+    }
+
+    await batch.commit();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("All notifications marked as read")),
+      );
     }
   }
 
@@ -139,7 +147,8 @@ class _LegalOfficerDashboardScreenState
     setState(() => _isLoggingOut = true);
 
     try {
-      await Future.delayed(const Duration(seconds: 3));
+      // If you actually want to wait (e.g., show spinner), keep the delay. Otherwise remove.
+      await Future.delayed(const Duration(seconds: 1));
       await AuthService().logout();
     } catch (e) {
       if (!mounted) return;
@@ -147,6 +156,134 @@ class _LegalOfficerDashboardScreenState
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to sign out: $e')));
       setState(() => _isLoggingOut = false);
+    }
+  }
+
+  /// ---------------- SHOW NOTIFICATIONS POPUP ----------------
+  void _showNotifications() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Notifications'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: getNotificationsStream(widget.user.role),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text("No notifications"));
+                }
+
+                final docs = snapshot.data!.docs;
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final data = docs[index].data();
+                    final type = (data['type'] ?? 'updates') as String;
+                    final message = (data['message'] ?? 'No message') as String;
+                    // Safe check for 'read' field
+                    final isRead = (data['read'] ?? false) as bool;
+
+                    return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isRead
+                            ? Colors.white
+                            : Colors.blue.shade50, // highlight unread
+                        border: Border.all(
+                          color: Colors.grey.shade300,
+                          width: 1,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withAlpha(1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            _getIconForType(type),
+                            color: _getColorForType(type),
+                            size: 28,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  message,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                if (data['time'] != null)
+                                  Text(
+                                    _formatTimestampSafe(data['time']),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: _markAllAsRead,
+              child: const Text(
+                'Mark all as read',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0D2364),
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _formatTimestampSafe(dynamic ts) {
+    try {
+      if (ts is Timestamp) {
+        final dt = ts.toDate();
+        return DateFormat('MMM d, y hh:mm a').format(dt);
+      } else if (ts is DateTime) {
+        return DateFormat('MMM d, y hh:mm a').format(ts);
+      } else {
+        return ts?.toString() ?? '';
+      }
+    } catch (_) {
+      return ts?.toString() ?? '';
     }
   }
 
@@ -166,6 +303,58 @@ class _LegalOfficerDashboardScreenState
         ),
         backgroundColor: const Color(0xFF0D2364),
         foregroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: getNotificationsStream(widget.user.role),
+            builder: (context, snapshot) {
+              int unreadCount = 0;
+              if (snapshot.hasData) {
+                unreadCount = snapshot.data!.docs.where((doc) {
+                  final data = doc.data();
+                  return (data['read'] != true);
+                }).length;
+              }
+
+              return SizedBox(
+                width: 50,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications),
+                      onPressed: _showNotifications,
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            unreadCount > 9 ? '9+' : unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8, // smaller font to prevent overflow
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
       drawer: _buildResponsiveDrawer(),
       body: _getSelectedScreen(),
@@ -285,10 +474,10 @@ class _LegalOfficerDashboardScreenState
             ),
             trailing: _isLoggingOut
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
                 : null,
             onTap: _isLoggingOut ? null : _signOut,
           ),
@@ -349,7 +538,7 @@ class _LegalOfficerDashboardScreenState
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: getNotificationsStream(widget.user.role),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -369,19 +558,19 @@ class _LegalOfficerDashboardScreenState
                 return ListView.builder(
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
-                    final data = docs[index].data() as Map<String, dynamic>;
+                    final data = docs[index].data();
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
                         contentPadding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
                         leading: Icon(
-                          _getIconForType(data['type'] ?? ''),
-                          color: _getColorForType(data['type'] ?? ''),
+                          _getIconForType((data['type'] ?? '') as String),
+                          color: _getColorForType((data['type'] ?? '') as String),
                           size: isMobile ? 20 : 24,
                         ),
                         title: Text(
-                          data['title'] ?? 'Notification',
+                          (data['title'] ?? 'Notification') as String,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: isMobile ? 14 : 16,
@@ -392,19 +581,18 @@ class _LegalOfficerDashboardScreenState
                           children: [
                             const SizedBox(height: 4),
                             Text(
-                              data['message'] ?? '',
+                              (data['message'] ?? '') as String,
                               style: TextStyle(fontSize: isMobile ? 12 : 14),
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              DateFormat(
-                                'MMM d, y hh:mm a',
-                              ).format((data['time'] as Timestamp).toDate()),
-                              style: TextStyle(
-                                fontSize: isMobile ? 11 : 12,
-                                color: Colors.grey,
+                            if (data['time'] != null)
+                              Text(
+                                _formatTimestampSafe(data['time']),
+                                style: TextStyle(
+                                  fontSize: isMobile ? 11 : 12,
+                                  color: Colors.grey,
+                                ),
                               ),
-                            ),
                           ],
                         ),
                         trailing: IconButton(
@@ -458,7 +646,7 @@ class _LegalOfficerDashboardScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionTitle('Inspector Leaderboard'),
+        _sectionTitle('Inspector View'),
         const SizedBox(height: 8),
         _buildInspectorCards(),
         const SizedBox(height: 24),
@@ -594,10 +782,8 @@ class _LegalOfficerDashboardScreenState
                 _buildInfoRow('Area', inspector['area'] as String),
                 _buildInfoRow(
                   'Inspections',
-                  inspector['inspections'].toString(),
+                  (inspector['inspections'] ?? '').toString(),
                 ),
-                _buildInfoRow('Reports', inspector['reports'].toString()),
-                _buildInfoRow('Score', inspector['score'] as String),
               ],
             ),
           ),
@@ -646,7 +832,7 @@ class _LegalOfficerDashboardScreenState
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: priorityColor.withAlpha(2),
+                        color: priorityColor.withAlpha(20),
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(color: priorityColor),
                       ),
@@ -736,6 +922,7 @@ class _LegalOfficerDashboardScreenState
         child: ConstrainedBox(
           constraints: BoxConstraints(minWidth: isTablet ? 600 : 700),
           child: DataTable(
+            // FIX: use MaterialStateProperty (correct API)
             headingRowColor: WidgetStateProperty.all(const Color(0xFF0D2364)),
             dataRowMinHeight: 48,
             dataRowMaxHeight: 64,
@@ -770,26 +957,6 @@ class _LegalOfficerDashboardScreenState
                   ),
                 ),
               ),
-              DataColumn(
-                label: Text(
-                  'Reports',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontSize: isTablet ? 12 : 14,
-                  ),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  'Score',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontSize: isTablet ? 12 : 14,
-                  ),
-                ),
-              ),
             ],
             rows: inspectors.map((i) {
               return DataRow(
@@ -815,29 +982,7 @@ class _LegalOfficerDashboardScreenState
                   DataCell(
                     Center(
                       child: Text(
-                        i['inspections'].toString(),
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isTablet ? 12 : 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                  DataCell(
-                    Center(
-                      child: Text(
-                        i['reports'].toString(),
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isTablet ? 12 : 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                  DataCell(
-                    Center(
-                      child: Text(
-                        i['score'] as String,
+                        (i['inspections'] ?? '').toString(),
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: isTablet ? 12 : 14,
@@ -1052,7 +1197,7 @@ class _LegalOfficerDashboardScreenState
             const SizedBox(width: 8),
             Expanded(
               child: LinearProgressIndicator(
-                value: percentage / 100,
+                value: (percentage.clamp(0, 100)) / 100,
                 backgroundColor: Colors.white.withAlpha(5),
                 valueColor: AlwaysStoppedAnimation<Color>(
                   _getColorForViolationType(label),
