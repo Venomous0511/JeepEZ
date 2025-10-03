@@ -287,7 +287,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
 
                     // Checklist Items - UPDATED: Removed checkbox, changed delete to 'x'
                     _checklistItems.isEmpty
-                        ? Container(
+                        ? SizedBox(
                             height: 120,
                             child: Center(
                               child: Padding(
@@ -452,30 +452,6 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: isMobile ? 45 : 50,
-                    child: TextButton(
-                      onPressed: () {},
-                      style: TextButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                          side: BorderSide(
-                            color: const Color(0xFF0D2364).withOpacity(0.3),
-                            width: 1.0,
-                          ),
-                        ),
-                      ),
-                      child: Text(
-                        'View submitted form',
-                        style: TextStyle(
-                          color: const Color(0xFF0D2364),
-                          fontSize: isMobile ? 14 : 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
                   // Extra space at the bottom to prevent overflow
                   SizedBox(height: isMobile ? 20 : 30),
                 ],

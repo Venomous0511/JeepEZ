@@ -10,7 +10,7 @@ plugins {
 
 android {
     namespace = "com.jeepez.app"
-    compileSdk = 35
+    compileSdk = 36
     ndkVersion = "29.0.13846066"
 
     compileOptions {
@@ -24,7 +24,7 @@ android {
 
     defaultConfig {
         applicationId = "com.jeepez.app"
-        minSdk = 23
+        minSdk = flutter.minSdkVersion
         targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName

@@ -11,12 +11,7 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
   final PageController _pageController = PageController();
   final int _currentPage = 0;
   final List<Map<String, String>> _schedules = [
-    {
-      'title': 'Regular Work Shift',
-      'days': 'MON-SAT',
-      'schedule': '7:00 AM - 10:00 PM',
-      'unit': 'UNIT 20',
-    },
+    {'unit': 'UNIT 20'},
     // Add more schedule pages here if needed in the future
   ];
 
@@ -51,88 +46,51 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
 
               // Schedule Container
               Expanded(
-                child: Column(
-                  children: [
-                    // Schedule Title
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8.0, bottom: 16.0),
-                      child: Text(
-                        _schedules[_currentPage]['title']!,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey,
-                        ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12.0),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withAlpha(3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
-                    ),
-
-                    // Schedule Container
-                    Expanded(
-                      child: Container(
+                    ],
+                    border: Border.all(color: Colors.grey.shade300, width: 1.0),
+                  ),
+                  child: Column(
+                    children: [
+                      // Table Header - UNIT only
+                      Container(
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12.0),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withAlpha(3),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                          border: Border.all(
-                            color: Colors.grey.shade300,
-                            width: 1.0,
+                          color: Colors.grey.shade100,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(12.0),
+                            topRight: Radius.circular(12.0),
                           ),
                         ),
-                        child: Column(
-                          children: [
-                            // Table Header
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(12.0),
-                                  topRight: Radius.circular(12.0),
-                                ),
-                              ),
-                              child: const Padding(
-                                padding: EdgeInsets.all(16.0),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "DAY",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    Text(
-                                      "SCHEDULE",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                        child: const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Center(
+                            child: Text(
+                              "UNIT",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.black87,
                               ),
                             ),
-
-                            // Schedule Content
-                            Expanded(
-                              child: _buildScheduleContent(
-                                _schedules[_currentPage],
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+
+                      // Schedule Content
+                      Expanded(
+                        child: _buildScheduleContent(_schedules[_currentPage]),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -143,7 +101,7 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
   }
 
   Widget _buildScheduleContent(Map<String, String> schedule) {
-    final days = ['MON', 'TUES', 'WED', 'THU', 'FRI', 'SAT'];
+    final days = ['MON', 'TUES', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
     return ListView.builder(
       itemCount: days.length,
@@ -161,38 +119,22 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    days[index],
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
+                // Day Column
+                Text(
+                  days[index],
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        schedule['schedule']!,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey.shade700,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        schedule['unit']!,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
+
+                // Unit Column
+                Text(
+                  schedule['unit']!,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
