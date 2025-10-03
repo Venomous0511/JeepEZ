@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
-import '../../services/auth_service.dart';
 import '../../screens/login_screen.dart';
+import '../dashboards/driver_dashboard.dart';
 
 class PersonalDetails extends StatefulWidget {
   final AppUser user;
@@ -13,14 +14,104 @@ class PersonalDetails extends StatefulWidget {
 }
 
 class _PersonalDetailsState extends State<PersonalDetails> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final TrackingService _trackingService = TrackingService();
+
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _isLoggingOut = false;
+  bool _isChangingPassword = false;
 
-  // Add the missing variables
-  final String address = "Sapang Palay Proper City of San Jose Del Monte";
-  final String phone = "09920367481";
+  // Add these variables for show/hide password
+  bool _showCurrentPassword = false;
+  bool _showNewPassword = false;
+
+  String employeeId = "";
+  String name = "";
+  String jobTitle = "";
+  String workStatus = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDriverInfo();
+  }
+
+  /// ---------------- LOAD USER DETAILS ----------------
+  Future<void> _loadDriverInfo() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        setState(() {
+          employeeId = data['employeeId']?.toString() ?? '';
+          name = data['name'] ?? '';
+          jobTitle = data['role'] ?? 'Driver';
+          workStatus = data['employmentType'] ?? 'Part time';
+        });
+      }
+    }
+  }
+
+  /// ---------------- CHANGE PASSWORD ----------------
+  Future<void> _changePassword() async {
+    final currentPassword = _currentPasswordController.text.trim();
+    final newPassword = _newPasswordController.text.trim();
+    final user = _auth.currentUser;
+
+    if (currentPassword.isEmpty || newPassword.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill in all fields")),
+      );
+      return;
+    }
+
+    setState(() => _isChangingPassword = true);
+
+    try {
+      // Re-authenticate user with current password
+      final cred = EmailAuthProvider.credential(
+        email: user!.email!,
+        password: currentPassword,
+      );
+
+      await user.reauthenticateWithCredential(cred);
+
+      // Update password
+      await user.updatePassword(newPassword);
+
+      // Optional: update a flag in Firestore
+      await _firestore.collection('users').doc(user.uid).update({
+        'lastPasswordChange': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Password changed successfully!")),
+      );
+
+      _currentPasswordController.clear();
+      _newPasswordController.clear();
+    } on FirebaseAuthException catch (e) {
+      String message = "Password change failed";
+      if (e.code == 'wrong-password') {
+        message = "Current password is incorrect";
+      } else if (e.code == 'weak-password') {
+        message = "New password is too weak";
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    } finally {
+      if (mounted) setState(() => _isChangingPassword = false);
+    }
+  }
 
   /// ---------------- SIGN OUT  ----------------
   Future<void> _signOut() async {
@@ -30,7 +121,26 @@ class _PersonalDetailsState extends State<PersonalDetails> {
     try {
       // show loading for 3 seconds before signing out
       await Future.delayed(const Duration(seconds: 3));
-      await AuthService().logout();
+
+      final user = _auth.currentUser;
+
+      if (user != null) {
+        // Stop location tracking first
+        await _trackingService.stopTracking();
+
+        // Remove GPS marker from Firestore using your instance
+        if (employeeId.isNotEmpty) {
+          await _firestore
+              .collection('vehicles_locations')
+              .doc(employeeId)
+              .delete();
+        }
+
+        // Firebase logout
+        await _auth.signOut();
+      }
+
+      if (!mounted) return;
 
       // After logout, navigate to login screen and clear navigation stack
       if (!mounted) return;
@@ -50,6 +160,7 @@ class _PersonalDetailsState extends State<PersonalDetails> {
     }
   }
 
+  /// ---------------- CONFIRMATION SIGN OUT ----------------
   void _showLogoutConfirmation() {
     showDialog(
       context: context,
@@ -88,21 +199,15 @@ class _PersonalDetailsState extends State<PersonalDetails> {
     );
   }
 
+  /// ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
-    final String employeeId = "000001";
-    final String jobTitle = "Inspector";
-    final String workStatus = "Full time";
-    final String name = widget.user.name ?? "";
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF0D2364),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SafeArea(
@@ -110,7 +215,7 @@ class _PersonalDetailsState extends State<PersonalDetails> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              // Header Container - SIMPLIFIED without any icons
+              // Header
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16.0),
@@ -130,7 +235,7 @@ class _PersonalDetailsState extends State<PersonalDetails> {
               ),
               const SizedBox(height: 20),
 
-              // Main Content Container
+              // Main Content
               Expanded(
                 child: Container(
                   width: double.infinity,
@@ -140,17 +245,14 @@ class _PersonalDetailsState extends State<PersonalDetails> {
                     borderRadius: BorderRadius.circular(12.0),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withAlpha(3),
+                        color: Colors.grey.withAlpha(30),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
                     ],
-                    border: Border.all(color: Colors.grey.shade300, width: 1.0),
                   ),
                   child: ListView(
-                    shrinkWrap: true,
                     children: [
-                      // Personal Details Section
                       _buildSection(
                         title: "Personal Details",
                         children: [
@@ -159,20 +261,11 @@ class _PersonalDetailsState extends State<PersonalDetails> {
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w500,
-                              color: Colors.black87,
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            "Employee ID: $employeeId",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
+                          Text("Employee ID: $employeeId"),
                           const SizedBox(height: 16),
-
-                          // Job Title and Work Status
                           Row(
                             children: [
                               Expanded(
@@ -194,189 +287,80 @@ class _PersonalDetailsState extends State<PersonalDetails> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Other Information Section
-                      _buildSection(
-                        title: "Other Information",
-                        children: [
-                          _buildInfoItem(
-                            label: "Address:",
-                            value: address,
-                            crossAlignment: CrossAxisAlignment.start,
-                          ),
-                          const SizedBox(height: 12),
-                          _buildInfoItem(label: "Phone:", value: phone),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-
                       // Change Password Section
                       _buildSection(
                         title: "Change Password",
                         children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Colors.grey.shade400,
-                                width: 1.0,
-                              ),
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                            child: TextField(
-                              controller: _currentPasswordController,
-                              obscureText: true,
-                              decoration: const InputDecoration(
-                                labelText: "Current Password",
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.all(12.0),
-                                hintText: "Enter your current password",
-                              ),
-                            ),
+                          _buildPasswordField(
+                            controller: _currentPasswordController,
+                            label: "Current Password",
+                            showPassword: _showCurrentPassword,
+                            onToggle: () {
+                              setState(() {
+                                _showCurrentPassword = !_showCurrentPassword;
+                              });
+                            },
                           ),
                           const SizedBox(height: 16),
-
-                          Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Colors.grey.shade400,
-                                width: 1.0,
-                              ),
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                            child: TextField(
-                              controller: _newPasswordController,
-                              obscureText: true,
-                              decoration: const InputDecoration(
-                                labelText: "New Password",
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.all(12.0),
-                                hintText: "Enter your new password",
-                              ),
-                            ),
+                          _buildPasswordField(
+                            controller: _newPasswordController,
+                            label: "New Password",
+                            showPassword: _showNewPassword,
+                            onToggle: () {
+                              setState(() {
+                                _showNewPassword = !_showNewPassword;
+                              });
+                            },
                           ),
                           const SizedBox(height: 20),
-
-                          // Buttons
-                          Row(
-                            children: [
-                              Expanded(
-                                child: SizedBox(
-                                  height: 50,
-                                  child: OutlinedButton(
-                                    onPressed: () {
-                                      Navigator.pop(context);
-                                    },
-                                    style: OutlinedButton.styleFrom(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          8.0,
-                                        ),
-                                      ),
-                                      side: BorderSide(
-                                        color: Colors.grey.shade400,
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      "Cancel",
-                                      style: TextStyle(
-                                        color: Colors.black87,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                          ElevatedButton(
+                            onPressed: _isChangingPassword
+                                ? null
+                                : _changePassword,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0D2364),
+                              minimumSize: const Size(double.infinity, 48),
+                            ),
+                            child: _isChangingPassword
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  )
+                                : const Text(
+                                    "Change Password",
+                                    style: TextStyle(
+                                      color: Color(0xffffffff),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
                                     ),
                                   ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: SizedBox(
-                                  height: 50,
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      if (_currentPasswordController
-                                              .text
-                                              .isNotEmpty &&
-                                          _newPasswordController
-                                              .text
-                                              .isNotEmpty) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              "Password changed successfully!",
-                                            ),
-                                          ),
-                                        );
-                                        Navigator.pop(context);
-                                      } else {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              "Please fill in all fields",
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF0D2364),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          8.0,
-                                        ),
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      "Change Password",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
                           ),
                         ],
                       ),
                       const SizedBox(height: 20),
 
-                      // Log Out Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: _isLoggingOut
-                              ? null
-                              : _showLogoutConfirmation,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                          ),
-                          child: _isLoggingOut
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
-                              : const Text(
-                                  "Log out",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                      // Logout Button
+                      ElevatedButton(
+                        onPressed: _isLoggingOut
+                            ? null
+                            : _showLogoutConfirmation,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          minimumSize: const Size(double.infinity, 50),
                         ),
+                        child: _isLoggingOut
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              )
+                            : const Text(
+                                "Log out",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ],
                   ),
@@ -389,7 +373,6 @@ class _PersonalDetailsState extends State<PersonalDetails> {
     );
   }
 
-  // Add the missing helper methods
   Widget _buildSection({
     required String title,
     required List<Widget> children,
@@ -411,24 +394,38 @@ class _PersonalDetailsState extends State<PersonalDetails> {
     );
   }
 
-  Widget _buildInfoItem({
-    required String label,
-    required String value,
-    CrossAxisAlignment crossAlignment = CrossAxisAlignment.start,
-  }) {
+  Widget _buildInfoItem({required String label, required String value}) {
     return Column(
-      crossAxisAlignment: crossAlignment,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
         Text(value, style: TextStyle(color: Colors.grey.shade700)),
       ],
+    );
+  }
+
+  // Updated _buildPasswordField with show/hide functionality
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String label,
+    required bool showPassword,
+    required VoidCallback onToggle,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: !showPassword,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        suffixIcon: IconButton(
+          icon: Icon(
+            showPassword ? Icons.visibility : Icons.visibility_off,
+            color: Colors.grey,
+          ),
+          onPressed: onToggle,
+        ),
+      ),
     );
   }
 
@@ -436,6 +433,7 @@ class _PersonalDetailsState extends State<PersonalDetails> {
   void dispose() {
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
+    _trackingService.stopTracking();
     super.dispose();
   }
 }

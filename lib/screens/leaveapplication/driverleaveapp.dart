@@ -16,10 +16,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
   DateTime? _startDate;
   DateTime? _endDate;
 
-  final List<String> _leaveTypes = [
-    'Sick Leave',
-    'Vacation Leave',
-  ];
+  final List<String> _leaveTypes = ['Sick Leave', 'Vacation Leave'];
 
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
@@ -34,9 +31,9 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
         // Get current user UID
         final user = FirebaseAuth.instance.currentUser;
         if (user == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('User not logged in.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('User not logged in.')));
           return;
         }
 
@@ -63,7 +60,8 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('Leave application submitted successfully!')),
+              content: Text('Leave application submitted successfully!'),
+            ),
           );
         }
 
@@ -233,7 +231,9 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
         final screenHeight = MediaQuery.of(context).size.height;
 
         final double popupWidth = screenWidth > 500 ? 420 : screenWidth * 0.9;
-        final double popupHeight = screenHeight > 600 ? 520 : screenHeight * 0.8;
+        final double popupHeight = screenHeight > 600
+            ? 520
+            : screenHeight * 0.8;
 
         return Center(
           child: ConstrainedBox(
@@ -408,7 +408,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                   });
                 },
                 validator: (value) =>
-                value == null ? 'Please select leave type' : null,
+                    value == null ? 'Please select leave type' : null,
               ),
             ),
             const SizedBox(height: 16),
@@ -436,7 +436,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                   if (_startDate != null && _endDate != null)
                     Text(
                       '${_formatDate(_startDate!)} - ${_formatDate(_endDate!)} '
-                          '(${_calculateNumberOfDays()} days)',
+                      '(${_calculateNumberOfDays()} days)',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                 ],
@@ -449,10 +449,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
               label: 'Reason for requesting leave:',
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.grey.shade400,
-                    width: 1.0,
-                  ),
+                  border: Border.all(color: Colors.grey.shade400, width: 1.0),
                   borderRadius: BorderRadius.circular(8.0),
                 ),
                 child: TextFormField(
@@ -463,8 +460,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.all(12.0),
                   ),
-                  validator: (value) =>
-                  value!.isEmpty ? 'Required' : null,
+                  validator: (value) => value!.isEmpty ? 'Required' : null,
                 ),
               ),
             ),

@@ -690,8 +690,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return http
         .get(Uri.parse("https://jeepez-attendance.onrender.com/api/logs"))
         .then((response) {
-          if (response.statusCode != 200)
+          if (response.statusCode != 200) {
             throw Exception("Failed to load attendance");
+          }
           final List data = json.decode(response.body);
           final filterDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
 

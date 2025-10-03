@@ -491,7 +491,7 @@ class _DriverConductorManagementScreenState
         backgroundColor: const Color(0xFF0D2364),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Container(
+      body: SizedBox(
         width: double.infinity,
         height: double.infinity,
         child: Column(
