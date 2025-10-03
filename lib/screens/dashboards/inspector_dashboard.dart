@@ -4,7 +4,6 @@ import '../../models/app_user.dart';
 import '../Personaldetailed/driver.dart';
 import '../violationReport/inspector_violation_report.dart';
 import '../inspectorTrip/inspector_trip_report.dart';
-import '../workSchedule/inspector.dart';
 import '../leaveapplication/inspector_leaveapp.dart';
 
 class InspectorDashboard extends StatefulWidget {
@@ -31,7 +30,6 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
     // Initialize screens here where context is available
     _screens = [
       _buildHomeScreen(),
-      const WorkScheduleScreen(),
       _buildTripScreen(),
       _buildViolationReportForm(),
       const LeaveApplicationScreen(),
