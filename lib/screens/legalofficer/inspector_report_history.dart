@@ -313,26 +313,6 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                     report['violations'].toString(),
                     Icons.warning,
                   ),
-                  const SizedBox(height: 16),
-
-                  // Action button
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      onPressed: () {
-                        // Navigate to report details
-                      },
-                      icon: const Icon(Icons.visibility, size: 18),
-                      label: const Text('View Details'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF0D2364),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),

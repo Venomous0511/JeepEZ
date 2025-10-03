@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -205,15 +207,35 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _timeController,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                  GestureDetector(
+                    onTap: () async {
+                      TimeOfDay? pickedTime = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.now(),
+                      );
+                      if (pickedTime != null) {
+                        // Format the selected time as hh:mm AM/PM
+                        final formattedTime =
+                        pickedTime.format(context);
+                        setState(() {
+                          _timeController.text = formattedTime;
+                        });
+                      }
+                    },
+                    child: AbsorbPointer(
+                      child: TextFormField(
+                        controller: _timeController,
+                        decoration: InputDecoration(
+                          hintText: 'Select time',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          suffixIcon: const Icon(Icons.access_time),
+                        ),
                       ),
                     ),
                   ),
@@ -253,8 +275,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
     );
   }
 
-  void _saveAndSubmit() {
-    // Handle form submission logic here
+  void _saveAndSubmit() async {
     if (_nameController.text.isEmpty ||
         _positionController.text.isEmpty ||
         _violationController.text.isEmpty ||
@@ -264,14 +285,36 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
       return;
     }
 
-    _showDialog('Success', 'Violation report submitted successfully!');
+    // Get logged-in user
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showDialog('Error', 'You must be logged in to submit a report');
+      return;
+    }
 
-    // Clear form after successful submission
-    _nameController.clear();
-    _positionController.clear();
-    _violationController.clear();
-    _locationController.clear();
-    _timeController.clear();
+    try {
+      // Directly add to Firestore
+      await FirebaseFirestore.instance.collection('violation_report').add({
+        'name': _nameController.text.trim(),
+        'position': _positionController.text.trim(),
+        'violation': _violationController.text.trim(),
+        'location': _locationController.text.trim(),
+        'time': _timeController.text.trim(),
+        'employeeId': user.uid, // or user.displayName if you prefer
+        'submittedAt': FieldValue.serverTimestamp(),
+      });
+
+      _showDialog('Success', 'Violation report submitted successfully!');
+
+      // Clear form
+      _nameController.clear();
+      _positionController.clear();
+      _violationController.clear();
+      _locationController.clear();
+      _timeController.clear();
+    } catch (e) {
+      _showDialog('Error', 'Failed to submit report: $e');
+    }
   }
 
   void _showDialog(String title, String message) {

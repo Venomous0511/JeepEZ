@@ -1,49 +1,48 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
 
 class ViolationReportHistoryScreen extends StatelessWidget {
-  const ViolationReportHistoryScreen({super.key, required this.user});
+  ViolationReportHistoryScreen({super.key, required this.user});
 
   final AppUser user;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // User data based on the screenshot
-  final List<Map<String, String>> userList = const [
-    {
-      'name': 'James Arthur',
-      'email': 'jamesarthur@gmail.com',
-      'position': 'Driver',
-    },
-    {
-      'name': 'Robert Valio',
-      'email': 'robertvalio@mail.com',
-      'position': 'Inspector',
-    },
-    {
-      'name': 'Hanna Masalan',
-      'email': 'hannamasalan@mail.com',
-      'position': 'Conductor',
-    },
-    {
-      'name': 'Jack Harper',
-      'email': 'jackharper@mail.com',
-      'position': 'Driver',
-    },
-    {
-      'name': 'George Toen',
-      'email': 'georgetoen@mail.com',
-      'position': 'Inspector',
-    },
-  ];
+  /// Stream to get all violation reports
+  Stream<List<Map<String, dynamic>>> getViolationReports() {
+    return _firestore
+        .collection('violation_report')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
+  }
+
+  /// Get violations for a specific user
+  Future<List<Map<String, dynamic>>> getViolationsByUser(
+      String name, String position) async {
+    final querySnapshot = await _firestore
+        .collection('violation_report')
+        .where('name', isEqualTo: name)
+        .where('position', isEqualTo: position)
+        .get();
+
+    return querySnapshot.docs.map((doc) => doc.data()).toList();
+  }
+
+  /// Fetch reported user's email from `users` collection using employeeId
+  Future<String> getReportedUserEmail(String employeeDocId) async {
+    final doc = await _firestore.collection('users').doc(employeeDocId).get();
+    if (doc.exists) {
+      return doc.data()?['email'] ?? 'Unknown';
+    }
+    return 'Unknown';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color(0xFF0D2364),
-        title: const Text(
-          'User Reports',
-          style: TextStyle(color: Colors.white),
-        ),
+        backgroundColor: const Color(0xFF0D2364),
+        title: const Text('User Reports', style: TextStyle(color: Colors.white)),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Padding(
@@ -55,14 +54,14 @@ class ViolationReportHistoryScreen extends StatelessWidget {
             const Row(
               children: [
                 Expanded(
-                  flex: 2,
+                  flex: 3,
                   child: Text(
                     'User',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
                 Expanded(
-                  flex: 2,
+                  flex: 1,
                   child: Text(
                     'Position',
                     style: TextStyle(fontWeight: FontWeight.bold),
@@ -70,7 +69,7 @@ class ViolationReportHistoryScreen extends StatelessWidget {
                 ),
                 Expanded(
                   flex: 1,
-                  child: SizedBox(), // Empty space for the three dots
+                  child: SizedBox(), // Empty for three-dot button
                 ),
               ],
             ),
@@ -79,16 +78,49 @@ class ViolationReportHistoryScreen extends StatelessWidget {
 
             // Users List
             Expanded(
-              child: ListView(
-                children: userList
-                    .map(
-                      (userData) => _UserItem(
-                        name: userData['name']!,
-                        email: userData['email']!,
-                        position: userData['position']!,
-                      ),
-                    )
-                    .toList(),
+              child: StreamBuilder<List<Map<String, dynamic>>>(
+                stream: getViolationReports(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(child: Text('No violation reports found'));
+                  }
+
+                  final reports = snapshot.data!;
+
+                  // Filter only Driver, Conductor, Inspector
+                  final filteredReports = reports
+                      .where((r) =>
+                  r['position'] == 'Driver' ||
+                      r['position'] == 'Conductor' ||
+                      r['position'] == 'Inspector')
+                      .toList();
+
+                  // Get unique users by name + position
+                  final users = {
+                    for (var report in filteredReports)
+                      '${report['name']}-${report['position']}': report
+                  }.values.toList();
+
+                  return ListView.builder(
+                    itemCount: users.length,
+                    itemBuilder: (context, index) {
+                      final userData = users[index];
+                      return _UserItem(
+                        name: userData['name'],
+                        employeeId: userData['employeeId'],
+                        position: userData['position'],
+                        fetchViolations: () => getViolationsByUser(
+                            userData['name'], userData['position']),
+                        getEmail: () =>
+                            getReportedUserEmail(userData['employeeId']),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ],
@@ -101,174 +133,149 @@ class ViolationReportHistoryScreen extends StatelessWidget {
 class _UserItem extends StatelessWidget {
   const _UserItem({
     required this.name,
-    required this.email,
+    required this.employeeId,
     required this.position,
+    required this.fetchViolations,
+    required this.getEmail,
   });
 
   final String name;
-  final String email;
+  final String employeeId;
   final String position;
+  final Future<List<Map<String, dynamic>>> Function() fetchViolations;
+  final Future<String> Function() getEmail;
 
-  void _showViolationReport(BuildContext context) {
-    // Sample violation data for the selected user
-    final List<Map<String, String>> violations = [
-      {
-        'date': '2024-02-19',
-        'violation': 'Traffic Violation',
-        'severity': 'High',
-      },
-      {'date': '2024-01-05', 'violation': 'Misconduct', 'severity': 'Medium'},
-      {
-        'date': '2023-12-15',
-        'violation': 'Traffic Violation',
-        'severity': 'Low',
-      },
-    ];
+  void _showViolationReport(BuildContext context) async {
+    final localContext = context;
+    final violations = await fetchViolations();
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('VIOLATION REPORT - $name'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Violations Summary
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildSummaryItem(
-                      'VIOLATIONS',
-                      violations.length.toString(),
-                    ),
-                    _buildSummaryItem('TYPE', '2'),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Table Header
-                const Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        'Date & TIME',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        'Violation Committed',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 1,
-                      child: Text(
-                        'Severity',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(),
-
-                // Violations List
-                ...violations.map(
-                  (violation) => Column(
+    if (localContext.mounted) {
+      showDialog(
+        context: localContext,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('VIOLATION REPORT - $name'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Summary Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(flex: 2, child: Text(violation['date']!)),
-                          Expanded(
-                            flex: 2,
-                            child: Text(violation['violation']!),
-                          ),
-                          Expanded(
-                            flex: 1,
-                            child: Text(violation['severity']!),
-                          ),
-                        ],
-                      ),
-                      const Divider(),
+                      _buildSummaryItem('VIOLATIONS', violations.length.toString()),
+                      _buildSummaryItem(
+                          'TYPE',
+                          violations
+                              .map((v) => v['violation'])
+                              .toSet()
+                              .length
+                              .toString()),
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+
+                  // Table Header (without Severity)
+                  const Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Text('Date & TIME',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text('Violation Committed',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+
+                  // Violations List (without Severity)
+                  ...violations.map(
+                        (violation) => Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                                flex: 2,
+                                child: Text(violation['submittedAt'] != null
+                                    ? (violation['submittedAt'] as Timestamp)
+                                    .toDate()
+                                    .toString()
+                                    : violation['time'] ?? '')),
+                            Expanded(flex: 2, child: Text(violation['violation'] ?? '')),
+                          ],
+                        ),
+                        const Divider(),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close')),
+            ],
+          );
+        },
+      );
+    }
   }
 
   Widget _buildSummaryItem(String title, String value) {
     return Column(
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0D2364),
-          ),
-        ),
+        Text(title,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        Text(value,
+            style: const TextStyle(
+                fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0D2364))),
       ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
+    return FutureBuilder<String>(
+      future: getEmail(),
+      builder: (context, snapshot) {
+        final reporterEmail = snapshot.data ?? 'Loading...';
+
+        return Column(
           children: [
-            Expanded(
-              flex: 2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text('Reported By: $reporterEmail',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    ],
                   ),
-                  Text(
-                    email,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(flex: 2, child: Text(position)),
-            Expanded(
-              flex: 1,
-              child: IconButton(
-                icon: const Icon(
-                  Icons.more_vert,
-                  size: 20,
-                  color: Color(0xFF0D2364),
                 ),
-                onPressed: () => _showViolationReport(context),
-              ),
+                Expanded(flex: 1, child: Text(position)),
+                Expanded(
+                  flex: 1,
+                  child: IconButton(
+                    icon: const Icon(Icons.more_vert, size: 20, color: Color(0xFF0D2364)),
+                    onPressed: () => _showViolationReport(context),
+                  ),
+                ),
+              ],
             ),
+            const Divider(),
           ],
-        ),
-        const Divider(),
-      ],
+        );
+      },
     );
   }
 }

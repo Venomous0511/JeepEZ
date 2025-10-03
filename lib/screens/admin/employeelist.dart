@@ -489,6 +489,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     final emailCtrl = TextEditingController();
     final passCtrl = TextEditingController();
     final employeeIdCtrl = TextEditingController();
+    String? area;
     String role = "conductor";
     String? employmentType;
     bool loading = false;
@@ -634,6 +635,27 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           ),
                         ),
                       ],
+
+                      if (role == "inspector") ...[
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: area,
+                          items: const [
+                            DropdownMenuItem(value: "Gaya Gaya", child: Text("Gaya Gaya")),
+                            DropdownMenuItem(value: "SM Tungko", child: Text("SM Tungko")),
+                            DropdownMenuItem(value: "Road 2", child: Text("Road 2")),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              area = value;
+                            });
+                          },
+                          decoration: const InputDecoration(
+                            labelText: "Area",
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -701,6 +723,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                               "status": true,
                               if (employmentType != null)
                                 "employmentType": employmentType,
+                              if (role == "inspector" && area != null) "area": area,
                               "createdAt": FieldValue.serverTimestamp(),
                               "createdBy": widget.user.email,
                             };
@@ -771,12 +794,13 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
   }
 
   /// ---------------- UPDATE USER ----------------
-  /// ---------------- UPDATE USER ----------------
   Future<void> _editUser(String docId, Map<String, dynamic> data) async {
     final nameCtrl = TextEditingController(text: data['name']);
     final emailCtrl = TextEditingController(text: data['email']);
+    final areaCtrl = TextEditingController(text: data['area'] ?? '');
 
     String? employmentType = data['employmentType'];
+    String? area = data['area'];
     final String role = data['role'] ?? '';
 
     final updated = await showDialog<bool>(
@@ -823,6 +847,26 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     ),
                   ),
                 ),
+              if (role == "inspector") ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: area,
+                  items: const [
+                    DropdownMenuItem(value: "Gaya Gaya", child: Text("Gaya Gaya")),
+                    DropdownMenuItem(value: "SM Tungko", child: Text("SM Tungko")),
+                    DropdownMenuItem(value: "Road 2", child: Text("Road 2")),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      area = value;
+                    });
+                  },
+                  decoration: const InputDecoration(
+                    labelText: "Area",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -848,6 +892,10 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
       if (role == 'driver' || role == 'conductor' || role == 'inspector') {
         updateData["employmentType"] = (employmentType as Object?)!;
+      }
+
+      if (role == 'inspector' && area != null) {
+        updateData["area"] = (area as Object?)!;
       }
 
       await FirebaseFirestore.instance
