@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
 
@@ -12,85 +13,6 @@ class EmployeeListViewScreen extends StatefulWidget {
 
 class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
   final TextEditingController _searchController = TextEditingController();
-  final List<Map<String, String>> employees = [
-    {
-      'name': 'Mj Cupburger',
-      'joiningDate': 'June 5 2019',
-      'dateOfBirth': 'May 2 1995',
-      'violation': 'aylkafarlehea',
-      'status': 'Active',
-    },
-    {
-      'name': 'Jaenin Cruz',
-      'joiningDate': 'May 3 2017',
-      'dateOfBirth': 'June 6 1990',
-      'violation': 'Gmail.com',
-      'status': 'Active',
-    },
-    {
-      'name': 'Gwen De Castro',
-      'joiningDate': 'August 10 2014',
-      'dateOfBirth': 'July 21 1988',
-      'violation': 'Gmail.com',
-      'status': 'Active',
-    },
-    {
-      'name': 'Aeon evans',
-      'joiningDate': 'March 19 2021',
-      'dateOfBirth': 'September 22 1992',
-      'violation': 'Gmail.com',
-      'status': 'Active',
-    },
-    {
-      'name': 'Melisiza Florez',
-      'joiningDate': 'May 7 2013',
-      'dateOfBirth': 'August 22 1995',
-      'violation': 'Gmail.com',
-      'status': 'Active',
-    },
-    {
-      'name': 'Jariel Calta',
-      'joiningDate': 'September 2 2016',
-      'dateOfBirth': 'June 4 1998',
-      'violation': 'Gmail.com',
-      'status': 'Active',
-    },
-    {
-      'name': 'Ashanti Dadivo',
-      'joiningDate': 'November 19 2014',
-      'dateOfBirth': 'May 23 1990',
-      'violation': 'Gmail.com',
-      'status': 'Active',
-    },
-    {
-      'name': 'Russelie Almario',
-      'joiningDate': 'December 2 2015',
-      'dateOfBirth': 'July 22 1989',
-      'violation': 'Gmail.com',
-      'status': 'Active',
-    },
-    {
-      'name': 'Jenny Tangq',
-      'joiningDate': 'October 19 2010',
-      'dateOfBirth': 'March 15 1990',
-      'violation': 'Gmail.com',
-      'status': 'Active',
-    },
-    {
-      'name': 'Juan Sunbiaki',
-      'joiningDate': 'June 29 2012',
-      'dateOfBirth': 'June 25 1991',
-      'violation': 'Gmail.com',
-      'status': 'Active',
-    },
-    {
-      'name': 'Selen Iowi Megiboo',
-      'joiningDate': 'July 23 2018',
-      'dateOfBirth': 'May 27 1999',
-      'violation': 'Gmail.com',
-      'status': 'Active',
-    },
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -98,8 +20,6 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
     final isMobile = screenWidth < 600;
     final isTablet = screenWidth >= 600 && screenWidth < 1024;
     final isDesktop = screenWidth >= 1024;
-
-    // Constrain content width on larger screens for consistency
     final maxContentWidth = isDesktop ? 1400.0 : double.infinity;
 
     return Scaffold(
@@ -115,11 +35,8 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
+          onPressed: () => Navigator.of(context).pop(),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Center(
         child: Container(
@@ -142,12 +59,9 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
               TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Search employee name...',
+                  hintText: 'Search employees by name or email...',
                   hintStyle: TextStyle(fontSize: isMobile ? 14 : 16),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: Color(0xFF0D2364),
-                  ),
+                  prefixIcon: const Icon(Icons.search, color: Color(0xFF0D2364)),
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
@@ -161,44 +75,67 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
                     ),
                     borderRadius: BorderRadius.circular(8.0),
                   ),
-                  contentPadding: EdgeInsets.symmetric(
-                    vertical: isMobile ? 12 : 16,
-                    horizontal: 16,
-                  ),
                 ),
-                onChanged: (value) {
-                  // Implement search functionality here
-                },
+                onChanged: (_) => setState(() {}),
               ),
               SizedBox(height: isMobile ? 16 : 24),
 
-              // Employee count badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0D2364).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFF0D2364)),
-                ),
-                child: Text(
-                  'Total Employees: ${employees.length}',
-                  style: TextStyle(
-                    fontSize: isMobile ? 12 : 14,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF0D2364),
-                  ),
-                ),
-              ),
-              SizedBox(height: isMobile ? 12 : 16),
-
-              // Employees List
+              // Realtime data from Firestore
               Expanded(
-                child: isMobile
-                    ? _buildEmployeeCards()
-                    : _buildEmployeeTable(isTablet, isDesktop),
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .where('status', isEqualTo: true)
+                      .where('role', whereIn: ['driver', 'conductor', 'inspector'])
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    }
+
+                    final docs = snapshot.data?.docs ?? [];
+
+                    // ✅ Convert Firestore docs to a list of Map<String, dynamic>
+                    final employees = docs.map((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      return {
+                        'name': data['name'] ?? '',
+                        'email': data['email'] ?? '',
+                        'employeeId': data['employeeId'] ?? 'N/A',
+                        'role': data['role'] ?? 'N/A',
+                        'employmentType': data['employmentType'] ?? 'N/A',
+                        'joiningDate': data['createdAt'] != null
+                            ? (data['createdAt'] as Timestamp)
+                            .toDate()
+                            .toLocal()
+                            .toString()
+                            .split(' ')[0]
+                            : 'N/A',
+                        'dateOfBirth': data['dateOfBirth'] ?? 'N/A',
+                        'violation': data['violation'] ?? 'None',
+                        'status': (data['status'] == true) ? 'Active' : 'Inactive',
+                      };
+                    }).toList();
+
+                    // ✅ Apply search filter
+                    final search = _searchController.text.toLowerCase();
+                    final filteredEmployees = employees.where((emp) {
+                      return emp['name']!.toLowerCase().contains(search) ||
+                          emp['email']!.toLowerCase().contains(search);
+                    }).toList();
+
+                    if (filteredEmployees.isEmpty) {
+                      return const Center(child: Text('No employees found.'));
+                    }
+
+                    return isMobile
+                        ? _buildEmployeeCards(filteredEmployees)
+                        : _buildEmployeeTable(filteredEmployees, isTablet, isDesktop);
+                  },
+                ),
               ),
             ],
           ),
@@ -207,12 +144,12 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
     );
   }
 
-  // Mobile card view
-  Widget _buildEmployeeCards() {
+  // Mobile card view (unchanged layout)
+  Widget _buildEmployeeCards(List<Map<String, dynamic>> employees) {
     return ListView.builder(
       itemCount: employees.length,
       itemBuilder: (context, index) {
-        final employee = employees[index];
+        final emp = employees[index];
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           elevation: 2,
@@ -222,17 +159,16 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header row with name and status
+                // Header row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            employee['name']!,
+                            emp['name']!,
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -241,34 +177,23 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Joined: ${employee['joiningDate']!}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
+                            'Employee ID: ${emp['employeeId']}',
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                           ),
                         ],
                       ),
                     ),
-                    _buildStatusBadge(employee['status']!),
+                    _buildStatusBadge(emp['status']!),
                   ],
                 ),
                 const SizedBox(height: 12),
                 const Divider(height: 1),
                 const SizedBox(height: 12),
-
-                // Employee details
-                _buildCardInfoRow(
-                  Icons.cake,
-                  'Date of Birth',
-                  employee['dateOfBirth']!,
-                ),
+                _buildCardInfoRow(Icons.email, 'Gmail Account', emp['email']!),
                 const SizedBox(height: 8),
-                _buildCardInfoRow(
-                  Icons.warning_amber,
-                  'Violation',
-                  employee['violation']!,
-                ),
+                _buildCardInfoRow(Icons.person, 'Role', emp['role']!),
+                const SizedBox(height: 8),
+                _buildCardInfoRow(Icons.cases_outlined, 'Employment Type', emp['employmentType']!),
               ],
             ),
           ),
@@ -279,7 +204,6 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
 
   Widget _buildCardInfoRow(IconData icon, String label, String value) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, size: 16, color: Colors.grey[600]),
         const SizedBox(width: 8),
@@ -287,22 +211,12 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              Text(label,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500)),
               const SizedBox(height: 2),
               Text(
                 value,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.black87,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w600),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 2,
               ),
@@ -313,95 +227,66 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
     );
   }
 
-  // Tablet/Desktop table view
-  Widget _buildEmployeeTable(bool isTablet, bool isDesktop) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
-        ],
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // Calculate responsive column spacing based on available width
-          final columnSpacing = constraints.maxWidth > 1200
-              ? 24.0
-              : (isTablet ? 16.0 : 20.0);
-          final horizontalMargin = isDesktop ? 20.0 : (isTablet ? 12.0 : 16.0);
-
-          return SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                child: DataTable(
-                  columnSpacing: columnSpacing,
-                  horizontalMargin: horizontalMargin,
-                  dataRowMinHeight: 48,
-                  dataRowMaxHeight: 56,
-                  headingRowColor: WidgetStateProperty.all(
-                    const Color(0xFF0D2364).withOpacity(0.1),
-                  ),
-                  headingTextStyle: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: isTablet ? 13 : 14,
-                    color: const Color(0xFF0D2364),
-                  ),
-                  dataTextStyle: TextStyle(fontSize: isTablet ? 12 : 14),
-                  columns: const [
-                    DataColumn(label: Text('Employee Name')),
-                    DataColumn(label: Text('Joining Date')),
-                    DataColumn(label: Text('Date of Birth')),
-                    DataColumn(label: Text('Violation')),
-                    DataColumn(label: Text('Status')),
-                  ],
-                  rows: employees.map((employee) {
-                    return DataRow(
-                      cells: [
-                        DataCell(
-                          Text(
-                            employee['name']!,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        DataCell(Text(employee['joiningDate']!)),
-                        DataCell(Text(employee['dateOfBirth']!)),
-                        DataCell(
-                          Text(
-                            employee['violation']!,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        DataCell(_buildStatusBadge(employee['status']!)),
-                      ],
-                    );
-                  }).toList(),
-                ),
+  // Tablet/Desktop table view (unchanged layout)
+  Widget _buildEmployeeTable(
+      List<Map<String, dynamic>> employees, bool isTablet, bool isDesktop) {
+    return Center(
+      child:  Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+          ],
+        ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.vertical,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columnSpacing: 40,
+              headingRowColor: WidgetStateProperty.all(
+                const Color(0xFF0D2364),
               ),
+              headingTextStyle: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+              columns: const [
+                DataColumn(label: Text('Employee Name')),
+                DataColumn(label: Text('Employee ID')),
+                DataColumn(label: Text('Email')),
+                DataColumn(label: Text('Role')),
+                DataColumn(label: Text('Employment Type')),
+                DataColumn(label: Text('Status')),
+              ],
+              rows: employees.map((emp) {
+                return DataRow(
+                  cells: [
+                    DataCell(Text(emp['name']?.toString() ?? '')),
+                    DataCell(Text(emp['employeeId']?.toString() ?? 'N/A')),
+                    DataCell(Text(emp['email']?.toString() ?? 'N/A')),
+                    DataCell(Text(emp['role']?.toString() ?? 'N/A')),
+                    DataCell(Text(emp['employmentType']?.toString() ?? 'N/A')),
+                    DataCell(_buildStatusBadge(emp['status']?.toString() ?? 'Inactive')),
+                  ],
+                );
+              }).toList(),
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
 
-  // Reusable status badge widget for consistency
   Widget _buildStatusBadge(String status) {
     final isActive = status == 'Active';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isActive
-            ? Colors.green.withOpacity(0.1)
-            : Colors.red.withOpacity(0.1),
+        color: isActive ? Colors.green.withAlpha(1) : Colors.red.withAlpha(1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isActive ? Colors.green : Colors.red,
-          width: 1.5,
-        ),
+        border: Border.all(color: isActive ? Colors.green : Colors.red, width: 1.5),
       ),
       child: Text(
         status,

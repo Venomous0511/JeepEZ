@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../main.dart';
-import '../models/app_user.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -44,23 +43,59 @@ class _LoginScreenState extends State<LoginScreen> {
       error = "";
     });
 
+    final email = emailCtrl.text.trim();
+    final password = passCtrl.text.trim();
+
+    // Validate inputs early
+    if (email.isEmpty || password.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        loading = false;
+        error = "Please enter both email and password.";
+      });
+      return;
+    }
+
     try {
-      AppUser? user = await AuthService().login(
-        emailCtrl.text.trim(),
-        passCtrl.text.trim(),
-      );
-      if (user != null && context.mounted) {
+      final user = await AuthService().login(email, password);
+
+      if (!mounted) return;
+
+      if (user != null) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => RoleBasedDashboard(user: user)),
+          MaterialPageRoute(
+            builder: (_) => RoleBasedDashboard(user: user),
+          ),
         );
       } else {
-        setState(() => error = "User not found");
+        setState(() {
+          error = "Invalid email or password.";
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(error),
+              backgroundColor: Colors.red,
+            ),
+          );
+        });
       }
     } catch (e) {
-      setState(() => error = e.toString());
+      if (!mounted) return;
+      setState(() {
+        error = "Login failed: ${e.toString()}";
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: Colors.red,
+          ),
+        );
+      });
     } finally {
-      setState(() => loading = false);
+      if (mounted) {
+        setState(() {
+          loading = false;
+        });
+      }
     }
   }
 
@@ -287,7 +322,11 @@ class _LoginScreenState extends State<LoginScreen> {
       },
     ).then((_) {
       // Focus back to email field when dialog closes
-      FocusScope.of(context).requestFocus(_emailFocusNode);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          FocusScope.of(context).requestFocus(_emailFocusNode);
+        }
+      });
     });
   }
 

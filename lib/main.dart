@@ -44,24 +44,36 @@ class JeepezApp extends StatelessWidget {
                   .doc(snapshot.data!.uid)
                   .get(),
               builder: (context, userSnapshot) {
-                if (!userSnapshot.hasData) {
+                if (userSnapshot.connectionState == ConnectionState.waiting) {
                   return const Scaffold(
                     body: Center(child: CircularProgressIndicator()),
                   );
                 }
 
                 if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
-                  // If no user doc, sign out or redirect to login
                   FirebaseAuth.instance.signOut();
                   return const LoginScreen();
                 }
 
-                var data = userSnapshot.data!.data() as Map<String, dynamic>;
+                if (!userSnapshot.data!.exists) {
+                  return const Scaffold(
+                    body: Center(child: Text("User profile not found. Please contact admin.")),
+                  );
+                }
+
+                final doc = userSnapshot.data!;
+                final data = doc.data() ?? {};
 
                 AppUser user = AppUser.fromMap(snapshot.data!.uid, data);
 
                 return RoleBasedDashboard(user: user);
               },
+            );
+          }
+
+          if (snapshot.hasError) {
+            return Scaffold(
+              body: Center(child: Text("Error: ${snapshot.error}")),
             );
           }
 

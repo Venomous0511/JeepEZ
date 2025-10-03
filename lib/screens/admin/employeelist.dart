@@ -1,5 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../firebase_options.dart';
 import '../../models/app_user.dart';
 
 class EmployeeListScreen extends StatefulWidget {
@@ -17,6 +20,18 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
   void dispose() {
     searchController.dispose();
     super.dispose();
+  }
+
+  /// ----------- GET AND CREATE SECONDARY FUNCTION -----------
+  Future<FirebaseApp> _getOrCreateSecondaryApp() async {
+    try {
+      return Firebase.app('adminSecondary');
+    } catch (_) {
+      return await Firebase.initializeApp(
+        name: 'adminSecondary',
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
   }
 
   @override
@@ -411,8 +426,22 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           setState(() => loading = true);
 
                           try {
+                            final secondaryApp = await _getOrCreateSecondaryApp();
+                            final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+
+                            final email = emailCtrl.text.trim();
+                            final password = passCtrl.text.trim();
+                            final employeeId = employeeIdCtrl.text.trim();
+
+                            final newCred = await secondaryAuth.createUserWithEmailAndPassword(
+                              email: email,
+                              password: password,
+                            );
+                            final newUid = newCred.user!.uid;
+
                             final newUser = {
-                              "employeeId": employeeIdCtrl.text.trim(),
+                              'uid': newUid,
+                              "employeeId": employeeId,
                               "name": nameCtrl.text.trim(),
                               "email": emailCtrl.text.trim(),
                               "role": role,
@@ -425,27 +454,38 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
                             await FirebaseFirestore.instance
                                 .collection("users")
-                                .add(newUser);
+                                .doc(newUid)
+                                .set(newUser);
 
                             await FirebaseFirestore.instance
                                 .collection("notifications")
                                 .add({
                                   "title": "New Account",
                                   "message":
-                                      "Added account for ${nameCtrl.text.trim()} as $role",
+                                  "Added account for ${nameCtrl.text.trim()} as $role",
                                   "time": FieldValue.serverTimestamp(),
                                   "dismissed": false,
-                                  "type": "new",
+                                  "type": "updates",
                                   "createdBy": widget.user.email,
                                 });
+
+                            await secondaryAuth.signOut();
+
+                            final createdRole = role;
+
+                            emailCtrl.clear();
+                            passCtrl.clear();
+                            nameCtrl.clear();
+                            employeeIdCtrl.clear();
+                            if (mounted) {
+                              setState(() => role = 'conductor');
+                            }
 
                             if (context.mounted) {
                               Navigator.pop(dialogCtx);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(
-                                    "User ${nameCtrl.text} created successfully",
-                                  ),
+                                  content: Text('User created as $createdRole with ID $employeeId'),
                                 ),
                               );
                             }
@@ -480,22 +520,43 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     final nameCtrl = TextEditingController(text: data['name']);
     final emailCtrl = TextEditingController(text: data['email']);
 
+    String? employmentType = data['employmentType'];
+    final String role = data['role'] ?? '';
+
     final updated = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Update User"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(labelText: "Name"),
-            ),
-            TextField(
-              controller: emailCtrl,
-              decoration: const InputDecoration(labelText: "Email"),
-            ),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: "Name"),
+              ),
+              TextField(
+                controller: emailCtrl,
+                decoration: const InputDecoration(labelText: "Email"),
+              ),
+              if (role == 'driver' || role == 'conductor' || role == 'inspector')
+                DropdownButtonFormField<String>(
+                  value: employmentType,
+                  items: const [
+                    DropdownMenuItem(value: "full_time", child: Text("Full-Time")),
+                    DropdownMenuItem(value: "part_time", child: Text("Part-Time")),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      employmentType = value;
+                    });
+                  },
+                  decoration: const InputDecoration(
+                    labelText: "Employment Type",
+                  ),
+                ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -511,11 +572,20 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     );
 
     if (updated == true) {
-      await FirebaseFirestore.instance.collection('users').doc(docId).update({
+      final updateData = {
         "name": nameCtrl.text.trim(),
         "email": emailCtrl.text.trim(),
         "updatedAt": FieldValue.serverTimestamp(),
-      });
+      };
+
+      if (role == 'driver' || role == 'conductor' || role == 'inspector') {
+        updateData["employmentType"] = (employmentType as Object?)!;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(docId) // ✅ FIXED HERE
+          .update(updateData);
 
       await FirebaseFirestore.instance.collection('notifications').add({
         'title': 'Updated Account',
