@@ -6,40 +6,73 @@ on:
       - 'v*'
 
 permissions:
-    contents: write
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout repository
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      # 2. Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.32.8'
           channel: 'stable'
 
+      # 3. Accept Android Licenses
       - name: Accept Android Licenses
         run: yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      - name: Install NDK
-        run: /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "ndk;29.0.13846066"
+      # 4. Install required Android SDK components
+      - name: Install Android SDK Components
+        run: |
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "ndk;29.0.13846066" "cmake;3.22.1" "lldb;13.1"
 
+      # 5. Cache Flutter dependencies
+      - name: Cache Flutter Pub
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.yaml') }}
+
+      # 6. Decode google-services.json
       - name: Decode google-services.json
         run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 --decode > android/app/google-services.json
 
+      # 7. Set up the keystore from GitHub Secrets
+      - name: Setup Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
+        shell: bash
+
+      # 8. Clean Flutter build
+      - name: Clean Before Build
+        run: flutter clean
+
+      # 9. Get Flutter dependencies
       - name: Install dependencies
         run: flutter pub get
 
       # ---------- ANDROID APK ----------
       - name: Build Android APK
-        run: flutter build apk --release
+        run: flutter build apk --release \
+          --flavor production \
+          --build-name=${{ github.ref_name }} \
+          --build-number=${{ github.run_number }} \
+          --dart-define=KEYSTORE_PATH=android/app/keystore.jks \
+          --dart-define=KEYSTORE_ALIAS=${{ secrets.KEY_ALIAS }} \
+          --dart-define=KEYSTORE_PASSWORD=${{ secrets.KEY_PASSWORD }} \
+          --dart-define=KEYSTORE_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}
 
       - name: Rename APK
-        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/JeepEZ-${GITHUB_REF_NAME}.apk
+        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/JeepEZ-${{ github.ref_name }}.apk
 
       - name: Upload APK to GitHub Release
         uses: softprops/action-gh-release@v2
