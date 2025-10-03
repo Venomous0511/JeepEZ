@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class IncidentReportScreen extends StatefulWidget {
@@ -20,11 +22,84 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
   final FocusNode _personsFocusNode = FocusNode();
   final FocusNode _descriptionFocusNode = FocusNode();
 
-  void _submitForm() {
-    if (_formKey.currentState!.validate()) {
+  String? _vehicleId; // store assigned vehicle ID
+  Map<String, dynamic>? _vehicleData; // optional: store vehicle details
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAssignedVehicle(); // fetch vehicle when screen opens
+  }
+
+  Future<void> _fetchAssignedVehicle() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      if (!userDoc.exists) return;
+
+      final userData = userDoc.data()!;
+      final assignedVehicleId = userData['assignedVehicle']?.toString();
+
+      Map<String, dynamic>? vehicleData;
+      if (assignedVehicleId != null) {
+        final vehicleDoc = await FirebaseFirestore.instance.collection('vehicles').doc(assignedVehicleId).get();
+        if (vehicleDoc.exists) {
+          vehicleData = vehicleDoc.data();
+        }
+      }
+
+      setState(() {
+        _vehicleId = assignedVehicleId;
+        _vehicleData = vehicleData;
+      });
+    } catch (e) {
+      debugPrint('Error fetching assigned vehicle: $e');
+    }
+  }
+
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final employeeId = _personsController.text.trim();
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Incident report submitted!')),
+        const SnackBar(content: Text('You must be logged in to submit a report.')),
       );
+      return;
+    }
+
+    try {
+      await FirebaseFirestore.instance.collection('incident_report').add({
+        'type': _typeController.text.trim(),
+        'location': _locationController.text.trim(),
+        'persons': employeeId,
+        'description': _descriptionController.text.trim(),
+        'assignedVehicleId': _vehicleId ?? 'Not Assigned',
+        'createdBy': currentUser.email,
+        'createdById': currentUser.uid,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Incident report submitted successfully!')),
+        );
+      }
+
+      _typeController.clear();
+      _locationController.clear();
+      _personsController.clear();
+      _descriptionController.clear();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error submitting report: $e')),
+        );
+      }
     }
   }
 
@@ -37,7 +112,6 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              // Header Container
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16.0),
@@ -56,8 +130,6 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-
-              // Form Container
               Expanded(
                 child: Container(
                   width: double.infinity,
@@ -79,17 +151,14 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                     child: ListView(
                       shrinkWrap: true,
                       children: [
-                        // Type of Incident
                         _buildFormField(
                           label: "Type of Incident",
-                          hintText: "e.g. Street/Road",
+                          hintText: "e.g. Road Crash",
                           controller: _typeController,
                           focusNode: _typeFocusNode,
                           isRequired: true,
                         ),
                         const SizedBox(height: 20),
-
-                        // Location of Incident
                         _buildFormField(
                           label: "Location of Incident",
                           hintText: "e.g. Road + Landmark/Intersection",
@@ -98,18 +167,14 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                           isRequired: true,
                         ),
                         const SizedBox(height: 20),
-
-                        // Person/s Involved
                         _buildFormField(
                           label: "Person/s Involved",
-                          hintText: "e.g. Driver, conductor and passenger",
+                          hintText: "e.g. Driver, Conductor, or Passenger",
                           controller: _personsController,
                           focusNode: _personsFocusNode,
                           isRequired: true,
                         ),
                         const SizedBox(height: 20),
-
-                        // DESCRIPTION OF INCIDENT
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -137,25 +202,21 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                                 style: TextStyle(color: Colors.grey.shade700),
                                 decoration: InputDecoration(
                                   hintText:
-                                      _descriptionController.text.isEmpty &&
-                                          !_descriptionFocusNode.hasFocus
+                                  _descriptionController.text.isEmpty &&
+                                      !_descriptionFocusNode.hasFocus
                                       ? 'Describe what happened...'
                                       : null,
-                                  hintStyle: TextStyle(
-                                    color: Colors.grey.shade500,
-                                  ),
+                                  hintStyle: TextStyle(color: Colors.grey.shade500),
                                   border: InputBorder.none,
                                   contentPadding: const EdgeInsets.all(12.0),
                                 ),
                                 validator: (value) =>
-                                    value!.isEmpty ? 'Required' : null,
+                                value!.isEmpty ? 'Required' : null,
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 30),
-
-                        // Save & Submit Button
                         SizedBox(
                           width: double.infinity,
                           height: 50,
@@ -177,7 +238,6 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
                       ],
                     ),
                   ),
