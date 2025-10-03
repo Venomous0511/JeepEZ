@@ -649,11 +649,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toSet();
   }
 
-  // Future<void> _moveCameraTo(LatLng pos, {double zoom = 16}) async {
-  //   if (mapController == null) return;
-  //   await mapController!.animateCamera(CameraUpdate.newLatLngZoom(pos, zoom));
-  // }
-
   /// Fit all markers into view
   Future<void> _fitAllMarkers(Set<Marker> markers) async {
     if (markers.isEmpty || mapController == null) return;
@@ -690,8 +685,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return http
         .get(Uri.parse("https://jeepez-attendance.onrender.com/api/logs"))
         .then((response) {
-          if (response.statusCode != 200)
-            throw Exception("Failed to load attendance");
+          if (response.statusCode != 200) throw Exception("Failed to load attendance");
           final List data = json.decode(response.body);
           final filterDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
 

@@ -1,5 +1,8 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../models/app_user.dart';
 import '../Personaldetailed/driver.dart';
 import '../violationReport/inspector_violation_report.dart';
@@ -23,6 +26,11 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
   void initState() {
     super.initState();
     _screens = [];
+
+    /// Location Stream
+    _vehicleLocationsStream = _firestore
+        .collection('vehicles_locations')
+        .snapshots();
   }
 
   @override
@@ -38,10 +46,11 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
     ];
   }
 
+
   /// ---------------- FETCH NOTIFICATIONS ----------------
   Stream<QuerySnapshot<Map<String, dynamic>>> getNotificationsStream(
-    String role,
-  ) {
+      String role,
+      ) {
     final collection = FirebaseFirestore.instance.collection('notifications');
 
     if (role == 'super_admin' || role == 'admin') {
@@ -86,6 +95,218 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
       default:
         return const Color(0xFF0D2364);
     }
+  }
+
+  /// ---------------- MARK ALL AS READ ----------------
+  Future<void> _markAllAsRead() async {
+    final query = await FirebaseFirestore.instance
+        .collection('notifications')
+        .where('dismissed', isEqualTo: false)
+        .get();
+
+    final batch = FirebaseFirestore.instance.batch();
+
+    for (var doc in query.docs) {
+      final data = doc.data();
+      if (!data.containsKey('read')) {
+        batch.update(doc.reference, {'read': true});
+      } else if (data['read'] == false) {
+        batch.update(doc.reference, {'read': true});
+      }
+    }
+
+    await batch.commit();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("All notifications marked as read")),
+      );
+    }
+  }
+
+  /// ---------------- SHOW NOTIFICATIONS POPUP ----------------
+  void _showNotifications() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Notifications'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: getNotificationsStream(widget.user.role),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text("No notifications"));
+                }
+
+                final docs = snapshot.data!.docs;
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final data = docs[index].data();
+                    final type = data['type'] ?? 'updates';
+                    final message = data['message'] ?? 'No message';
+                    // Safe check for 'read' field
+                    final isRead = data['read'] ?? false;
+
+                    return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isRead
+                            ? Colors.white
+                            : Colors.blue.shade50, // highlight unread
+                        border: Border.all(
+                          color: Colors.grey.shade300,
+                          width: 1,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withAlpha(1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            _getIconForType(type),
+                            color: _getColorForType(type),
+                            size: 28,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  message,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                if (data['time'] != null)
+                                  Text(
+                                    (data['time'] as Timestamp)
+                                        .toDate()
+                                        .toString()
+                                        .substring(0, 16),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: _markAllAsRead,
+              child: const Text(
+                'Mark all as read',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0D2364),
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Google Map related
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _vehicleLocationsStream;
+  GoogleMapController? mapController;
+
+
+  @override
+  void dispose() {
+    mapController?.dispose();
+    super.dispose();
+  }
+
+  void _onMapCreated(GoogleMapController controller) {
+    mapController = controller;
+  }
+
+  /// Build markers from query snapshot docs
+  Set<Marker> _buildMarkersFromDocs(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+      ) {
+    return docs.map((doc) {
+      final data = doc.data();
+      final vehicleId = data['vehicleId']?.toString() ?? 'Unknown';
+      final lat = data['lat'] as double;
+      final lng = data['lng'] as double;
+
+      return Marker(
+        markerId: MarkerId(vehicleId),
+        position: LatLng(lat, lng),
+        infoWindow: InfoWindow(
+          title: 'Jeepney #$vehicleId',
+          snippet: 'Speed: ${data['speed']} km/h',
+        ),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+      );
+    }).toSet();
+  }
+
+  /// Fit all markers into view
+  Future<void> _fitAllMarkers(Set<Marker> markers) async {
+    if (markers.isEmpty || mapController == null) return;
+
+    LatLngBounds bounds;
+    if (markers.length == 1) {
+      final m = markers.first.position;
+      bounds = LatLngBounds(
+        southwest: LatLng(m.latitude - 0.01, m.longitude - 0.01),
+        northeast: LatLng(m.latitude + 0.01, m.longitude + 0.01),
+      );
+    } else {
+      final latitudes = markers.map((m) => m.position.latitude).toList();
+      final longitudes = markers.map((m) => m.position.longitude).toList();
+      bounds = LatLngBounds(
+        southwest: LatLng(
+          latitudes.reduce((a, b) => a < b ? a : b),
+          longitudes.reduce((a, b) => a < b ? a : b),
+        ),
+        northeast: LatLng(
+          latitudes.reduce((a, b) => a > b ? a : b),
+          longitudes.reduce((a, b) => a > b ? a : b),
+        ),
+      );
+    }
+
+    await mapController!.animateCamera(
+      CameraUpdate.newLatLngBounds(bounds, 50),
+    );
   }
 
   Widget _buildHomeScreen() {
@@ -232,46 +453,55 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
 
               // Route Preview Map Placeholder - maintained from original inspector dashboard
               Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isMobile ? 16.0 : 24.0,
-                ),
-                child: Container(
-                  height: 200,
+                padding: EdgeInsets.symmetric(horizontal: isMobile ? 10.0 : 24.0),
+                child: SizedBox(
+                  height: 300, // fixed container height
                   width: double.infinity,
-                  padding: EdgeInsets.all(isMobile ? 16 : 20),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFF0D2364),
-                      width: 2,
-                    ),
-                  ),
-                  child: const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.map, size: 40, color: Color(0xFF0D2364)),
-                        SizedBox(height: 8),
-                        Text(
-                          'Route Preview',
-                          style: TextStyle(
-                            color: Color(0xFF0D2364),
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                  child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: _vehicleLocationsStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return const Center(child: Text('No vehicle locations available'));
+                      }
+
+                      final markers = _buildMarkersFromDocs(snapshot.data!.docs);
+
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _fitAllMarkers(markers);
+                      });
+
+                      // Use SizedBox to fix the map size
+                      return SizedBox(
+                        height: double.infinity,
+                        width: double.infinity,
+                        child: GoogleMap(
+                          onMapCreated: _onMapCreated,
+                          initialCameraPosition: const CameraPosition(
+                            target: LatLng(14.8287, 121.0549),
+                            zoom: 13,
                           ),
+                          markers: markers,
+                          mapType: MapType.normal,
+                          myLocationEnabled: false,
+                          zoomGesturesEnabled: true,
+                          scrollGesturesEnabled: true,
+                          rotateGesturesEnabled: true,
+                          tiltGesturesEnabled: true,
+                          gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                            Factory<OneSequenceGestureRecognizer>(
+                                  () => EagerGestureRecognizer(),
+                            ),
+                          },
                         ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Map will be displayed here',
-                          style: TextStyle(color: Colors.black54),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ),
-              ),
-              SizedBox(height: isMobile ? 24 : 32),
+              )
             ],
           ),
         ),
@@ -294,77 +524,6 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
     final formattedDate =
         '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
     return 'Today | $dayName | $formattedDate';
-  }
-
-  void _showNotifications() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        final screenWidth = MediaQuery.of(context).size.width;
-        final isMobile = screenWidth < 600;
-
-        return AlertDialog(
-          title: Row(
-            children: [
-              const Icon(Icons.notifications, color: Color(0xFF0D2364)),
-              const SizedBox(width: 8),
-              Text(
-                'Notifications',
-                style: TextStyle(fontSize: isMobile ? 16 : 18),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: getNotificationsStream(widget.user.role),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (snapshot.hasError) {
-                  return const Text('Failed to load notifications.');
-                }
-
-                final docs = snapshot.data?.docs ?? [];
-                if (docs.isEmpty) {
-                  return const Text('No new notifications');
-                }
-
-                return ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: docs.length,
-                  itemBuilder: (context, index) {
-                    final data = docs[index].data();
-                    final title = data['title'] ?? 'No title';
-                    final message = data['message'] ?? '';
-                    final type = data['type'] ?? 'system';
-
-                    return ListTile(
-                      leading: Icon(
-                        _getIconForType(type),
-                        color: _getColorForType(type),
-                      ),
-                      title: Text(title),
-                      subtitle: Text(message),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   Widget _buildTripScreen() {
