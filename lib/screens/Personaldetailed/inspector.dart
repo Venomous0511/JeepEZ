@@ -23,6 +23,9 @@ class _PersonalDetailsState extends State<PersonalDetails> {
   bool _isLoggingOut = false;
   bool _isChangingPassword = false;
 
+  bool _showCurrentPassword = false;
+  bool _showNewPassword = false;
+
   String employeeId = "";
   String name = "";
   String jobTitle = "";
@@ -97,11 +100,13 @@ class _PersonalDetailsState extends State<PersonalDetails> {
       } else if (e.code == 'weak-password') {
         message = "New password is too weak";
       }
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
     } finally {
       if (mounted) setState(() => _isChangingPassword = false);
     }
@@ -124,7 +129,10 @@ class _PersonalDetailsState extends State<PersonalDetails> {
 
         // Remove GPS marker from Firestore using your instance
         if (employeeId.isNotEmpty) {
-          await _firestore.collection('vehicles_locations').doc(employeeId).delete();
+          await _firestore
+              .collection('vehicles_locations')
+              .doc(employeeId)
+              .delete();
         }
 
         // Firebase logout
@@ -282,30 +290,49 @@ class _PersonalDetailsState extends State<PersonalDetails> {
                       _buildSection(
                         title: "Change Password",
                         children: [
-                          _buildPasswordField(
+                            _buildPasswordField(
                             controller: _currentPasswordController,
                             label: "Current Password",
+                            showPassword: _showCurrentPassword,
+                            onToggle: () {
+                              setState(() {
+                                _showCurrentPassword = !_showCurrentPassword;
+                              });
+                            },
                           ),
                           const SizedBox(height: 16),
-                          _buildPasswordField(
+                            _buildPasswordField(
                             controller: _newPasswordController,
                             label: "New Password",
+                            showPassword: _showNewPassword,
+                            onToggle: () {
+                              setState(() {
+                                _showNewPassword = !_showNewPassword;
+                              });
+                            },
                           ),
                           const SizedBox(height: 20),
                           ElevatedButton(
-                            onPressed: _isChangingPassword ? null : _changePassword,
+                            onPressed: _isChangingPassword
+                                ? null
+                                : _changePassword,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF0D2364),
                               minimumSize: const Size(double.infinity, 48),
                             ),
                             child: _isChangingPassword
-                                ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                                : const Text("Change Password",
-                              style: TextStyle(
-                                color: Color(0xffffffff),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                              ),),
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  )
+                                : const Text(
+                                    "Change Password",
+                                    style: TextStyle(
+                                      color: Color(0xffffffff),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                    ),
+                                  ),
                           ),
                         ],
                       ),
@@ -313,24 +340,26 @@ class _PersonalDetailsState extends State<PersonalDetails> {
 
                       // Logout Button
                       ElevatedButton(
-                        onPressed: _isLoggingOut ? null : _showLogoutConfirmation,
+                        onPressed: _isLoggingOut
+                            ? null
+                            : _showLogoutConfirmation,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
                           minimumSize: const Size(double.infinity, 50),
                         ),
                         child: _isLoggingOut
                             ? const CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        )
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              )
                             : const Text(
-                          "Log out",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                                "Log out",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ],
                   ),
@@ -343,7 +372,10 @@ class _PersonalDetailsState extends State<PersonalDetails> {
     );
   }
 
-  Widget _buildSection({required String title, required List<Widget> children}) {
+  Widget _buildSection({
+    required String title,
+    required List<Widget> children,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -372,16 +404,26 @@ class _PersonalDetailsState extends State<PersonalDetails> {
     );
   }
 
+  // Updated _buildPasswordField with show/hide functionality
   Widget _buildPasswordField({
     required TextEditingController controller,
     required String label,
+    required bool showPassword,
+    required VoidCallback onToggle,
   }) {
     return TextField(
       controller: controller,
-      obscureText: true,
+      obscureText: !showPassword,
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        suffixIcon: IconButton(
+          icon: Icon(
+            showPassword ? Icons.visibility : Icons.visibility_off,
+            color: Colors.grey,
+          ),
+          onPressed: onToggle,
+        ),
       ),
     );
   }

@@ -32,11 +32,10 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
         return {
           'id': doc.id,
           'title': data['title'] ?? '',
-          'issueDate': (data['issueDate'] as Timestamp?)?.toDate().toString() ?? '',
+          'issueDate':
+              (data['issueDate'] as Timestamp?)?.toDate().toString() ?? '',
           'priority': data['priority'] ?? '',
-          'type': (data['checklistItems'] as List<dynamic>?)
-              ?.join(', ') ??
-              '',
+          'type': (data['checklistItems'] as List<dynamic>?)?.join(', ') ?? '',
         };
       }).toList();
     });
@@ -50,169 +49,208 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
         backgroundColor: const Color(0xFF0D2364),
         foregroundColor: Colors.white,
       ),
-      body: Row(
-        children: [
-          // Left side - Vehicle list
-          Container(
-            width: 120,
-            decoration: BoxDecoration(
-              border: Border(right: BorderSide(color: Colors.grey.shade300)),
-            ),
-            // child: Column(
-            //   crossAxisAlignment: CrossAxisAlignment.start,
-            //   children: [
-            //     const Padding(
-            //       padding: EdgeInsets.all(16.0),
-            //       child: Text(
-            //         'Vehicle',
-            //         style: TextStyle(
-            //           fontSize: 16, // Reduced font size
-            //           fontWeight: FontWeight.bold,
-            //         ),
-            //       ),
-            //     ),
-            //     Padding(
-            //       padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            //       child: TextField(
-            //         decoration: InputDecoration(
-            //           hintText: 'Search',
-            //           prefixIcon: const Icon(
-            //             Icons.search,
-            //             size: 20,
-            //           ), // Smaller icon
-            //           border: OutlineInputBorder(
-            //             borderRadius: BorderRadius.circular(8.0),
-            //           ),
-            //           contentPadding: const EdgeInsets.symmetric(
-            //             vertical: 6.0, // Reduced padding
-            //             horizontal: 10.0,
-            //           ),
-            //         ),
-            //       ),
-            //     ),
-            //     const SizedBox(height: 12), // Reduced spacing
-            //     Expanded(
-            //       child: ListView.builder(
-            //         itemCount: 25, // UNIT 01 to UNIT 25
-            //         itemBuilder: (context, index) {
-            //           final unitNumber = (index + 1).toString().padLeft(2, '0');
-            //           final unitName = 'UNIT $unitNumber';
-            //
-            //           return ListTile(
-            //             title: Text(
-            //               unitName,
-            //               style: TextStyle(
-            //                 fontSize: 14, // Smaller font for vehicle list
-            //                 fontWeight: selectedVehicle == unitName
-            //                     ? FontWeight.bold
-            //                     : FontWeight.normal,
-            //               ),
-            //             ),
-            //             selected: selectedVehicle == unitName,
-            //             selectedTileColor: Colors.blue.shade50,
-            //             onTap: () {
-            //               setState(() {
-            //                 selectedVehicle = unitName;
-            //               });
-            //             },
-            //           );
-            //         },
-            //       ),
-            //     ),
-            //   ],
-            // ),
-            child: ListView.builder(
-              itemCount: 25,
-              itemBuilder: (context, index) {
-                final unitNumber = (2101 + index).toString();
-                final unitName = unitNumber;
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          final leftPanelWidth = isMobile
+              ? 100.0
+              : 140.0; // Increased width to accommodate "Unit"
 
-                return ListTile(
-                  title: Text(
-                    'UNIT $unitName',
-                    style: TextStyle(
-                      fontWeight: selectedVehicle == unitName
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
+          return Row(
+            children: [
+              // Left side - Vehicle list
+              Container(
+                width: leftPanelWidth,
+                decoration: BoxDecoration(
+                  border: Border(
+                    right: BorderSide(color: Colors.grey.shade300),
                   ),
-                  selected: selectedVehicle == unitName,
-                  selectedTileColor: Colors.blue.shade50,
-                  onTap: () {
-                    setState(() {
-                      selectedVehicle = unitName;
-                    });
-                    _loadMaintenanceData(unitName);
-                  },
-                );
-              },
-            ),
-          ),
+                ),
+                child: ListView.builder(
+                  itemCount: 25,
+                  itemBuilder: (context, index) {
+                    final unitNumber = (2101 + index).toString();
+                    final unitName = 'Unit $unitNumber'; // Added "Unit" prefix
 
-          // Right side - Maintenance details
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    selectedVehicle,
-                    style: const TextStyle(
-                      fontSize: 24, // Increased font size for selected unit
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (maintenanceList.isEmpty)
-                    const Center(
-                      child: Text(
-                        'No maintenance issues for this vehicle',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                    return ListTile(
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: isMobile ? 6.0 : 10.0,
+                        vertical: 0,
                       ),
-                    )
-                  else
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          headingRowColor: WidgetStateProperty.all(
-                            Colors.grey.shade200,
-                          ),
-                          columns: const [
-                            DataColumn(label: Text('Type')),
-                            DataColumn(label: Text('Title')),
-                            DataColumn(label: Text('Issue Date')),
-                            DataColumn(label: Text('Priority')),
-                          ],
-                          rows: maintenanceList.map((issue) {
-                            return DataRow(
-                              cells: [
-                                DataCell(Text(issue['type'])),
-                                DataCell(Text(issue['title'])),
-                                DataCell(Text(issue['issueDate'])),
-                                DataCell(
-                                  Text(
-                                    issue['priority'],
-                                    style: TextStyle(
-                                      color: _getPriorityColor(
-                                        issue['priority'],
-                                      ),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }).toList(),
+                      dense: true,
+                      title: Text(
+                        isMobile ? unitName : unitName.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: isMobile
+                              ? 12
+                              : 14, // Slightly increased font size
+                          fontWeight: selectedVehicle == unitNumber
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                       ),
-                    ),
-                ],
+                      selected: selectedVehicle == unitNumber,
+                      selectedTileColor: Colors.blue.shade50,
+                      onTap: () {
+                        setState(() {
+                          selectedVehicle = unitNumber;
+                        });
+                        _loadMaintenanceData(unitNumber);
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-          ),
-        ],
+
+              // Right side - Maintenance details
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.all(isMobile ? 8.0 : 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Unit $selectedVehicle', // Added "Unit" prefix
+                        style: TextStyle(
+                          fontSize: isMobile ? 18 : 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: isMobile ? 8 : 16),
+                      if (maintenanceList.isEmpty)
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              'No maintenance issues for this vehicle',
+                              style: TextStyle(
+                                fontSize: isMobile ? 12 : 16,
+                                color: Colors.grey,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: maintenanceList.length,
+                            itemBuilder: (context, index) {
+                              final issue = maintenanceList[index];
+                              return Card(
+                                margin: EdgeInsets.only(
+                                  bottom: isMobile ? 8 : 12,
+                                ),
+                                elevation: 2,
+                                child: Padding(
+                                  padding: EdgeInsets.all(
+                                    isMobile ? 8.0 : 12.0,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              issue['title'],
+                                              style: TextStyle(
+                                                fontSize: isMobile ? 13 : 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 2,
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: isMobile ? 6 : 8,
+                                              vertical: isMobile ? 3 : 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: _getPriorityColor(
+                                                issue['priority'],
+                                              ).withAlpha(1),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                              border: Border.all(
+                                                color: _getPriorityColor(
+                                                  issue['priority'],
+                                                ),
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              issue['priority'],
+                                              style: TextStyle(
+                                                fontSize: isMobile ? 10 : 12,
+                                                color: _getPriorityColor(
+                                                  issue['priority'],
+                                                ),
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: isMobile ? 6 : 8),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.build,
+                                            size: isMobile ? 14 : 16,
+                                            color: Colors.grey,
+                                          ),
+                                          SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              issue['type'],
+                                              style: TextStyle(
+                                                fontSize: isMobile ? 11 : 14,
+                                                color: Colors.grey[700],
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: isMobile ? 4 : 6),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.calendar_today,
+                                            size: isMobile ? 14 : 16,
+                                            color: Colors.grey,
+                                          ),
+                                          SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              issue['issueDate'],
+                                              style: TextStyle(
+                                                fontSize: isMobile ? 11 : 14,
+                                                color: Colors.grey[700],
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

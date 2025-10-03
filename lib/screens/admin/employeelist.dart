@@ -97,7 +97,12 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       .collection('users')
                       .where(
                         'role',
-                        whereIn: ['legal_officer', 'driver', 'conductor', 'inspector'],
+                        whereIn: [
+                          'legal_officer',
+                          'driver',
+                          'conductor',
+                          'inspector',
+                        ],
                       )
                       .orderBy('createdAt', descending: true)
                       .snapshots(),
@@ -120,10 +125,15 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     if (query.isNotEmpty) {
                       employeeDocs = employeeDocs.where((d) {
                         final data = d.data() as Map<String, dynamic>;
-                        final name = (data['name'] ?? '').toString().toLowerCase();
-                        final email = (data['email'] ?? '').toString().toLowerCase();
-                        final empId =
-                        (data['employeeId'] ?? '').toString().toLowerCase();
+                        final name = (data['name'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        final email = (data['email'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        final empId = (data['employeeId'] ?? '')
+                            .toString()
+                            .toLowerCase();
                         return name.contains(query) ||
                             email.contains(query) ||
                             empId.contains(query);
@@ -665,17 +675,21 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           setState(() => loading = true);
 
                           try {
-                            final secondaryApp = await _getOrCreateSecondaryApp();
-                            final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+                            final secondaryApp =
+                                await _getOrCreateSecondaryApp();
+                            final secondaryAuth = FirebaseAuth.instanceFor(
+                              app: secondaryApp,
+                            );
 
                             final email = emailCtrl.text.trim();
                             final password = passCtrl.text.trim();
                             final employeeId = employeeIdCtrl.text.trim();
 
-                            final newCred = await secondaryAuth.createUserWithEmailAndPassword(
-                              email: email,
-                              password: password,
-                            );
+                            final newCred = await secondaryAuth
+                                .createUserWithEmailAndPassword(
+                                  email: email,
+                                  password: password,
+                                );
                             final newUid = newCred.user!.uid;
 
                             final newUser = {
@@ -701,7 +715,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                 .add({
                                   "title": "New Account",
                                   "message":
-                                  "Added account for ${nameCtrl.text.trim()} as $role",
+                                      "Added account for ${nameCtrl.text.trim()} as $role",
                                   "time": FieldValue.serverTimestamp(),
                                   "dismissed": false,
                                   "type": "updates",
@@ -724,7 +738,9 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                               Navigator.pop(dialogCtx);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('User created as $createdRole with ID $employeeId'),
+                                  content: Text(
+                                    'User created as $createdRole with ID $employeeId',
+                                  ),
                                 ),
                               );
                             }
@@ -780,14 +796,22 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 controller: emailCtrl,
                 decoration: const InputDecoration(labelText: "Email"),
               ),
-              if (role == 'driver' || role == 'conductor' || role == 'inspector')
+              if (role == 'driver' ||
+                  role == 'conductor' ||
+                  role == 'inspector')
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
                   child: DropdownButtonFormField<String>(
                     value: employmentType,
                     items: const [
-                      DropdownMenuItem(value: "full_time", child: Text("Full-Time")),
-                      DropdownMenuItem(value: "part_time", child: Text("Part-Time")),
+                      DropdownMenuItem(
+                        value: "full_time",
+                        child: Text("Full-Time"),
+                      ),
+                      DropdownMenuItem(
+                        value: "part_time",
+                        child: Text("Part-Time"),
+                      ),
                     ],
                     onChanged: (value) {
                       setState(() {

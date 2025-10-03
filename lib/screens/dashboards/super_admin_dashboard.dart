@@ -67,7 +67,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: selectedType,
+                    initialValue: selectedType,
                     decoration: const InputDecoration(
                       labelText: "Type",
                       border: OutlineInputBorder(),
@@ -184,7 +184,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   }
 
   Widget _buildHomeScreen() {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       height: double.infinity,
       child: LayoutBuilder(
@@ -617,7 +617,7 @@ class MobileNotificationTile extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withAlpha(1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: color, size: 24),
@@ -651,7 +651,7 @@ class MobileNotificationTile extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withAlpha(1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(

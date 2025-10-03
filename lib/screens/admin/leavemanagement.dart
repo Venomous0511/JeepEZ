@@ -108,10 +108,14 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
             maxLines: 3,
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () => Navigator.pop(context, reasonController.text.trim()),
+              onPressed: () =>
+                  Navigator.pop(context, reasonController.text.trim()),
               child: const Text('Reject'),
             ),
           ],
@@ -126,7 +130,11 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
           .doc(req['userId'])
           .collection('leave_application')
           .doc(req['leaveId'])
-          .update({'status': 'Rejected', 'rejectionReason': result, 'rejectedAt': FieldValue.serverTimestamp()});
+          .update({
+            'status': 'Rejected',
+            'rejectionReason': result,
+            'rejectedAt': FieldValue.serverTimestamp(),
+          });
 
       if (mounted) {
         setState(() => _leaveRequests[index]['status'] = 'Rejected');
@@ -147,7 +155,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Leave Management', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Leave Management',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: const Color(0xFF0D2364),
         foregroundColor: const Color(0xFFFFFFFF),
       ),
@@ -189,7 +200,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                   children: [
                     Text(
                       request['name'] ?? '',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                     Text(
                       leaveType,
@@ -212,8 +226,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                 /// Rejection Reason
                 if (status == 'Rejected' && rejectionReason != null) ...[
                   const SizedBox(height: 8),
-                  Text('Rejection Reason: $rejectionReason',
-                      style: const TextStyle(fontSize: 14, color: Colors.red)),
+                  Text(
+                    'Rejection Reason: $rejectionReason',
+                    style: const TextStyle(fontSize: 14, color: Colors.red),
+                  ),
                 ],
 
                 const SizedBox(height: 12),
@@ -227,12 +243,20 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                         children: [
                           TextButton(
                             onPressed: () => _rejectRequest(index),
-                            child: const Text('Reject', style: TextStyle(color: Colors.red)),
+                            child: const Text(
+                              'Reject',
+                              style: TextStyle(color: Colors.red),
+                            ),
                           ),
                           ElevatedButton(
                             onPressed: () => _approveRequest(index),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                            child: const Text('Approve', style: TextStyle(color: Colors.white)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                            ),
+                            child: const Text(
+                              'Approve',
+                              style: TextStyle(color: Colors.white),
+                            ),
                           ),
                         ],
                       ),
