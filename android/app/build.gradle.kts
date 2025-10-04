@@ -30,21 +30,19 @@ android {
         versionName = flutter.versionName
     }
 
+    // Read key.properties for signing
+    val keystorePropertiesFile = file("key.properties")
+    val keystoreProperties = Properties()
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    }
+
     signingConfigs {
         create("release") {
-            val ksPath: String? = project.findProperty("KEYSTORE_PATH") as String?
-            val ksAlias: String? = project.findProperty("KEYSTORE_ALIAS") as String?
-            val ksPassword: String? = project.findProperty("KEYSTORE_PASSWORD") as String?
-            val ksKeyPassword: String? = project.findProperty("KEYSTORE_KEY_PASSWORD") as String?
-
-            if (!ksPath.isNullOrEmpty() && !ksAlias.isNullOrEmpty() && !ksPassword.isNullOrEmpty() && !ksKeyPassword.isNullOrEmpty()) {
-                storeFile = file(ksPath)
-                storePassword = ksPassword
-                keyAlias = ksAlias
-                keyPassword = ksKeyPassword
-            } else {
-                println("⚠️ Release signing not configured. APK will be unsigned.")
-            }
+            storeFile = file(keystoreProperties.getProperty("storeFile") ?: "")
+            storePassword = keystoreProperties.getProperty("storePassword") ?: ""
+            keyAlias = keystoreProperties.getProperty("keyAlias") ?: ""
+            keyPassword = keystoreProperties.getProperty("keyPassword") ?: ""
         }
     }
 
