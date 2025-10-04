@@ -30,24 +30,18 @@ android {
         versionName = flutter.versionName
     }
 
-    // Kotlin DSL version of keystore loading
-    val keystorePropertiesFile = rootProject.file("key.properties")
-    val keystoreProperties = Properties().apply {
-        load(FileInputStream(keystorePropertiesFile))
-    }
-
     signingConfigs {
         create("release") {
-            val keystorePath: String? = project.findProperty("KEYSTORE_PATH") as String?
-            val keystoreAlias: String? = project.findProperty("KEYSTORE_ALIAS") as String?
-            val keystorePassword: String? = project.findProperty("KEYSTORE_PASSWORD") as String?
-            val keyPassword: String? = project.findProperty("KEYSTORE_KEY_PASSWORD") as String?
+            val ksPath: String? = project.findProperty("KEYSTORE_PATH") as String?
+            val ksAlias: String? = project.findProperty("KEYSTORE_ALIAS") as String?
+            val ksPassword: String? = project.findProperty("KEYSTORE_PASSWORD") as String?
+            val ksKeyPassword: String? = project.findProperty("KEYSTORE_KEY_PASSWORD") as String?
 
-            if (!keystorePath.isNullOrEmpty() && !keystoreAlias.isNullOrEmpty() && !keystorePassword.isNullOrEmpty() && !keyPassword.isNullOrEmpty()) {
-                storeFile = file(keystorePath)
-                storePassword = keystorePassword
-                keyAlias = keystoreAlias
-                keyPassword = keyPassword
+            if (!ksPath.isNullOrEmpty() && !ksAlias.isNullOrEmpty() && !ksPassword.isNullOrEmpty() && !ksKeyPassword.isNullOrEmpty()) {
+                storeFile = file(ksPath)
+                storePassword = ksPassword
+                keyAlias = ksAlias
+                keyPassword = ksKeyPassword
             } else {
                 println("⚠️ Release signing not configured. APK will be unsigned.")
             }

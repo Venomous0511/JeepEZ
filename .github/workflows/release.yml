@@ -65,7 +65,7 @@ jobs:
         run: flutter build apk --release --flavor production --build-name=${{ github.ref_name }} --build-number=${{ github.run_number }} --dart-define=KEYSTORE_PATH=android/app/keystore.jks --dart-define=KEYSTORE_ALIAS=${{ secrets.KEY_ALIAS }} --dart-define=KEYSTORE_PASSWORD=${{ secrets.KEY_PASSWORD }} --dart-define=KEYSTORE_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}
 
       - name: Rename APK
-        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/JeepEZ-${{ github.ref_name }}.apk
+        run: mv build/app/outputs/flutter-apk/app-production-release.apk build/app/outputs/flutter-apk/JeepEZ-${{ github.ref_name }}.apk
 
       - name: Upload APK to GitHub Release
         uses: softprops/action-gh-release@v2
