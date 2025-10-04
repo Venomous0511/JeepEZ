@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.jeepez.app"
+    namespace = "com.example.jeepez"
     compileSdk = 36
     ndkVersion = "29.0.13846066"
 
@@ -23,7 +23,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.jeepez.app"
+        applicationId = "com.example.jeepez"
         minSdk = 23
         targetSdk = 36
         versionCode = flutter.versionCode
