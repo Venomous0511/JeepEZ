@@ -38,10 +38,19 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
-            storePassword = keystoreProperties["storePassword"] as String
+            val keystorePath: String? = project.findProperty("KEYSTORE_PATH") as String?
+            val keystoreAlias: String? = project.findProperty("KEYSTORE_ALIAS") as String?
+            val keystorePassword: String? = project.findProperty("KEYSTORE_PASSWORD") as String?
+            val keyPassword: String? = project.findProperty("KEYSTORE_KEY_PASSWORD") as String?
+
+            if (!keystorePath.isNullOrEmpty() && !keystoreAlias.isNullOrEmpty() && !keystorePassword.isNullOrEmpty() && !keyPassword.isNullOrEmpty()) {
+                storeFile = file(keystorePath)
+                storePassword = keystorePassword
+                keyAlias = keystoreAlias
+                keyPassword = keyPassword
+            } else {
+                println("⚠️ Release signing not configured. APK will be unsigned.")
+            }
         }
     }
 
