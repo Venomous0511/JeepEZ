@@ -28,31 +28,38 @@ android {
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        multiDexEnabled = true // optional, helps if methods exceed 64K
     }
 
-    // Load key.properties
-    val keystorePropertiesFile = rootProject.file("android/key.properties")
-    val keystoreProperties = Properties()
-    if (keystorePropertiesFile.exists()) {
-        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    // Load key.properties and/or environment variables
+    val keystoreProperties = Properties().apply {
+        val file = rootProject.file("android/key.properties")
+        if (file.exists()) load(FileInputStream(file))
+        System.getenv("KEYSTORE_PATH")?.let { setProperty("storeFile", it) }
+        System.getenv("KEYSTORE_PASSWORD")?.let { setProperty("storePassword", it) }
+        System.getenv("KEY_ALIAS")?.let { setProperty("keyAlias", it) }
+        System.getenv("KEY_PASSWORD")?.let { setProperty("keyPassword", it) }
     }
 
-    android {
-        signingConfigs {
-            create("release") {
-                storeFile = keystoreProperties.getProperty("storeFile")?.let { file(it) }
+    signingConfigs {
+        create("release") {
+            val storeFilePath = keystoreProperties.getProperty("storeFile")
+            if (storeFilePath != null && file(storeFilePath).exists()) {
+                storeFile = file(storeFilePath)
                 storePassword = keystoreProperties.getProperty("storePassword")
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
+            } else {
+                println("⚠️ Release signing not configured. APK will be unsigned.")
             }
         }
+    }
 
-        buildTypes {
-            getByName("release") {
-                signingConfig = signingConfigs.getByName("release")
-                isMinifyEnabled = false
-                isShrinkResources = false
-            }
+    buildTypes {
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
