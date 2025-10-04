@@ -37,22 +37,22 @@ android {
         keystoreProperties.load(FileInputStream(keystorePropertiesFile))
     }
 
-    signingConfigs {
-        create("release") {
-            keystoreProperties.getProperty("storeFile")?.takeIf { it.isNotEmpty() }?.let { path ->
-                storeFile = file(path)
+    android {
+        signingConfigs {
+            create("release") {
+                storeFile = keystoreProperties.getProperty("storeFile")?.let { file(it) }
                 storePassword = keystoreProperties.getProperty("storePassword")
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
-            } ?: println("⚠️ Release signing not configured. APK will be unsigned.")
+            }
         }
-    }
 
-    buildTypes {
-        getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
-            isShrinkResources = false
+        buildTypes {
+            getByName("release") {
+                signingConfig = signingConfigs.getByName("release")
+                isMinifyEnabled = false
+                isShrinkResources = false
+            }
         }
     }
 }
