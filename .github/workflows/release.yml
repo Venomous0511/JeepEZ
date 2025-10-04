@@ -41,15 +41,15 @@ jobs:
       - name: Decode google-services.json
         run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 --decode > android/app/google-services.json
 
-      # Setup keystore & key.properties
-      - name: Setup Keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/jeepez-key.jks
-          echo "storeFile=android/app/jeepez-key.jks" > android/key.properties
-          echo "storePassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
-          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
-          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
-        shell: bash
+#      # Setup keystore & key.properties
+#      - name: Setup Keystore
+#        run: |
+#          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/jeepez-key.jks
+#          echo "storeFile=android/app/jeepez-key.jks" > android/key.properties
+#          echo "storePassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+#          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+#          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+#        shell: bash
 
       - name: Clean Flutter build
         run: flutter clean
@@ -57,19 +57,19 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # Build Android APK
-      - name: Build Android APK
-        run: flutter build apk --release --build-name=${{ github.ref_name }} --build-number=${{ github.run_number }}
-
-      - name: Rename APK
-        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/JeepEZ-${{ github.ref_name }}.apk
-
-      - name: Upload APK to GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: build/app/outputs/flutter-apk/JeepEZ-${{ github.ref_name }}.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#      # Build Android APK
+#      - name: Build Android APK
+#        run: flutter build apk --release --build-name=${{ github.ref_name }} --build-number=${{ github.run_number }}
+#
+#      - name: Rename APK
+#        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/JeepEZ-${{ github.ref_name }}.apk
+#
+#      - name: Upload APK to GitHub Release
+#        uses: softprops/action-gh-release@v2
+#        with:
+#          files: build/app/outputs/flutter-apk/JeepEZ-${{ github.ref_name }}.apk
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Build Flutter Web
       - name: Build Flutter Web
