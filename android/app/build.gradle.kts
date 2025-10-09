@@ -1,6 +1,12 @@
 import java.util.Properties
 import java.io.FileInputStream
 
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 plugins {
     id("com.android.application")
     id("com.google.gms.google-services")
@@ -24,44 +30,47 @@ android {
 
     defaultConfig {
         applicationId = "com.example.jeepez"
-        minSdk = 23
+        minSdk = 23  // Good for Firebase (minimum is 21)
         targetSdk = 36
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
-        multiDexEnabled = true // optional, helps if methods exceed 64K
-    }
-
-    // Load key.properties and/or environment variables
-    val keystoreProperties = Properties().apply {
-        val file = rootProject.file("android/key.properties")
-        if (file.exists()) load(FileInputStream(file))
-        System.getenv("KEYSTORE_PATH")?.let { setProperty("storeFile", it) }
-        System.getenv("KEYSTORE_PASSWORD")?.let { setProperty("storePassword", it) }
-        System.getenv("KEY_ALIAS")?.let { setProperty("keyAlias", it) }
-        System.getenv("KEY_PASSWORD")?.let { setProperty("keyPassword", it) }
+        versionCode = 6
+        versionName = "0.6.0"
+        multiDexEnabled = true  // Correct for Firebase
     }
 
     signingConfigs {
-        create("release") {
-            val storeFilePath = keystoreProperties.getProperty("storeFile")
-            if (storeFilePath != null && file(storeFilePath).exists()) {
-                storeFile = file(storeFilePath)
-                storePassword = keystoreProperties.getProperty("storePassword")
-                keyAlias = keystoreProperties.getProperty("keyAlias")
-                keyPassword = keystoreProperties.getProperty("keyPassword")
-            } else {
-                println("⚠️ Release signing not configured. APK will be unsigned.")
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = keystoreProperties["storeFile"]?.let { file(it as String) }
+                storePassword = keystoreProperties["storePassword"] as String
             }
         }
     }
 
     buildTypes {
-        getByName("release") {
-//            signingConfig = signingConfigs.getByName("release")
+        release {
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        // Add debug build type for development
+        debug {
             isMinifyEnabled = false
             isShrinkResources = false
         }
     }
+}
+
+dependencies {
+    // IMPORTANT: Use AndroidX instead of old support library
+    implementation("androidx.multidex:multidex:2.0.1")
 }
 
 flutter {

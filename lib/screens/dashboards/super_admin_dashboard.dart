@@ -57,12 +57,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
         });
   }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
   void _navigateToScreen(int index) {
     setState(() {
       _selectedIndex = index;
@@ -103,7 +97,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: selectedType,
+                    value: selectedType,
                     decoration: const InputDecoration(
                       labelText: "Type",
                       border: OutlineInputBorder(),

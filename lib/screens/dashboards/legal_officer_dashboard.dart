@@ -99,23 +99,16 @@ class _LegalOfficerDashboardScreenState
 
   Stream<Map<String, int>> getViolationCountsStream() {
     return FirebaseFirestore.instance
-        .collection('incident_report')
+        .collection('violation_report')
         .snapshots()
         .map((snapshot) {
           final Map<String, int> counts = {};
           for (var doc in snapshot.docs) {
-            final type = doc['type'] ?? 'Unknown';
+            final type = doc['violation'] ?? 'Unknown';
             counts[type] = (counts[type] ?? 0) + 1;
           }
           return counts;
         });
-  }
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-      _currentScreen = null; // Reset to main dashboard screens
-    });
   }
 
   void _navigateToScreen(Widget screen) {
@@ -1214,30 +1207,7 @@ class _LegalOfficerDashboardScreenState
         return Row(
           children: [
             SizedBox(
-              width: isSmallScreen ? 100 : 150,
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: isSmallScreen ? 12 : 14,
-                  color: Colors.white,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: LinearProgressIndicator(
-                value: percentage / 100,
-                backgroundColor: Colors.white.withAlpha(5),
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  _getColorForViolationType(label),
-                ),
-                minHeight: isSmallScreen ? 16 : 20,
-              ),
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: isSmallScreen ? 30 : 40,
+              width: isSmallScreen ? 150 : 150,
               child: Text(
                 label,
                 style: TextStyle(

@@ -494,7 +494,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                   const SizedBox(height: 12),
 
                   DropdownButtonFormField<String>(
-                    initialValue: role,
+                    value: role,
                     decoration: const InputDecoration(
                       labelText: 'Role *',
                       border: OutlineInputBorder(),

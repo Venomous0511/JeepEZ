@@ -144,7 +144,7 @@ Project initialization
         labelText: title,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
       ),
-      initialValue: value,
+      value: value,
       items: options.map((String option) {
         return DropdownMenuItem(value: option, child: Text(option));
       }).toList(),
@@ -158,7 +158,7 @@ Project initialization
         labelText: 'Select Version',
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
       ),
-      initialValue: _selectedChangelog,
+      value: _selectedChangelog,
       items: _changelogData.keys.map((String version) {
         return DropdownMenuItem(value: version, child: Text(version));
       }).toList(),

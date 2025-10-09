@@ -1,10 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/app_user.dart';
 
-class InspectorReportHistoryScreen extends StatelessWidget {
+class InspectorReportHistoryScreen extends StatefulWidget {
   const InspectorReportHistoryScreen({super.key, required this.user});
 
   final AppUser user;
+
+  @override
+  State<InspectorReportHistoryScreen> createState() =>
+      _InspectorReportHistoryScreenState();
+}
+
+class _InspectorReportHistoryScreenState
+    extends State<InspectorReportHistoryScreen> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  String _searchQuery = '';
+  String _selectedFilter = 'All Time';
 
   @override
   Widget build(BuildContext context) {
@@ -14,79 +26,163 @@ class InspectorReportHistoryScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Metrics Section - Only Total Inspections Conducted
-            if (isMobile)
-              _buildMobileMetrics(context)
-            else if (isTablet)
-              _buildTabletMetrics(context)
-            else
-              _buildDesktopMetrics(context),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _getInspectorTripsStream(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
 
-            SizedBox(height: isMobile ? 16 : 24),
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            // Search and Filter Section
-            _buildSearchFilterSection(isMobile),
-            SizedBox(height: isMobile ? 16 : 24),
+          final trips = snapshot.data?.docs ?? [];
+          final filteredTrips = _filterTrips(trips);
+          final totalInspections = trips.length;
 
-            // Report History Section
-            _sectionTitle('Violation Reports', isMobile),
-            const SizedBox(height: 8),
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Metrics Section
+                if (isMobile)
+                  _buildMobileMetrics(context, totalInspections)
+                else if (isTablet)
+                  _buildTabletMetrics(context, totalInspections)
+                else
+                  _buildDesktopMetrics(context, totalInspections),
 
-            if (isMobile)
-              _buildReportCards(context)
-            else
-              _styledCardWhite(_buildReportTable(context), isMobile),
-          ],
-        ),
+                SizedBox(height: isMobile ? 16 : 24),
+
+                // Search and Filter Section
+                _buildSearchFilterSection(isMobile),
+                SizedBox(height: isMobile ? 16 : 24),
+
+                // Report History Section
+                _sectionTitle('Violation Reports', isMobile),
+                const SizedBox(height: 8),
+
+                if (filteredTrips.isEmpty)
+                  _styledCardWhite(
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: Text(
+                          'No inspection reports found',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ),
+                    isMobile,
+                  )
+                else if (isMobile)
+                  _buildReportCards(context, filteredTrips)
+                else
+                  _styledCardWhite(
+                    _buildReportTable(context, filteredTrips),
+                    isMobile,
+                  ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  // Mobile: Single metric card for Total Inspections
-  Widget _buildMobileMetrics(BuildContext context) {
+  Stream<QuerySnapshot> _getInspectorTripsStream() {
+    // Get trips for the current inspector
+    return _firestore
+        .collection('inspector_trip')
+        .where('employeeId', isEqualTo: widget.user.uid)
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
+
+  List<DocumentSnapshot> _filterTrips(List<DocumentSnapshot> trips) {
+    var filtered = trips;
+
+    // Apply date filter
+    if (_selectedFilter != 'All Time') {
+      final now = DateTime.now();
+      filtered = trips.where((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        final timestamp = (data['timestamp'] as Timestamp).toDate();
+
+        switch (_selectedFilter) {
+          case 'Today':
+            return timestamp.year == now.year &&
+                timestamp.month == now.month &&
+                timestamp.day == now.day;
+          case 'This Week':
+            final weekAgo = now.subtract(const Duration(days: 7));
+            return timestamp.isAfter(weekAgo);
+          case 'This Month':
+            return timestamp.year == now.year && timestamp.month == now.month;
+          default:
+            return true;
+        }
+      }).toList();
+    }
+
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered.where((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        final query = _searchQuery.toLowerCase();
+
+        return (data['unitNumber']?.toString().toLowerCase().contains(query) ?? false) ||
+            (data['driverName']?.toString().toLowerCase().contains(query) ?? false) ||
+            (data['conductorName']?.toString().toLowerCase().contains(query) ?? false) ||
+            (doc.id.toLowerCase().contains(query));
+      }).toList();
+    }
+
+    return filtered;
+  }
+
+  Widget _buildMobileMetrics(BuildContext context, int total) {
     return _buildMetricCard(
       context,
       title: 'Total Inspections Conducted',
-      value: '113',
-      onTap: () => _showMetricDetails(context, 'Total Inspections', '113'),
+      value: total.toString(),
+      onTap: () => _showMetricDetails(context, 'Total Inspections', total.toString()),
       width: double.infinity,
     );
   }
 
-  // Tablet: Single metric card for Total Inspections
-  Widget _buildTabletMetrics(BuildContext context) {
+  Widget _buildTabletMetrics(BuildContext context, int total) {
     return _buildMetricCard(
       context,
       title: 'Total Inspections Conducted',
-      value: '113',
-      onTap: () => _showMetricDetails(context, 'Total Inspections', '113'),
+      value: total.toString(),
+      onTap: () => _showMetricDetails(context, 'Total Inspections', total.toString()),
       width: null,
     );
   }
 
-  // Desktop: Single metric card for Total Inspections
-  Widget _buildDesktopMetrics(BuildContext context) {
+  Widget _buildDesktopMetrics(BuildContext context, int total) {
     return _buildMetricCard(
       context,
       title: 'Total Inspections Conducted',
-      value: '113',
-      onTap: () => _showMetricDetails(context, 'Total Inspections', '113'),
+      value: total.toString(),
+      onTap: () => _showMetricDetails(context, 'Total Inspections', total.toString()),
       width: MediaQuery.of(context).size.width * 0.35,
     );
   }
 
   Widget _buildMetricCard(
-    BuildContext context, {
-    required String title,
-    required String value,
-    required VoidCallback onTap,
-    required double? width,
-  }) {
+      BuildContext context, {
+        required String title,
+        required String value,
+        required VoidCallback onTap,
+        required double? width,
+      }) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
 
@@ -173,9 +269,14 @@ class InspectorReportHistoryScreen extends StatelessWidget {
 
           // Search Field
           TextField(
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value;
+              });
+            },
             decoration: InputDecoration(
               hintText:
-                  'Search by Trip No, Inspector Name, Unit Number, or Driver Name...',
+              'Search by Trip No, Unit Number, or Driver Name...',
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -193,7 +294,6 @@ class InspectorReportHistoryScreen extends StatelessWidget {
             spacing: 12,
             runSpacing: 12,
             children: [
-              // Date Filter
               _buildFilterChip('Today', Icons.today),
               _buildFilterChip('This Week', Icons.calendar_view_week),
               _buildFilterChip('This Month', Icons.calendar_month),
@@ -211,12 +311,16 @@ class InspectorReportHistoryScreen extends StatelessWidget {
       label: Text(label),
       avatar: Icon(icon, size: 16),
       onSelected: (bool value) {
-        // Handle filter selection
+        setState(() {
+          _selectedFilter = label;
+        });
       },
       backgroundColor: Colors.grey[200],
       selectedColor: const Color(0xFF0D2364),
-      labelStyle: const TextStyle(color: Colors.black87),
-      selected: label == 'All Time', // Default selection
+      labelStyle: TextStyle(
+        color: _selectedFilter == label ? Colors.white : Colors.black87,
+      ),
+      selected: label == _selectedFilter,
       checkmarkColor: Colors.white,
     );
   }
@@ -250,12 +354,13 @@ class InspectorReportHistoryScreen extends StatelessWidget {
     );
   }
 
-  // Mobile card view for reports
-  Widget _buildReportCards(BuildContext context) {
-    final List<Map<String, dynamic>> reports = _getSampleReports();
-
+  Widget _buildReportCards(BuildContext context, List<DocumentSnapshot> trips) {
     return Column(
-      children: reports.map((report) {
+      children: trips.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        final timestamp = (data['timestamp'] as Timestamp).toDate();
+        final violations = (data['violations'] as List?)?.length ?? 0;
+
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           elevation: 2,
@@ -271,7 +376,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        'TRIP NO: ${report['tripNo']}',
+                        'TRIP NO: ${doc.id}',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -285,23 +390,17 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: _getViolationsColor(
-                          report['violations'] as int,
-                        ).withAlpha(30),
+                        color: _getViolationsColor(violations).withAlpha(30),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: _getViolationsColor(
-                            report['violations'] as int,
-                          ),
+                          color: _getViolationsColor(violations),
                           width: 1.5,
                         ),
                       ),
                       child: Text(
-                        '${report['violations']} Violation${report['violations'] == 1 ? '' : 's'}',
+                        '$violations Violation${violations == 1 ? '' : 's'}',
                         style: TextStyle(
-                          color: _getViolationsColor(
-                            report['violations'] as int,
-                          ),
+                          color: _getViolationsColor(violations),
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -311,52 +410,51 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // Report details in required arrangement
                 _buildInfoRow(
                   'Inspector Name',
-                  report['inspector'] as String,
+                  widget.user.name ?? 'N/A',
                   Icons.person,
                 ),
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   'Date',
-                  report['date'] as String,
+                  '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}',
                   Icons.calendar_today,
                 ),
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   'Unit Number',
-                  report['unitNumber'] as String,
+                  data['unitNumber']?.toString() ?? 'N/A',
                   Icons.confirmation_number,
                 ),
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   'Driver Name',
-                  report['driverName'] as String,
+                  data['driverName']?.toString() ?? 'N/A',
                   Icons.person_outline,
                 ),
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   'Conductor Name',
-                  report['conductorName'] as String,
+                  data['conductorName']?.toString() ?? 'N/A',
                   Icons.people_outline,
                 ),
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   'Ticket Inspection Time',
-                  report['inspectionTime'] as String,
+                  data['inspectionTime']?.toString() ?? 'N/A',
                   Icons.access_time,
                 ),
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   'Number of Passengers',
-                  report['passengerCount'].toString(),
+                  data['noOfPass']?.toString() ?? 'N/A',
                   Icons.people,
                 ),
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   'Location',
-                  report['location'] as String,
+                  data['location']?.toString() ?? 'N/A',
                   Icons.location_on,
                 ),
               ],
@@ -401,10 +499,9 @@ class InspectorReportHistoryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildReportTable(BuildContext context) {
+  Widget _buildReportTable(BuildContext context, List<DocumentSnapshot> trips) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600 && screenWidth < 1024;
-    final reports = _getSampleReports();
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -422,8 +519,8 @@ class InspectorReportHistoryScreen extends StatelessWidget {
             color: Colors.black87,
           ),
           dataRowColor: WidgetStateProperty.resolveWith<Color>((
-            Set<WidgetState> states,
-          ) {
+              Set<WidgetState> states,
+              ) {
             if (states.contains(WidgetState.selected)) {
               return Theme.of(context).colorScheme.primary.withAlpha(8);
             }
@@ -516,14 +613,18 @@ class InspectorReportHistoryScreen extends StatelessWidget {
               ),
             ),
           ],
-          rows: reports.map((report) {
+          rows: trips.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final timestamp = (data['timestamp'] as Timestamp).toDate();
+            final violations = (data['violations'] as List?)?.length ?? 0;
+
             return DataRow(
               cells: [
                 DataCell(
                   SizedBox(
                     width: isTablet ? 100 : 120,
                     child: Text(
-                      report['tripNo'] as String,
+                      doc.id,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
@@ -533,7 +634,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                   SizedBox(
                     width: isTablet ? 120 : 140,
                     child: Text(
-                      report['inspector'] as String,
+                      widget.user.name ?? 'N/A',
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -542,7 +643,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                   SizedBox(
                     width: isTablet ? 90 : 110,
                     child: Text(
-                      report['date'] as String,
+                      '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}',
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -551,7 +652,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                   SizedBox(
                     width: isTablet ? 100 : 120,
                     child: Text(
-                      report['unitNumber'] as String,
+                      data['unitNumber']?.toString() ?? 'N/A',
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
@@ -561,7 +662,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                   SizedBox(
                     width: isTablet ? 120 : 140,
                     child: Text(
-                      report['driverName'] as String,
+                      data['driverName']?.toString() ?? 'N/A',
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -570,7 +671,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                   SizedBox(
                     width: isTablet ? 120 : 140,
                     child: Text(
-                      report['conductorName'] as String,
+                      data['conductorName']?.toString() ?? 'N/A',
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -579,7 +680,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                   SizedBox(
                     width: isTablet ? 120 : 140,
                     child: Text(
-                      report['inspectionTime'] as String,
+                      data['inspectionTime']?.toString() ?? 'N/A',
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -589,7 +690,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                     width: isTablet ? 100 : 120,
                     child: Center(
                       child: Text(
-                        report['passengerCount'].toString(),
+                        data['noOfPass']?.toString() ?? 'N/A',
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
@@ -600,7 +701,7 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                   SizedBox(
                     width: isTablet ? 120 : 140,
                     child: Text(
-                      report['location'] as String,
+                      data['location']?.toString() ?? 'N/A',
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -615,23 +716,17 @@ class InspectorReportHistoryScreen extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: _getViolationsColor(
-                            report['violations'] as int,
-                          ).withAlpha(30),
+                          color: _getViolationsColor(violations).withAlpha(30),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                            color: _getViolationsColor(
-                              report['violations'] as int,
-                            ),
+                            color: _getViolationsColor(violations),
                             width: 1.5,
                           ),
                         ),
                         child: Text(
-                          '${report['violations']}',
+                          '$violations',
                           style: TextStyle(
-                            color: _getViolationsColor(
-                              report['violations'] as int,
-                            ),
+                            color: _getViolationsColor(violations),
                             fontWeight: FontWeight.bold,
                             fontSize: isTablet ? 11 : 12,
                           ),
@@ -647,71 +742,6 @@ class InspectorReportHistoryScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  List<Map<String, dynamic>> _getSampleReports() {
-    return [
-      {
-        'tripNo': 'TRIP-2023-001',
-        'inspector': 'Juan Dela Cruz',
-        'date': '2023-09-10',
-        'unitNumber': 'UNIT-001',
-        'driverName': 'Rodrigo Santos',
-        'conductorName': 'Maria Clara',
-        'inspectionTime': '08:30 AM',
-        'passengerCount': 45,
-        'location': 'Main Highway - KM 25',
-        'violations': 3,
-      },
-      {
-        'tripNo': 'TRIP-2023-002',
-        'inspector': 'Maria Lopez',
-        'date': '2023-09-09',
-        'unitNumber': 'UNIT-078',
-        'driverName': 'Carlos Reyes',
-        'conductorName': 'Lorna Dimagiba',
-        'inspectionTime': '02:15 PM',
-        'passengerCount': 32,
-        'location': 'City Center - Terminal A',
-        'violations': 2,
-      },
-      {
-        'tripNo': 'TRIP-2023-003',
-        'inspector': 'Pedro Santos',
-        'date': '2023-09-08',
-        'unitNumber': 'UNIT-156',
-        'driverName': 'Antonio Cruz',
-        'conductorName': 'Josefina Luna',
-        'inspectionTime': '11:45 AM',
-        'passengerCount': 28,
-        'location': 'North Expressway',
-        'violations': 5,
-      },
-      {
-        'tripNo': 'TRIP-2023-004',
-        'inspector': 'Juan Dela Cruz',
-        'date': '2023-09-07',
-        'unitNumber': 'UNIT-045',
-        'driverName': 'Roberto Garcia',
-        'conductorName': 'Sofia Mendoza',
-        'inspectionTime': '04:20 PM',
-        'passengerCount': 38,
-        'location': 'South Terminal',
-        'violations': 1,
-      },
-      {
-        'tripNo': 'TRIP-2023-005',
-        'inspector': 'Maria Lopez',
-        'date': '2023-09-06',
-        'unitNumber': 'UNIT-189',
-        'driverName': 'Miguel Torres',
-        'conductorName': 'Elena Rodriguez',
-        'inspectionTime': '09:10 AM',
-        'passengerCount': 41,
-        'location': 'Coastal Road',
-        'violations': 4,
-      },
-    ];
   }
 
   Color _getViolationsColor(int violations) {

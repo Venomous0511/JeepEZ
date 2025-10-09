@@ -32,17 +32,17 @@ class _ViolationReportHistoryScreenState
         .snapshots()
         .map(
           (snapshot) => snapshot.docs.map((doc) {
-            final data = doc.data();
-            data['id'] = doc.id;
-            return data;
-          }).toList(),
-        );
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList(),
+    );
   }
 
   Future<List<Map<String, dynamic>>> getViolationsByUser(
-    String name,
-    String position,
-  ) async {
+      String name,
+      String position,
+      ) async {
     final querySnapshot = await _firestore
         .collection('violation_report')
         .where('name', isEqualTo: name)
@@ -68,10 +68,50 @@ class _ViolationReportHistoryScreenState
     }
   }
 
+  Future<String> getActualEmployeeId(String firebaseUid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(firebaseUid).get();
+      if (doc.exists) {
+        final data = doc.data();
+        final employeeId = data?['employeeId']?.toString() ?? 'Unknown';
+        
+        return employeeId;
+      }
+
+      return 'Unknown';
+    } catch (e) {
+
+      return 'Unknown';
+    }
+  }
+
+  Future<String> getEmployeeIdByNameAndPosition(String name, String position) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('users')
+          .where('name', isEqualTo: name)
+          .where('role', isEqualTo: position.toLowerCase())
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final data = querySnapshot.docs.first.data();
+        final employeeId = data['employeeId']?.toString() ?? 'Unknown';
+
+        return employeeId;
+      }
+
+      return 'Unknown';
+    } catch (e) {
+
+      return 'Unknown';
+    }
+  }
+
   Future<void> updateViolationStatus(
-    String violationId,
-    String newStatus,
-  ) async {
+      String violationId,
+      String newStatus,
+      ) async {
     await _firestore.collection('violation_report').doc(violationId).update({
       'status': newStatus,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -79,14 +119,14 @@ class _ViolationReportHistoryScreenState
   }
 
   List<Map<String, dynamic>> _filterReports(
-    List<Map<String, dynamic>> reports,
-  ) {
+      List<Map<String, dynamic>> reports,
+      ) {
     if (_searchQuery.isEmpty) return reports;
 
     return reports.where((report) {
       final name = report['name']?.toString().toLowerCase() ?? '';
       final position = report['position']?.toString().toLowerCase() ?? '';
-      final empId = report['employeeId']?.toString().toLowerCase() ?? '';
+      final empId = report['displayEmployeeId']?.toString().toLowerCase() ?? '';
       final location = report['location']?.toString().toLowerCase() ?? '';
       final violation = report['violation']?.toString().toLowerCase() ?? '';
       final status = report['status']?.toString().toLowerCase() ?? '';
@@ -102,15 +142,15 @@ class _ViolationReportHistoryScreenState
   }
 
   List<Map<String, dynamic>> _getPaginatedReports(
-    List<Map<String, dynamic>> reports,
-  ) {
+      List<Map<String, dynamic>> reports,
+      ) {
     final startIndex = _currentPage * _itemsPerPage;
     final endIndex = startIndex + _itemsPerPage;
     return reports.length > startIndex
         ? reports.sublist(
-            startIndex,
-            endIndex > reports.length ? reports.length : endIndex,
-          )
+      startIndex,
+      endIndex > reports.length ? reports.length : endIndex,
+    )
         : [];
   }
 
@@ -149,10 +189,10 @@ class _ViolationReportHistoryScreenState
                     final filteredReports = reports
                         .where(
                           (r) =>
-                              r['position'] == 'Driver' ||
-                              r['position'] == 'Conductor' ||
-                              r['position'] == 'Inspector',
-                        )
+                      r['position'] == 'Driver' ||
+                          r['position'] == 'Conductor' ||
+                          r['position'] == 'Inspector',
+                    )
                         .toList();
 
                     final users = {
@@ -160,22 +200,56 @@ class _ViolationReportHistoryScreenState
                         '${report['name']}-${report['position']}': report,
                     }.values.toList();
 
-                    final filteredUsers = _filterReports(users);
-                    final paginatedUsers = _getPaginatedReports(filteredUsers);
+                    return FutureBuilder<List<Map<String, dynamic>>>(
+                      future: Future.wait(
+                        users.map((report) async {
+                          final reporterUid = report['employeeId']?.toString() ?? '';
+                          final reportedName = report['name']?.toString() ?? '';
+                          final reportedPosition = report['position']?.toString() ?? '';
 
-                    return Column(
-                      children: [
-                        Expanded(
-                          child: isMobile
-                              ? _buildMobileList(paginatedUsers)
-                              : _buildDesktopList(paginatedUsers, isTablet),
-                        ),
-                        if (filteredUsers.length > _itemsPerPage)
-                          _buildPaginationControls(
-                            filteredUsers.length,
-                            isMobile,
-                          ),
-                      ],
+                          // Get the employee ID of the REPORTED person (by name and position)
+                          final actualEmployeeId = await getEmployeeIdByNameAndPosition(
+                            reportedName,
+                            reportedPosition,
+                          );
+
+                          return {
+                            ...report,
+                            'reporterUid': reporterUid,
+                            'displayEmployeeId': actualEmployeeId,
+                          };
+                        }).toList(),
+                      ),
+                      builder: (context, userSnapshot) {
+                        if (userSnapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+
+                        if (!userSnapshot.hasData) {
+                          return const Center(
+                            child: Text('No violation reports found'),
+                          );
+                        }
+
+                        final usersWithEmployeeIds = userSnapshot.data!;
+                        final filteredUsers = _filterReports(usersWithEmployeeIds);
+                        final paginatedUsers = _getPaginatedReports(filteredUsers);
+
+                        return Column(
+                          children: [
+                            Expanded(
+                              child: isMobile
+                                  ? _buildMobileList(paginatedUsers)
+                                  : _buildDesktopList(paginatedUsers, isTablet),
+                            ),
+                            if (filteredUsers.length > _itemsPerPage)
+                              _buildPaginationControls(
+                                filteredUsers.length,
+                                isMobile,
+                              ),
+                          ],
+                        );
+                      },
                     );
                   },
                 ),
@@ -195,7 +269,7 @@ class _ViolationReportHistoryScreenState
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withAlpha(1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -319,7 +393,8 @@ class _ViolationReportHistoryScreenState
         final userData = users[index];
         return _UserItemDesktop(
           name: userData['name']?.toString() ?? 'Unknown',
-          employeeId: userData['employeeId']?.toString() ?? 'Unknown',
+          employeeId: userData['displayEmployeeId']?.toString() ?? 'Unknown',
+          reporterUid: userData['reporterUid']?.toString() ?? '',
           position: userData['position']?.toString() ?? 'Unknown',
           location: userData['location']?.toString() ?? 'N/A',
           status: userData['status']?.toString() ?? 'New',
@@ -329,7 +404,7 @@ class _ViolationReportHistoryScreenState
             userData['position']?.toString() ?? '',
           ),
           getEmail: () =>
-              getReportedUserEmail(userData['employeeId']?.toString() ?? ''),
+              getReportedUserEmail(userData['reporterUid']?.toString() ?? ''),
           updateStatus: (violationId, newStatus) =>
               updateViolationStatus(violationId, newStatus),
         );
@@ -344,7 +419,8 @@ class _ViolationReportHistoryScreenState
         final userData = users[index];
         return _UserItemMobile(
           name: userData['name']?.toString() ?? 'Unknown',
-          employeeId: userData['employeeId']?.toString() ?? 'Unknown',
+          employeeId: userData['displayEmployeeId']?.toString() ?? 'Unknown',
+          reporterUid: userData['reporterUid']?.toString() ?? '',
           position: userData['position']?.toString() ?? 'Unknown',
           location: userData['location']?.toString() ?? 'N/A',
           status: userData['status']?.toString() ?? 'New',
@@ -353,7 +429,7 @@ class _ViolationReportHistoryScreenState
             userData['position']?.toString() ?? '',
           ),
           getEmail: () =>
-              getReportedUserEmail(userData['employeeId']?.toString() ?? ''),
+              getReportedUserEmail(userData['reporterUid']?.toString() ?? ''),
           updateStatus: (violationId, newStatus) =>
               updateViolationStatus(violationId, newStatus),
         );
@@ -372,7 +448,7 @@ class _ViolationReportHistoryScreenState
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withAlpha(1),
             blurRadius: 2,
             offset: const Offset(0, 1),
           ),
@@ -385,10 +461,10 @@ class _ViolationReportHistoryScreenState
             icon: Icon(Icons.arrow_back_ios, size: isMobile ? 16 : 20),
             onPressed: _currentPage > 0
                 ? () {
-                    setState(() {
-                      _currentPage--;
-                    });
-                  }
+              setState(() {
+                _currentPage--;
+              });
+            }
                 : null,
           ),
           Text(
@@ -402,10 +478,10 @@ class _ViolationReportHistoryScreenState
             icon: Icon(Icons.arrow_forward_ios, size: isMobile ? 16 : 20),
             onPressed: _currentPage < totalPages - 1
                 ? () {
-                    setState(() {
-                      _currentPage++;
-                    });
-                  }
+              setState(() {
+                _currentPage++;
+              });
+            }
                 : null,
           ),
         ],
@@ -419,6 +495,7 @@ class _UserItemDesktop extends StatelessWidget {
   const _UserItemDesktop({
     required this.name,
     required this.employeeId,
+    required this.reporterUid,
     required this.position,
     required this.location,
     required this.status,
@@ -430,6 +507,7 @@ class _UserItemDesktop extends StatelessWidget {
 
   final String name;
   final String employeeId;
+  final String reporterUid;
   final String position;
   final String location;
   final String status;
@@ -441,6 +519,8 @@ class _UserItemDesktop extends StatelessWidget {
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
+      case 'new':
+        return Colors.purple;
       case 'open':
         return Colors.orange;
       case 'under investigation':
@@ -500,7 +580,7 @@ class _UserItemDesktop extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.2),
+                color: Colors.grey.withAlpha(2),
                 blurRadius: 2,
                 offset: const Offset(0, 1),
               ),
@@ -603,6 +683,7 @@ class _UserItemMobile extends StatelessWidget {
   const _UserItemMobile({
     required this.name,
     required this.employeeId,
+    required this.reporterUid,
     required this.position,
     required this.location,
     required this.status,
@@ -613,6 +694,7 @@ class _UserItemMobile extends StatelessWidget {
 
   final String name;
   final String employeeId;
+  final String reporterUid;
   final String position;
   final String location;
   final String status;
@@ -848,13 +930,13 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
                   DropdownButton<String>(
                     value: selectedStatus,
                     isExpanded: true,
-                    items: ['Open', 'Under Investigation', 'Resolved', 'Closed']
+                    items: ['New', 'Open', 'Under Investigation', 'Resolved', 'Closed']
                         .map((String status) {
-                          return DropdownMenuItem<String>(
-                            value: status,
-                            child: Text(status),
-                          );
-                        })
+                      return DropdownMenuItem<String>(
+                        value: status,
+                        child: Text(status),
+                      );
+                    })
                         .toList(),
                     onChanged: (String? newValue) {
                       setState(() {
@@ -1101,117 +1183,117 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
             Expanded(
               child: _violations.isEmpty
                   ? Center(
-                      child: Text(
-                        'No violation details found',
-                        style: TextStyle(
-                          fontSize: isMobile ? 14 : 16,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    )
+                child: Text(
+                  'No violation details found',
+                  style: TextStyle(
+                    fontSize: isMobile ? 14 : 16,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              )
                   : ListView.builder(
-                      itemCount: _violations.length,
-                      itemBuilder: (context, index) {
-                        final violation = _violations[index];
-                        final violationType =
-                            violation['violation']?.toString() ??
-                            'No violation description';
-                        final violationStatus =
-                            violation['status']?.toString() ?? _currentStatus;
-                        final violationLocation = violation['location']
-                            ?.toString();
-                        final violationDate = violation['date'];
-                        final violationDescription = violation['description']
-                            ?.toString();
-                        final reportedBy = violation['reportedBy']?.toString();
-                        final evidence = violation['evidence']?.toString();
+                itemCount: _violations.length,
+                itemBuilder: (context, index) {
+                  final violation = _violations[index];
+                  final violationType =
+                      violation['violation']?.toString() ??
+                          'No violation description';
+                  final violationStatus =
+                      violation['status']?.toString() ?? _currentStatus;
+                  final violationLocation = violation['location']
+                      ?.toString();
+                  final violationDate = violation['date'];
+                  final violationDescription = violation['description']
+                      ?.toString();
+                  final reportedBy = violation['reportedBy']?.toString();
+                  final evidence = violation['evidence']?.toString();
 
-                        return Card(
-                          margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
-                          elevation: 1,
-                          child: Padding(
-                            padding: EdgeInsets.all(isMobile ? 12 : 16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        violationType,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: isMobile ? 14 : 16,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: _getStatusColor(violationStatus),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        violationStatus,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: isMobile ? 10 : 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                  return Card(
+                    margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
+                    elevation: 1,
+                    child: Padding(
+                      padding: EdgeInsets.all(isMobile ? 12 : 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  violationType,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: isMobile ? 14 : 16,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                SizedBox(height: isMobile ? 6 : 8),
-                                if (violationLocation != null &&
-                                    violationLocation.isNotEmpty)
-                                  _buildViolationDetail(
-                                    Icons.location_on,
-                                    'Location',
-                                    violationLocation,
-                                    isMobile,
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(violationStatus),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  violationStatus,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isMobile ? 10 : 12,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                if (violationDate != null)
-                                  _buildViolationDetail(
-                                    Icons.calendar_today,
-                                    'Date',
-                                    _formatDate(violationDate),
-                                    isMobile,
-                                  ),
-                                if (violationDescription != null &&
-                                    violationDescription.isNotEmpty)
-                                  _buildViolationDetail(
-                                    Icons.description,
-                                    'Description',
-                                    violationDescription,
-                                    isMobile,
-                                  ),
-                                if (reportedBy != null && reportedBy.isNotEmpty)
-                                  _buildViolationDetail(
-                                    Icons.person,
-                                    'Reported By',
-                                    reportedBy,
-                                    isMobile,
-                                  ),
-                                if (evidence != null && evidence.isNotEmpty)
-                                  _buildViolationDetail(
-                                    Icons.attachment,
-                                    'Evidence',
-                                    evidence,
-                                    isMobile,
-                                  ),
-                              ],
-                            ),
+                                ),
+                              ),
+                            ],
                           ),
-                        );
-                      },
+                          SizedBox(height: isMobile ? 6 : 8),
+                          if (violationLocation != null &&
+                              violationLocation.isNotEmpty)
+                            _buildViolationDetail(
+                              Icons.location_on,
+                              'Location',
+                              violationLocation,
+                              isMobile,
+                            ),
+                          if (violationDate != null)
+                            _buildViolationDetail(
+                              Icons.calendar_today,
+                              'Date',
+                              _formatDate(violationDate),
+                              isMobile,
+                            ),
+                          if (violationDescription != null &&
+                              violationDescription.isNotEmpty)
+                            _buildViolationDetail(
+                              Icons.description,
+                              'Description',
+                              violationDescription,
+                              isMobile,
+                            ),
+                          if (reportedBy != null && reportedBy.isNotEmpty)
+                            _buildViolationDetail(
+                              Icons.person,
+                              'Reported By',
+                              reportedBy,
+                              isMobile,
+                            ),
+                          if (evidence != null && evidence.isNotEmpty)
+                            _buildViolationDetail(
+                              Icons.attachment,
+                              'Evidence',
+                              evidence,
+                              isMobile,
+                            ),
+                        ],
+                      ),
                     ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -1220,11 +1302,11 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
   }
 
   Widget _buildViolationDetail(
-    IconData icon,
-    String label,
-    String value,
-    bool isMobile,
-  ) {
+      IconData icon,
+      String label,
+      String value,
+      bool isMobile,
+      ) {
     return Padding(
       padding: EdgeInsets.only(bottom: isMobile ? 4 : 6),
       child: Row(

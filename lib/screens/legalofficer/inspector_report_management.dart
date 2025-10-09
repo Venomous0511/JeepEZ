@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/app_user.dart';
+import '../../models/incident_report.dart'; // Import the model we created
 
 class IncidentReportManagementScreen extends StatefulWidget {
   const IncidentReportManagementScreen({super.key, required this.user});
@@ -14,52 +16,8 @@ class IncidentReportManagementScreen extends StatefulWidget {
 class _IncidentReportManagementScreenState
     extends State<IncidentReportManagementScreen> {
   String _selectedFilter = 'All';
-  final bool _isEditing = false;
-  final Map<String, dynamic> _editingIncident = {};
-
-  // Sample incident data - using mutable list for demo
-  List<Map<String, dynamic>> incidents = [
-    {
-      'unit': 'INC-001',
-      'date': '2025-09-01',
-      'type': 'Traffic Violation',
-      'reporter': 'Juan Dela Cruz',
-      'status': 'In Progress',
-      'priority': 'High',
-    },
-    {
-      'unit': 'INC-002',
-      'date': '2025-09-02',
-      'type': 'Passenger Misconduct',
-      'reporter': 'Maria Lopez',
-      'status': 'In Progress',
-      'priority': 'Medium',
-    },
-    {
-      'unit': 'INC-003',
-      'date': '2025-09-03',
-      'type': 'Overloading',
-      'reporter': 'Pedro Santos',
-      'status': 'Resolved',
-      'priority': 'Low',
-    },
-    {
-      'unit': 'INC-004',
-      'date': '2025-09-04',
-      'type': 'No Valid ID',
-      'reporter': 'Ana Reyes',
-      'status': 'Closed',
-      'priority': 'Medium',
-    },
-    {
-      'unit': 'INC-005',
-      'date': '2025-09-05',
-      'type': 'Smoking in Vehicle',
-      'reporter': 'Carlos Gomez',
-      'status': 'In Progress',
-      'priority': 'Low',
-    },
-  ];
+  String _searchQuery = '';
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +50,9 @@ class _IncidentReportManagementScreenState
                 ),
               ),
               onChanged: (value) {
-                // Implement search functionality
+                setState(() {
+                  _searchQuery = value.toLowerCase();
+                });
               },
             ),
             SizedBox(height: isMobile ? 12 : 16),
@@ -104,7 +64,7 @@ class _IncidentReportManagementScreenState
                 children: [
                   _buildFilterChip('All', isMobile),
                   SizedBox(width: isMobile ? 6 : 8),
-                  _buildFilterChip('New', isMobile),
+                  _buildFilterChip('In Progress', isMobile),
                   SizedBox(width: isMobile ? 6 : 8),
                   _buildFilterChip('Resolved', isMobile),
                   SizedBox(width: isMobile ? 6 : 8),
@@ -114,26 +74,94 @@ class _IncidentReportManagementScreenState
             ),
             SizedBox(height: isMobile ? 12 : 16),
 
-            // Statistics Cards
-            if (isMobile)
-              _buildMobileStats()
-            else if (isTablet)
-              _buildTabletStats()
-            else
-              _buildDesktopStats(),
+            // Statistics Cards with StreamBuilder
+            StreamBuilder<QuerySnapshot>(
+              stream: _firestore.collection('incident_report').snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final incidents = snapshot.data!.docs
+                    .map((doc) => IncidentReport.fromFirestore(doc))
+                    .toList();
+
+                if (isMobile) {
+                  return _buildMobileStats(incidents);
+                } else if (isTablet) {
+                  return _buildTabletStats(incidents);
+                } else {
+                  return _buildDesktopStats(incidents);
+                }
+              },
+            ),
 
             SizedBox(height: isMobile ? 12 : 16),
 
-            // Incidents List/Table
+            // Incidents List/Table with StreamBuilder
             Expanded(
-              child: isMobile
-                  ? _buildIncidentCards()
-                  : _buildIncidentTable(isTablet),
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _firestore
+                    .collection('incident_report')
+                    .orderBy('timestamp', descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(child: Text('No incidents found'));
+                  }
+
+                  var incidents = snapshot.data!.docs
+                      .map((doc) => IncidentReport.fromFirestore(doc))
+                      .toList();
+
+                  // Apply filters
+                  incidents = _applyFilters(incidents);
+
+                  if (incidents.isEmpty) {
+                    return const Center(
+                      child: Text('No incidents match your search'),
+                    );
+                  }
+
+                  return isMobile
+                      ? _buildIncidentCards(incidents)
+                      : _buildIncidentTable(incidents, isTablet);
+                },
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  List<IncidentReport> _applyFilters(List<IncidentReport> incidents) {
+    // Filter by status
+    if (_selectedFilter != 'All') {
+      incidents = incidents
+          .where((incident) => incident.status == _selectedFilter)
+          .toList();
+    }
+
+    // Filter by search query
+    if (_searchQuery.isNotEmpty) {
+      incidents = incidents.where((incident) {
+        return incident.type.toLowerCase().contains(_searchQuery) ||
+            incident.createdBy.toLowerCase().contains(_searchQuery) ||
+            incident.assignedVehicleId.toLowerCase().contains(_searchQuery) ||
+            incident.description.toLowerCase().contains(_searchQuery);
+      }).toList();
+    }
+
+    return incidents;
   }
 
   Widget _buildFilterChip(String label, bool isMobile) {
@@ -154,13 +182,10 @@ class _IncidentReportManagementScreenState
   }
 
   // Mobile: Vertical stacked stats
-  Widget _buildMobileStats() {
-    final inProgressCount = incidents
-        .where((incident) => incident['status'] == 'In Progress')
-        .length;
-    final resolvedCount = incidents
-        .where((incident) => incident['status'] == 'Resolved')
-        .length;
+  Widget _buildMobileStats(List<IncidentReport> incidents) {
+    final inProgressCount =
+        incidents.where((i) => i.status == 'In Progress').length;
+    final resolvedCount = incidents.where((i) => i.status == 'Resolved').length;
 
     return Column(
       children: [
@@ -168,11 +193,11 @@ class _IncidentReportManagementScreenState
           children: [
             Expanded(
               child: _StatCard(
-                title: 'New',
+                title: 'Total',
                 value: incidents.length.toString(),
               ),
             ),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Expanded(
               child: _StatCard(
                 title: 'In Progress',
@@ -181,34 +206,31 @@ class _IncidentReportManagementScreenState
             ),
           ],
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         _StatCard(title: 'Resolved', value: resolvedCount.toString()),
       ],
     );
   }
 
   // Tablet: Three columns
-  Widget _buildTabletStats() {
-    final inProgressCount = incidents
-        .where((incident) => incident['status'] == 'In Progress')
-        .length;
-    final resolvedCount = incidents
-        .where((incident) => incident['status'] == 'Resolved')
-        .length;
+  Widget _buildTabletStats(List<IncidentReport> incidents) {
+    final inProgressCount =
+        incidents.where((i) => i.status == 'In Progress').length;
+    final resolvedCount = incidents.where((i) => i.status == 'Resolved').length;
 
     return Row(
       children: [
         Expanded(
-          child: _StatCard(title: 'New', value: incidents.length.toString()),
+          child: _StatCard(title: 'Total', value: incidents.length.toString()),
         ),
-        SizedBox(width: 10),
+        const SizedBox(width: 10),
         Expanded(
           child: _StatCard(
             title: 'In Progress',
             value: inProgressCount.toString(),
           ),
         ),
-        SizedBox(width: 10),
+        const SizedBox(width: 10),
         Expanded(
           child: _StatCard(title: 'Resolved', value: resolvedCount.toString()),
         ),
@@ -217,27 +239,24 @@ class _IncidentReportManagementScreenState
   }
 
   // Desktop: Three columns with more spacing
-  Widget _buildDesktopStats() {
-    final inProgressCount = incidents
-        .where((incident) => incident['status'] == 'In Progress')
-        .length;
-    final resolvedCount = incidents
-        .where((incident) => incident['status'] == 'Resolved')
-        .length;
+  Widget _buildDesktopStats(List<IncidentReport> incidents) {
+    final inProgressCount =
+        incidents.where((i) => i.status == 'In Progress').length;
+    final resolvedCount = incidents.where((i) => i.status == 'Resolved').length;
 
     return Row(
       children: [
         Expanded(
-          child: _StatCard(title: 'New', value: incidents.length.toString()),
+          child: _StatCard(title: 'Total', value: incidents.length.toString()),
         ),
-        SizedBox(width: 12),
+        const SizedBox(width: 12),
         Expanded(
           child: _StatCard(
             title: 'In Progress',
             value: inProgressCount.toString(),
           ),
         ),
-        SizedBox(width: 12),
+        const SizedBox(width: 12),
         Expanded(
           child: _StatCard(title: 'Resolved', value: resolvedCount.toString()),
         ),
@@ -246,7 +265,7 @@ class _IncidentReportManagementScreenState
   }
 
   // Mobile card view
-  Widget _buildIncidentCards() {
+  Widget _buildIncidentCards(List<IncidentReport> incidents) {
     return ListView.builder(
       itemCount: incidents.length,
       itemBuilder: (context, index) {
@@ -256,7 +275,7 @@ class _IncidentReportManagementScreenState
           elevation: 2,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           child: InkWell(
-            onTap: () => _showIncidentDetails(context, incident, index),
+            onTap: () => _showIncidentDetails(context, incident),
             borderRadius: BorderRadius.circular(8),
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -269,7 +288,7 @@ class _IncidentReportManagementScreenState
                     children: [
                       Expanded(
                         child: Text(
-                          incident['unit'] as String,
+                          'Vehicle: ${incident.assignedVehicleId}',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -283,23 +302,17 @@ class _IncidentReportManagementScreenState
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: _getStatusColor(
-                            incident['status'] as String,
-                          ).withOpacity(0.1),
+                          color: _getStatusColor(incident.status).withAlpha(1),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: _getStatusColor(
-                              incident['status'] as String,
-                            ),
+                            color: _getStatusColor(incident.status),
                             width: 1.5,
                           ),
                         ),
                         child: Text(
-                          incident['status'] as String,
+                          incident.status,
                           style: TextStyle(
-                            color: _getStatusColor(
-                              incident['status'] as String,
-                            ),
+                            color: _getStatusColor(incident.status),
                             fontWeight: FontWeight.bold,
                             fontSize: 11,
                           ),
@@ -313,25 +326,25 @@ class _IncidentReportManagementScreenState
                   _buildCardInfoRow(
                     Icons.calendar_today,
                     'Date',
-                    incident['date'] as String,
+                    _formatDate(incident.timestamp),
                   ),
                   const SizedBox(height: 8),
                   _buildCardInfoRow(
                     Icons.report_problem,
                     'Type',
-                    incident['type'] as String,
+                    incident.type,
                   ),
                   const SizedBox(height: 8),
                   _buildCardInfoRow(
                     Icons.person,
                     'Reporter',
-                    incident['reporter'] as String,
+                    incident.createdBy,
                   ),
                   const SizedBox(height: 8),
                   _buildCardInfoRow(
-                    Icons.priority_high,
-                    'Priority',
-                    incident['priority'] as String,
+                    Icons.location_on,
+                    'Location',
+                    incident.location,
                   ),
                   const SizedBox(height: 12),
 
@@ -339,8 +352,7 @@ class _IncidentReportManagementScreenState
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton.icon(
-                      onPressed: () =>
-                          _showIncidentDetails(context, incident, index),
+                      onPressed: () => _showIncidentDetails(context, incident),
                       icon: const Icon(Icons.more_horiz, size: 18),
                       label: const Text('View Details'),
                       style: TextButton.styleFrom(
@@ -386,7 +398,7 @@ class _IncidentReportManagementScreenState
   }
 
   // Tablet/Desktop table view
-  Widget _buildIncidentTable(bool isTablet) {
+  Widget _buildIncidentTable(List<IncidentReport> incidents, bool isTablet) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -414,34 +426,32 @@ class _IncidentReportManagementScreenState
             ),
             dataTextStyle: TextStyle(fontSize: isTablet ? 12 : 14),
             columns: const [
-              DataColumn(label: Text('UNIT')),
+              DataColumn(label: Text('Vehicle')),
               DataColumn(label: Text('Date')),
               DataColumn(label: Text('Type')),
               DataColumn(label: Text('Reporter')),
               DataColumn(label: Text('Status')),
               DataColumn(label: Text('Actions')),
             ],
-            rows: incidents.asMap().entries.map((entry) {
-              final index = entry.key;
-              final incident = entry.value;
+            rows: incidents.map((incident) {
               return DataRow(
                 cells: [
                   DataCell(
                     Text(
-                      incident['unit'] as String,
+                      incident.assignedVehicleId,
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
-                  DataCell(Text(incident['date'] as String)),
+                  DataCell(Text(_formatDate(incident.timestamp))),
                   DataCell(
                     Text(
-                      incident['type'] as String,
+                      incident.type,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   DataCell(
                     Text(
-                      incident['reporter'] as String,
+                      incident.createdBy,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -452,18 +462,16 @@ class _IncidentReportManagementScreenState
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: _getStatusColor(
-                          incident['status'] as String,
-                        ).withOpacity(0.1),
+                        color: _getStatusColor(incident.status).withAlpha(1),
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color: _getStatusColor(incident['status'] as String),
+                          color: _getStatusColor(incident.status),
                         ),
                       ),
                       child: Text(
-                        incident['status'] as String,
+                        incident.status,
                         style: TextStyle(
-                          color: _getStatusColor(incident['status'] as String),
+                          color: _getStatusColor(incident.status),
                           fontWeight: FontWeight.bold,
                           fontSize: isTablet ? 11 : 12,
                         ),
@@ -478,8 +486,7 @@ class _IncidentReportManagementScreenState
                         size: isTablet ? 18 : 20,
                         color: const Color(0xFF0D2364),
                       ),
-                      onPressed: () =>
-                          _showIncidentDetails(context, incident, index),
+                      onPressed: () => _showIncidentDetails(context, incident),
                       tooltip: 'View Details',
                     ),
                   ),
@@ -492,6 +499,10 @@ class _IncidentReportManagementScreenState
     );
   }
 
+  String _formatDate(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
   Color _getStatusColor(String status) {
     switch (status) {
       case 'In Progress':
@@ -501,15 +512,11 @@ class _IncidentReportManagementScreenState
       case 'Closed':
         return Colors.grey;
       default:
-        return Colors.grey;
+        return Colors.blue;
     }
   }
 
-  void _showIncidentDetails(
-    BuildContext context,
-    Map<String, dynamic> incident,
-    int index,
-  ) {
+  void _showIncidentDetails(BuildContext context, IncidentReport incident) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
 
@@ -520,9 +527,11 @@ class _IncidentReportManagementScreenState
           title: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Incident Details - ${incident['unit']}',
-                style: TextStyle(fontSize: isMobile ? 16 : 18),
+              Flexible(
+                child: Text(
+                  'Incident Details',
+                  style: TextStyle(fontSize: isMobile ? 16 : 18),
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.close),
@@ -540,33 +549,41 @@ class _IncidentReportManagementScreenState
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _DetailRow(title: 'UNIT:', value: incident['unit'] as String),
-                  _DetailRow(title: 'Date:', value: incident['date'] as String),
-                  _DetailRow(title: 'Type:', value: incident['type'] as String),
                   _DetailRow(
-                    title: 'Reporter:',
-                    value: incident['reporter'] as String,
+                    title: 'Vehicle ID:',
+                    value: incident.assignedVehicleId,
                   ),
                   _DetailRow(
-                    title: 'Priority:',
-                    value: incident['priority'] as String,
+                    title: 'Date:',
+                    value: _formatDate(incident.timestamp),
                   ),
+                  _DetailRow(title: 'Type:', value: incident.type),
+                  _DetailRow(title: 'Reporter:', value: incident.createdBy),
+                  _DetailRow(title: 'Location:', value: incident.location),
                   _DetailRow(
-                    title: 'Status:',
-                    value: incident['status'] as String,
+                    title: 'Persons Involved:',
+                    value: incident.persons,
                   ),
+                  _DetailRow(title: 'Status:', value: incident.status),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Description:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(incident.description),
                 ],
               ),
             ),
           ),
           actions: [
-            if (incident['status'] != 'Closed')
+            if (incident.status != 'Closed')
               TextButton(
                 onPressed: () {
-                  Navigator.pop(context); // Close details dialog
-                  _showEditIncidentDialog(context, incident, index);
+                  Navigator.pop(context);
+                  _showEditIncidentDialog(context, incident);
                 },
-                child: const Text('Edit'),
+                child: const Text('Edit Status'),
               ),
           ],
         );
@@ -575,215 +592,124 @@ class _IncidentReportManagementScreenState
   }
 
   void _showEditIncidentDialog(
-    BuildContext context,
-    Map<String, dynamic> incident,
-    int index,
-  ) {
+      BuildContext context,
+      IncidentReport incident,
+      ) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
 
-    // Create editable copies of the fields
-    TextEditingController unitController = TextEditingController(
-      text: incident['unit'],
-    );
-    TextEditingController dateController = TextEditingController(
-      text: incident['date'],
-    );
-    TextEditingController typeController = TextEditingController(
-      text: incident['type'],
-    );
-    TextEditingController reporterController = TextEditingController(
-      text: incident['reporter'],
-    );
-    String selectedPriority = incident['priority'];
-    String selectedStatus = incident['status'];
+    String selectedStatus = incident.status;
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Edit Incident - ${incident['unit']}',
-                style: TextStyle(fontSize: isMobile ? 16 : 18),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.pop(context),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                iconSize: 20,
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: isMobile ? double.maxFinite : 400,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildEditField('UNIT', unitController),
-                  const SizedBox(height: 12),
-                  _buildEditField('Date', dateController),
-                  const SizedBox(height: 12),
-                  _buildEditField('Type', typeController),
-                  const SizedBox(height: 12),
-                  _buildEditField('Reporter', reporterController),
-                  const SizedBox(height: 12),
-
-                  // Priority Dropdown
-                  Text(
-                    'Priority:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: isMobile ? 13 : 14,
+                  Flexible(
+                    child: Text(
+                      'Edit Incident Status',
+                      style: TextStyle(fontSize: isMobile ? 16 : 18),
                     ),
                   ),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedPriority,
-                    items: ['High', 'Medium', 'Low'].map((String priority) {
-                      return DropdownMenuItem<String>(
-                        value: priority,
-                        child: Text(priority),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      selectedPriority = newValue!;
-                    },
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    iconSize: 20,
                   ),
-                  const SizedBox(height: 12),
-
-                  // Status Dropdown
-                  Text(
-                    'Status:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: isMobile ? 13 : 14,
-                    ),
-                  ),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedStatus,
-                    items: ['In Progress', 'Resolved', 'Closed'].map((
-                      String status,
-                    ) {
-                      return DropdownMenuItem<String>(
-                        value: status,
-                        child: Text(status),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      selectedStatus = newValue!;
-                    },
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                  ),
-
-                  if (selectedStatus == 'Closed')
-                    const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Text(
-                        'Note: This incident will be moved to ARCHIVED.',
-                        style: TextStyle(color: Colors.orange, fontSize: 12),
-                      ),
-                    ),
                 ],
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                _saveIncidentChanges(
-                  index,
-                  unitController.text,
-                  dateController.text,
-                  typeController.text,
-                  reporterController.text,
-                  selectedPriority,
-                  selectedStatus,
-                );
-                Navigator.pop(context);
-
-                // Show success message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Incident ${unitController.text} has been saved',
+              content: SizedBox(
+                width: isMobile ? double.maxFinite : 400,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Status:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: isMobile ? 13 : 14,
+                      ),
                     ),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              },
-              child: const Text('Save'),
-            ),
-          ],
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: selectedStatus,
+                      items: ['In Progress', 'Resolved', 'Closed']
+                          .map((String status) {
+                        return DropdownMenuItem<String>(
+                          value: status,
+                          child: Text(status),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setDialogState(() {
+                          selectedStatus = newValue!;
+                        });
+                      },
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                      ),
+                    ),
+                    if (selectedStatus == 'Closed')
+                      const Padding(
+                        padding: EdgeInsets.only(top: 12.0),
+                        child: Text(
+                          'Note: Closed incidents will be archived.',
+                          style: TextStyle(color: Colors.orange, fontSize: 12),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    try {
+                      // Update Firestore
+                      await _firestore
+                          .collection('incident_report')
+                          .doc(incident.id)
+                          .update({'status': selectedStatus});
+
+                      Navigator.pop(context);
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Incident status updated successfully'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error updating status: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
-  }
-
-  Widget _buildEditField(String label, TextEditingController controller) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('$label:', style: const TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _saveIncidentChanges(
-    int index,
-    String unit,
-    String date,
-    String type,
-    String reporter,
-    String priority,
-    String status,
-  ) {
-    setState(() {
-      incidents[index] = {
-        'unit': unit,
-        'date': date,
-        'type': type,
-        'reporter': reporter,
-        'priority': priority,
-        'status': status,
-      };
-
-      // If status is 'Closed', move to archived (in real app, this would be a database operation)
-      if (status == 'Closed') {
-        // Here you would move the incident to your archived database
-        print('Moving incident $unit to ARCHIVED database');
-        // In a real app, you would remove it from the active list and add to archived
-      }
-    });
   }
 }
 
@@ -849,7 +775,7 @@ class _DetailRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: isMobile ? 80 : 100,
+            width: isMobile ? 110 : 130,
             child: Text(
               title,
               style: TextStyle(
