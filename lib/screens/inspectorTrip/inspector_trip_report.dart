@@ -38,27 +38,26 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
 
   List<Map<String, String>> submittedForms = [];
 
-  // Controllers for editable table cells
-  List<List<TextEditingController>> tableControllers = List.generate(
-    5,
-    (row) => List.generate(
-      6,
-      (col) => TextEditingController()..text = _getDefaultValue(row),
-    ),
+  // Controllers for UNIT NO. ROW
+  List<TextEditingController> unitNoControllers = List.generate(
+    6,
+    (index) => TextEditingController()..text = _getDefaultValue(index),
   );
 
-  static String _getDefaultValue(int row) {
-    switch (row) {
+  static String _getDefaultValue(int index) {
+    switch (index) {
       case 0:
-        return '44';
+        return '20';
       case 1:
-        return '10';
+        return '15';
       case 2:
-        return '02';
+        return '10';
       case 3:
-        return '05';
+        return '5';
       case 4:
-        return '02';
+        return '2';
+      case 5:
+        return '1';
       default:
         return '';
     }
@@ -67,10 +66,8 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
   @override
   void dispose() {
     // Dispose all text controllers
-    for (var row in tableControllers) {
-      for (var controller in row) {
-        controller.dispose();
-      }
+    for (var controller in unitNoControllers) {
+      controller.dispose();
     }
     super.dispose();
   }
@@ -233,54 +230,239 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
 
                               const SizedBox(height: 20),
 
-                              // Ticket Log Button - Responsive
-                              Center(
-                                child: SizedBox(
-                                  width: constraints.maxWidth < 600 ? 150 : 200,
-                                  height: 50,
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      _showTicketLogDialog();
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF0D2364),
-                                      foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      'Ticket log',
+                              // UNIT NO. ROW Section
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey[400]!),
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: Colors.white,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'UNIT NO.',
                                       style: TextStyle(
-                                        fontSize: constraints.maxWidth < 600
-                                            ? 16
-                                            : 18,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF0D2364),
                                       ),
                                     ),
-                                  ),
+                                    const SizedBox(height: 12),
+
+                                    // SINGLE ROW table for UNIT NO. (20, 15, 10, 5, 2, 1)
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: Colors.grey[400]!,
+                                        ),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          // Header Row
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF0D2364),
+                                              border: Border(
+                                                bottom: BorderSide(
+                                                  color: Colors.grey[400]!,
+                                                ),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                for (
+                                                  int i = 0;
+                                                  i < unitNoControllers.length;
+                                                  i++
+                                                )
+                                                  Expanded(
+                                                    child: Center(
+                                                      child: Text(
+                                                        unitNoControllers[i]
+                                                            .text,
+                                                        style: TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+
+                                          // SINGLE Editable Row
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              border: Border(
+                                                bottom: BorderSide(
+                                                  color: Colors.grey[400]!,
+                                                ),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                for (
+                                                  int i = 0;
+                                                  i < unitNoControllers.length;
+                                                  i++
+                                                )
+                                                  Expanded(
+                                                    child: Container(
+                                                      decoration: BoxDecoration(
+                                                        border: Border(
+                                                          right:
+                                                              i ==
+                                                                  unitNoControllers
+                                                                          .length -
+                                                                      1
+                                                              ? BorderSide.none
+                                                              : BorderSide(
+                                                                  color: Colors
+                                                                      .grey[400]!,
+                                                                ),
+                                                        ),
+                                                      ),
+                                                      child: Padding(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 8,
+                                                              vertical: 12,
+                                                            ),
+                                                        child: TextField(
+                                                          controller:
+                                                              unitNoControllers[i],
+                                                          textAlign:
+                                                              TextAlign.center,
+                                                          keyboardType:
+                                                              TextInputType
+                                                                  .number,
+                                                          decoration:
+                                                              const InputDecoration(
+                                                                border:
+                                                                    InputBorder
+                                                                        .none,
+                                                                contentPadding:
+                                                                    EdgeInsets
+                                                                        .zero,
+                                                                isDense: true,
+                                                                hintText: '0',
+                                                              ),
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 14,
+                                                                color: Colors
+                                                                    .black,
+                                                              ),
+                                                          onChanged: (value) {
+                                                            if (value
+                                                                    .isNotEmpty &&
+                                                                !RegExp(
+                                                                  r'^[0-9]*$',
+                                                                ).hasMatch(
+                                                                  value,
+                                                                )) {
+                                                              unitNoControllers[i]
+                                                                  .text = value
+                                                                  .replaceAll(
+                                                                    RegExp(
+                                                                      r'[^0-9]',
+                                                                    ),
+                                                                    '',
+                                                                  );
+                                                              unitNoControllers[i]
+                                                                      .selection =
+                                                                  TextSelection.fromPosition(
+                                                                    TextPosition(
+                                                                      offset: unitNoControllers[i]
+                                                                          .text
+                                                                          .length,
+                                                                    ),
+                                                                  );
+                                                            }
+                                                          },
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
 
                               const SizedBox(height: 20),
 
-                              // Single Save & Submit Button
-                              SizedBox(
-                                height: 50,
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: _saveAndSubmit,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF0D2364),
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                              // Buttons Row
+                              Row(
+                                children: [
+                                  // History Button
+                                  Expanded(
+                                    child: Container(
+                                      margin: const EdgeInsets.only(right: 8),
+                                      child: ElevatedButton(
+                                        onPressed: _showHistory,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Color(0xFF0D2364),
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 15,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'History',
+                                          style: TextStyle(fontSize: 16),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  child: const Text(
-                                    'Save & Submit',
-                                    style: TextStyle(fontSize: 16),
+
+                                  // Save & Submit Button
+                                  Expanded(
+                                    child: Container(
+                                      margin: const EdgeInsets.only(left: 8),
+                                      child: ElevatedButton(
+                                        onPressed: _saveAndSubmit,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(
+                                            0xFF0D2364,
+                                          ),
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 15,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Save & Submit',
+                                          style: TextStyle(fontSize: 16),
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
                             ],
                           ),
@@ -298,10 +480,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
   }
 
   Widget _buildTimePickerField(
-      String label,
-      TextEditingController controller, {
-        Color textColor = Colors.black,
-      }) {
+    String label,
+    TextEditingController controller, {
+    Color textColor = Colors.black,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -399,7 +581,7 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
     );
   }
 
-  void _showTicketLogDialog() {
+  void _showHistory() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -414,95 +596,121 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
               maxWidth: MediaQuery.of(context).size.width * 0.9,
               maxHeight: MediaQuery.of(context).size.height * 0.8,
             ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Ticket Log',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0D2364),
-                    ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Submission History',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0D2364),
                   ),
-                  const SizedBox(height: 20),
+                ),
+                const SizedBox(height: 20),
 
-                  // UPDATED TABLE DESIGN - Matching the image
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey[400]!, width: 1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Column(
-                      children: [
-                        // Header Row
-                        Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Colors.grey[400]!,
-                              width: 1,
-                            ),
-                            color: Colors.white,
-                          ),
-                          child: Row(
-                            children: [
-                              _buildTableHeaderCell('20'),
-                              _buildTableHeaderCell('15'),
-                              _buildTableHeaderCell('10'),
-                              _buildTableHeaderCell('5'),
-                              _buildTableHeaderCell('2'),
-                              _buildTableHeaderCell('1'),
-                            ],
-                          ),
-                        ),
+                // History List
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('inspector_trip')
+                        .where(
+                          'uid',
+                          isEqualTo: FirebaseAuth.instance.currentUser?.uid,
+                        )
+                        .orderBy('timestamp', descending: true)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                        // Editable Rows
-                        for (int row = 0; row < 5; row++)
-                          Container(
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'No submission history found',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        );
+                      }
+
+                      final docs = snapshot.data!.docs;
+
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final data =
+                              docs[index].data() as Map<String, dynamic>;
+                          final timestamp = data['timestamp'] as Timestamp?;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Colors.grey[400]!,
-                                width: 1,
-                              ),
-                              color: Colors.white,
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey[300]!),
                             ),
-                            child: Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                for (int col = 0; col < 6; col++)
-                                  _buildEditableTableCell(row, col),
+                                Text(
+                                  'Unit: ${data['unitNumber'] ?? 'N/A'}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text('Driver: ${data['driverName'] ?? 'N/A'}'),
+                                Text(
+                                  'Conductor: ${data['conductorName'] ?? 'N/A'}',
+                                ),
+                                Text(
+                                  'Time: ${data['inspectionTime'] ?? 'N/A'}',
+                                ),
+                                if (timestamp != null)
+                                  Text(
+                                    'Submitted: ${_formatTimestamp(timestamp)}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
                               ],
                             ),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 25),
-                  const Divider(),
-                  const SizedBox(height: 15),
-
-                  Center(
-                    child: SizedBox(
-                      width: 120,
-                      height: 45,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
+                          );
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0D2364),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+                const Divider(),
+                const SizedBox(height: 15),
+
+                Center(
+                  child: SizedBox(
+                    width: 120,
+                    height: 45,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0D2364),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text('Close'),
                       ),
+                      child: const Text('Close'),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
@@ -510,63 +718,9 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
     );
   }
 
-  // UPDATED: Helper methods for table cells - Matching image design
-  Widget _buildTableHeaderCell(String text) {
-    return Expanded(
-      child: Container(
-        height: 40,
-        decoration: BoxDecoration(
-          border: Border(right: BorderSide(color: Colors.grey[400]!, width: 1)),
-        ),
-        child: Center(
-          child: Text(
-            text,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0D2364), // BLUE TEXT
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEditableTableCell(int row, int col) {
-    return Expanded(
-      child: Container(
-        height: 40,
-        decoration: BoxDecoration(
-          border: Border(right: BorderSide(color: Colors.grey[400]!, width: 1)),
-        ),
-        child: TextField(
-          controller: tableControllers[row][col],
-          textAlign: TextAlign.center,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            border: InputBorder.none,
-            contentPadding: EdgeInsets.zero,
-            isDense: true,
-            hintText: '0',
-          ),
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black,
-          ),
-          onChanged: (value) {
-            if (value.isNotEmpty && !RegExp(r'^[0-9]*$').hasMatch(value)) {
-              tableControllers[row][col].text = value.replaceAll(
-                RegExp(r'[^0-9]'),
-                '',
-              );
-              tableControllers[row][col].selection = TextSelection.fromPosition(
-                TextPosition(offset: tableControllers[row][col].text.length),
-              );
-            }
-          },
-        ),
-      ),
-    );
+  String _formatTimestamp(Timestamp timestamp) {
+    final date = timestamp.toDate();
+    return '${date.month}/${date.day}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   void _saveAndSubmit() async {
@@ -594,14 +748,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
       return;
     }
 
-    // Convert ticket log table to List<Map<String, String>>
-    List<Map<String, String>> ticketLogData = [];
-    for (int row = 0; row < tableControllers.length; row++) {
-      Map<String, String> rowData = {};
-      for (int col = 0; col < tableControllers[row].length; col++) {
-        rowData['col$col'] = tableControllers[row][col].text;
-      }
-      ticketLogData.add(rowData);
+    // Convert UNIT NO. row to List<String>
+    List<String> unitNoData = [];
+    for (var controller in unitNoControllers) {
+      unitNoData.add(controller.text);
     }
 
     Map<String, dynamic> formData = {
@@ -612,7 +762,7 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
       'noOfPass': noOfPassController.text,
       'location': locationController.text,
       'noOfTrips': noOfTripsController.text,
-      'ticketLog': ticketLogData,
+      'unitNoData': unitNoData,
       'uid': user.uid,
       'timestamp': FieldValue.serverTimestamp(),
     };
@@ -631,10 +781,8 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
       locationController.clear();
       noOfTripsController.clear();
 
-      for (var row in tableControllers) {
-        for (var cell in row) {
-          cell.clear();
-        }
+      for (var controller in unitNoControllers) {
+        controller.clear();
       }
 
       if (mounted) {

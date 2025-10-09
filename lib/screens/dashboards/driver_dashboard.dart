@@ -106,6 +106,7 @@ class _DriverDashboardState extends State<DriverDashboard>
     with WidgetsBindingObserver {
   int _currentIndex = 0;
   late List<Widget> _screens;
+  bool _hasShownPasswordReminder = false;
 
   final TrackingService trackingService = TrackingService();
 
@@ -115,6 +116,83 @@ class _DriverDashboardState extends State<DriverDashboard>
     WidgetsBinding.instance.addObserver(this);
     _screens = [];
     _initializeTracking();
+    _checkIfNewAccount();
+  }
+
+  // Check if this is a new account that needs password change
+  Future<void> _checkIfNewAccount() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Check user creation time - if account was created within the last 24 hours, consider it new
+        final userCreationTime = user.metadata.creationTime;
+        final now = DateTime.now();
+
+        if (userCreationTime != null) {
+          final hoursSinceCreation = now.difference(userCreationTime).inHours;
+
+          // Consider account as "new" if created within last 24 hours AND hasn't shown reminder yet
+          final isNewAccount = hoursSinceCreation < 24;
+
+          if (isNewAccount && !_hasShownPasswordReminder) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _showPasswordChangeReminder();
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking account status: $e');
+    }
+  }
+
+  void _showPasswordChangeReminder() {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Password Change Required',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'For security reasons, please change your password in the Personal Details section.',
+              style: TextStyle(color: Colors.white, fontSize: 14),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.orange[800],
+        duration: Duration(seconds: 6),
+        action: SnackBarAction(
+          label: 'Change Now',
+          textColor: Colors.white,
+          onPressed: () {
+            // Navigate to Personal Details page
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PersonalDetails(user: widget.user),
+              ),
+            );
+          },
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+
+    setState(() {
+      _hasShownPasswordReminder = true;
+    });
   }
 
   @override

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/app_user.dart';
 import '../Personaldetailed/conductor.dart';
 import '../workSchedule/conductor_workschedule.dart';
@@ -18,11 +19,89 @@ class ConductorDashboard extends StatefulWidget {
 class _ConductorDashboardState extends State<ConductorDashboard> {
   int _currentIndex = 0;
   late List<Widget> _screens;
+  bool _hasShownPasswordReminder = false;
 
   @override
   void initState() {
     super.initState();
     _screens = [];
+    _checkIfNewAccount();
+  }
+
+  // Check if this is a new account that needs password change
+  Future<void> _checkIfNewAccount() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Check user creation time - if account was created within the last 24 hours, consider it new
+        final userCreationTime = user.metadata.creationTime;
+        final now = DateTime.now();
+
+        if (userCreationTime != null) {
+          final hoursSinceCreation = now.difference(userCreationTime).inHours;
+
+          // Consider account as "new" if created within last 24 hours AND hasn't shown reminder yet
+          final isNewAccount = hoursSinceCreation < 24;
+
+          if (isNewAccount && !_hasShownPasswordReminder) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _showPasswordChangeReminder();
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking account status: $e');
+    }
+  }
+
+  void _showPasswordChangeReminder() {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Password Change Required',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'For security reasons, please change your password in the Personal Details section.',
+              style: TextStyle(color: Colors.white, fontSize: 14),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.orange[800],
+        duration: Duration(seconds: 6),
+        action: SnackBarAction(
+          label: 'Change Now',
+          textColor: Colors.white,
+          onPressed: () {
+            // Navigate to Personal Details page
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PersonalDetails(user: widget.user),
+              ),
+            );
+          },
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+
+    setState(() {
+      _hasShownPasswordReminder = true;
+    });
   }
 
   @override
@@ -205,50 +284,142 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
 
               const SizedBox(height: 32),
 
-              // Time Logs Card
+              // UPDATED: Passenger Count Card - BLUE CONTAINER WITH WHITE TEXT
               Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: isMobile ? 16.0 : 24.0,
                 ),
                 child: InkWell(
                   onTap: () {
-                    // Add navigation to time logs
+                    // Add navigation to passenger count details
                   },
                   child: Container(
                     width: double.infinity,
                     padding: EdgeInsets.all(isMobile ? 16 : 20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0D2364),
+                      color: const Color(0xFF0D2364), // BLUE CONTAINER
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withAlpha(1),
+                          color: Colors.black.withOpacity(0.1),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.access_time,
-                          color: Colors.white,
-                          size: isMobile ? 24 : 28,
+                        // Header with date - WHITE TEXT
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Today | Monday | 06/06/06",
+                              style: TextStyle(
+                                color: Colors.white, // WHITE TEXT
+                                fontSize: isMobile ? 14 : 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                        SizedBox(width: isMobile ? 12 : 16),
+                        const SizedBox(height: 12),
+
+                        // Unit number - WHITE TEXT
                         Text(
-                          "Time Logs",
+                          "UNIT 20",
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: isMobile ? 16 : 18,
-                            fontWeight: FontWeight.w600,
+                            color: Colors.white, // WHITE TEXT
+                            fontSize: isMobile ? 20 : 24,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.0,
                           ),
                         ),
-                        const Spacer(),
-                        const Icon(
-                          Icons.arrow_forward_ios,
-                          color: Colors.white,
-                          size: 18,
+                        const SizedBox(height: 16),
+
+                        // Passenger Count Title - WHITE TEXT
+                        Text(
+                          "Passenger Count",
+                          style: TextStyle(
+                            color: Colors.white, // WHITE TEXT
+                            fontSize: isMobile ? 16 : 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Description text - WHITE TEXT
+                        Text(
+                          "Total passenger from latest ticket inspection:",
+                          style: TextStyle(
+                            fontSize: isMobile ? 14 : 16,
+                            color: Colors.white, // WHITE TEXT
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Passenger count and time - WHITE BACKGROUND WITH BLUE TEXT
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.5),
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.white, // WHITE BACKGROUND
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              // 20 Passengers
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF0D2364,
+                                  ), // BLUE BACKGROUND
+                                  border: Border.all(color: Colors.white),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  '20 Passengers',
+                                  style: TextStyle(
+                                    fontSize: isMobile ? 14 : 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white, // WHITE TEXT
+                                  ),
+                                ),
+                              ),
+
+                              // 9:00 AM
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF0D2364,
+                                  ), // BLUE BACKGROUND
+                                  border: Border.all(color: Colors.white),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  '9:00 AM',
+                                  style: TextStyle(
+                                    fontSize: isMobile ? 14 : 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white, // WHITE TEXT
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),

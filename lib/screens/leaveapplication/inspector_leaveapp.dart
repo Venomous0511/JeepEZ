@@ -16,10 +16,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
   DateTime? _startDate;
   DateTime? _endDate;
 
-  final List<String> _leaveTypes = [
-    'Sick Leave',
-    'Vacation Leave',
-  ];
+  final List<String> _leaveTypes = ['Sick Leave', 'Vacation Leave'];
 
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
@@ -34,9 +31,9 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
         // Get current user UID
         final user = FirebaseAuth.instance.currentUser;
         if (user == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('User not logged in.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('User not logged in.')));
           return;
         }
 
@@ -63,7 +60,8 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('Leave application submitted successfully!')),
+              content: Text('Leave application submitted successfully!'),
+            ),
           );
         }
 
@@ -154,7 +152,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                 color: Color(0xFF0D2364),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             ...docs.map((doc) {
               final data = doc.data() as Map<String, dynamic>;
               final leaveType = data['leaveType'] ?? 'N/A';
@@ -164,8 +162,9 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
               final reason = data['reason'] ?? 'No reason provided';
 
               return Container(
+                width: double.infinity,
                 margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
                   border: Border.all(color: Colors.grey.shade300),
@@ -213,7 +212,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                   ],
                 ),
               );
-            }).toList(),
+            }),
           ],
         );
       },
@@ -232,8 +231,10 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
         final screenWidth = MediaQuery.of(context).size.width;
         final screenHeight = MediaQuery.of(context).size.height;
 
-        final double popupWidth = screenWidth > 500 ? 420 : screenWidth * 0.9;
-        final double popupHeight = screenHeight > 600 ? 520 : screenHeight * 0.8;
+        final double popupWidth = screenWidth > 500 ? 500 : screenWidth * 0.9;
+        final double popupHeight = screenHeight > 600
+            ? 520
+            : screenHeight * 0.8;
 
         return Center(
           child: ConstrainedBox(
@@ -283,234 +284,239 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      appBar: AppBar(backgroundColor: const Color(0xFF0D2364)),
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            bool isWide = constraints.maxWidth > 600;
-
-            return Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: isWide ? 600 : double.infinity,
-                ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.zero, // Remove all padding
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                // Header Section - Full width
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(isMobile ? 20.0 : 24.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D2364),
+                    borderRadius: BorderRadius.zero, // Remove border radius
+                  ),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeader(),
-                      const SizedBox(height: 20),
-                      _buildFormCard(),
+                      Text(
+                        "Leave Application",
+                        style: TextStyle(
+                          fontSize: isMobile ? 22 : 26,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Easily file your leave request with automatic details.",
+                        style: TextStyle(
+                          fontSize: isMobile ? 14 : 16,
+                          color: Colors.white70,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ),
-            );
-          },
+
+                // Form Section - Full width
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(isMobile ? 20.0 : 24.0),
+                  decoration: BoxDecoration(color: Colors.white),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Leave Application Form',
+                          style: TextStyle(
+                            fontSize: isMobile ? 18 : 20,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF0D2364),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Show Submitted Application
+                        _buildSubmittedApplications(),
+
+                        const SizedBox(height: 24),
+
+                        // Type of Leave
+                        _buildFormSection(
+                          label: 'Type of Leave',
+                          isMobile: isMobile,
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedLeaveType,
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: isMobile ? 16 : 18,
+                              ),
+                            ),
+                            items: _leaveTypes.map((String value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
+                                child: Text(
+                                  value,
+                                  style: TextStyle(
+                                    fontSize: isMobile ? 14 : 16,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (newValue) {
+                              setState(() {
+                                _selectedLeaveType = newValue;
+                              });
+                            },
+                            validator: (value) => value == null
+                                ? 'Please select leave type'
+                                : null,
+                          ),
+                        ),
+                        SizedBox(height: isMobile ? 16 : 20),
+
+                        // Date Range Picker
+                        _buildFormSection(
+                          label: 'Select Leave Date Range',
+                          isMobile: isMobile,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton(
+                                  onPressed: () => _selectDateRange(context),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(
+                                      color: Color(0xFF0D2364),
+                                    ),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: isMobile ? 16 : 24,
+                                      vertical: isMobile ? 12 : 16,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Pick Date Range from Calendar',
+                                    style: TextStyle(
+                                      fontSize: isMobile ? 14 : 16,
+                                      color: const Color(0xFF0D2364),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              if (_startDate != null && _endDate != null)
+                                Text(
+                                  '${_formatDate(_startDate!)} - ${_formatDate(_endDate!)} '
+                                  '(${_calculateNumberOfDays()} days)',
+                                  style: TextStyle(
+                                    fontSize: isMobile ? 14 : 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: isMobile ? 16 : 20),
+
+                        // Reason
+                        _buildFormSection(
+                          label: 'Reason for requesting leave:',
+                          isMobile: isMobile,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: Colors.grey.shade400,
+                                width: 1.0,
+                              ),
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child: TextFormField(
+                              controller: _reasonController,
+                              maxLines: 3,
+                              style: TextStyle(fontSize: isMobile ? 14 : 16),
+                              decoration: InputDecoration(
+                                hintText: 'Enter reason for leave',
+                                hintStyle: TextStyle(
+                                  fontSize: isMobile ? 14 : 16,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.all(16.0),
+                              ),
+                              validator: (value) =>
+                                  value!.isEmpty ? 'Required' : null,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: isMobile ? 24 : 32),
+
+                        // Submit Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: isMobile ? 50 : 56,
+                          child: ElevatedButton(
+                            onPressed: _submitForm,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0D2364),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                            ),
+                            child: Text(
+                              'Submit Leave Application',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: isMobile ? 16 : 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0D2364),
-        borderRadius: BorderRadius.circular(12.0),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Leave Application",
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            "Easily file your leave request with automatic details.",
-            style: TextStyle(fontSize: 14, color: Colors.white70),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFormCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withAlpha(30),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: Colors.grey.shade300, width: 1.0),
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Leave Application Form',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0D2364),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Show Submitted Application
-            _buildSubmittedApplications(),
-
-            const SizedBox(height: 20),
-
-            // Type of Leave
-            _buildFormSection(
-              label: 'Type of Leave',
-              child: DropdownButtonFormField<String>(
-                value: _selectedLeaveType,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 16,
-                  ),
-                ),
-                items: _leaveTypes.map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (newValue) {
-                  setState(() {
-                    _selectedLeaveType = newValue;
-                  });
-                },
-                validator: (value) =>
-                value == null ? 'Please select leave type' : null,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Date Range Picker
-            _buildFormSection(
-              label: 'Select Leave Date Range',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  OutlinedButton(
-                    onPressed: () => _selectDateRange(context),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF0D2364)),
-                    ),
-                    child: const Text(
-                      'Pick Date Range from Calendar',
-                      style: TextStyle(
-                        color: Color(0xFF0D2364),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (_startDate != null && _endDate != null)
-                    Text(
-                      '${_formatDate(_startDate!)} - ${_formatDate(_endDate!)} '
-                          '(${_calculateNumberOfDays()} days)',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Reason
-            _buildFormSection(
-              label: 'Reason for requesting leave:',
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.grey.shade400,
-                    width: 1.0,
-                  ),
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
-                child: TextFormField(
-                  controller: _reasonController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter reason for leave',
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(12.0),
-                  ),
-                  validator: (value) =>
-                  value!.isEmpty ? 'Required' : null,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Submit Button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _submitForm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0D2364),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                ),
-                child: const Text(
-                  'Submit Leave Application',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFormSection({required String label, required Widget child}) {
+  Widget _buildFormSection({
+    required String label,
+    required bool isMobile,
+    required Widget child,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: isMobile ? 16 : 18,
             fontWeight: FontWeight.w600,
             color: Colors.grey.shade700,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         child,
       ],
     );

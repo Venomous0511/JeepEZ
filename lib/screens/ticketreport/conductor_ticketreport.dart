@@ -26,7 +26,6 @@ class TicketReportScreen extends StatefulWidget {
 }
 
 class _TicketReportScreenState extends State<TicketReportScreen> {
-  String? selectedTripType;
   bool showTicketTable = false;
 
   // Exact blue color na sinabi mo
@@ -57,106 +56,66 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
               padding: EdgeInsets.all(isSmallScreen ? 16.0 : 20.0),
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Container para sa Title
-                      Container(
-                        margin: EdgeInsets.only(
-                          bottom: isSmallScreen ? 20 : 30,
-                        ),
-                        child: _buildTitle(isSmallScreen),
-                      ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Container para sa Title
+                    Container(
+                      margin: EdgeInsets.only(bottom: isSmallScreen ? 20 : 30),
+                      child: _buildTitle(isSmallScreen),
+                    ),
 
-                      // Container para sa Ticket Report Form
-                      Container(
-                        margin: EdgeInsets.only(
-                          bottom: isSmallScreen ? 20 : 30,
-                        ),
-                        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withAlpha(1),
-                              blurRadius: 5,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: _buildTicketReportForm(isSmallScreen),
-                      ),
-
-                      // Container para sa Divider
-                      Container(
-                        margin: EdgeInsets.only(
-                          bottom: isSmallScreen ? 20 : 30,
-                        ),
-                        child: _buildDivider(),
-                      ),
-
-                      // Container para sa Ticket Log Section
-                      Container(
-                        margin: EdgeInsets.only(
-                          bottom: isSmallScreen ? 15 : 20,
-                        ),
-                        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withAlpha(1),
-                              blurRadius: 5,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: _buildTicketLogSection(isSmallScreen),
-                      ),
-
-                      // Container para sa Ticket Button
-                      Container(
-                        margin: EdgeInsets.only(
-                          bottom: isSmallScreen ? 15 : 20,
-                        ),
-                        child: _buildTicketButton(isSmallScreen),
-                      ),
-
-                      // Container para sa Table (shown when button is pressed)
-                      if (showTicketTable)
-                        Container(
-                          margin: EdgeInsets.only(
-                            bottom: isSmallScreen ? 20 : 30,
+                    // Container para sa Ticket Report Form
+                    Container(
+                      margin: EdgeInsets.only(bottom: isSmallScreen ? 20 : 30),
+                      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withAlpha(1),
+                            blurRadius: 5,
+                            offset: const Offset(0, 2),
                           ),
-                          child: Expanded(
-                            child: _buildTicketTable(isSmallScreen),
-                          ),
-                        ),
+                        ],
+                      ),
+                      child: _buildTicketReportForm(isSmallScreen),
+                    ),
 
-                      // Container para sa Submit Buttons
+                    // Container para sa Ticket Button
+                    Container(
+                      margin: EdgeInsets.only(bottom: isSmallScreen ? 15 : 20),
+                      child: _buildTicketButton(isSmallScreen),
+                    ),
+
+                    // Container para sa Table (shown when button is pressed)
+                    if (showTicketTable)
                       Container(
                         margin: EdgeInsets.only(
-                          bottom: isSmallScreen ? 10 : 15,
+                          bottom: isSmallScreen ? 20 : 30,
                         ),
-                        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withAlpha(1),
-                              blurRadius: 5,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: _buildSubmitButtons(isSmallScreen),
+                        child: _buildTicketTable(isSmallScreen),
                       ),
-                    ],
-                  ),
+
+                    // Container para sa Submit Buttons
+                    Container(
+                      margin: EdgeInsets.only(bottom: isSmallScreen ? 10 : 15),
+                      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withAlpha(1),
+                            blurRadius: 5,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: _buildSubmitButtons(isSmallScreen),
+                    ),
+                  ],
                 ),
               ),
             );
@@ -274,72 +233,6 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
     );
   }
 
-  Widget _buildDivider() {
-    return Container(
-      width: double.infinity,
-      height: 1,
-      color: Colors.grey[300],
-    );
-  }
-
-  Widget _buildTicketLogSection(bool isSmallScreen) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          margin: EdgeInsets.only(bottom: isSmallScreen ? 10 : 15),
-          child: Text(
-            'Ticket Log',
-            style: TextStyle(
-              fontSize: isSmallScreen ? 18 : 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-          ),
-        ),
-
-        // Dropdown
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[400]!),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: DropdownButton<String>(
-              value: selectedTripType,
-              isExpanded: true,
-              underline: const SizedBox(),
-              icon: Icon(
-                isSmallScreen ? Icons.arrow_drop_down : Icons.arrow_drop_down,
-              ),
-              hint: Text(
-                'Select trip type...',
-                style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
-              ),
-              items: const [
-                DropdownMenuItem(
-                  value: 'opening',
-                  child: Text('Opening Ticket at Departure (First Trip)'),
-                ),
-                DropdownMenuItem(
-                  value: 'closing',
-                  child: Text('Closing Ticket at Arrival (Last Trip)'),
-                ),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  selectedTripType = value;
-                });
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildTicketButton(bool isSmallScreen) {
     return SizedBox(
       width: double.infinity,
@@ -435,7 +328,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
         children: [
           Container(
             width: double.infinity,
-            margin: EdgeInsets.only(bottom: 12),
+            margin: const EdgeInsets.only(bottom: 12),
             child: ElevatedButton(
               onPressed: () => _submitTicket('opening'),
               style: ElevatedButton.styleFrom(
@@ -479,7 +372,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
           children: [
             Expanded(
               child: Container(
-                margin: EdgeInsets.only(right: 6),
+                margin: const EdgeInsets.only(right: 6),
                 child: ElevatedButton(
                   onPressed: () => _submitTicket('opening'),
                   style: ElevatedButton.styleFrom(
@@ -499,7 +392,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
             ),
             Expanded(
               child: Container(
-                margin: EdgeInsets.only(left: 6),
+                margin: const EdgeInsets.only(left: 6),
                 child: ElevatedButton(
                   onPressed: () => _submitTicket('closing'),
                   style: ElevatedButton.styleFrom(
@@ -524,16 +417,6 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
   }
 
   void _submitTicket(String type) {
-    if (selectedTripType == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a trip type first.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
     String message = type == 'opening'
         ? 'Opening Ticket submitted successfully!'
         : 'Closing Ticket submitted successfully!';
