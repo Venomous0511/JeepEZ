@@ -66,7 +66,6 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
     return 'LOW';
   }
 
-
   final List<String> _inspectionItems = [
     'Battery',
     'Lights',
@@ -79,59 +78,35 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
     'Tires',
   ];
 
-  final List<ChecklistItem> _checklistItems = [];
-  String? _selectedItem;
+  final Map<String, bool> _checklistItems = {};
   final TextEditingController _defectsController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
 
-  void _addItem() {
-    if (_selectedItem != null &&
-        !_checklistItems.any((item) => item.title == _selectedItem)) {
-      setState(() {
-        _checklistItems.add(
-          ChecklistItem(title: _selectedItem!, checked: false),
-        );
-        _selectedItem = null;
-
-        // Auto-scroll to bottom after adding item
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        });
-      });
-    } else if (_selectedItem != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Item already added to checklist')),
-      );
-    }
-  }
-
-  void _removeItem(int index) {
+  void _toggleItem(String item) {
     setState(() {
-      _checklistItems.removeAt(index);
+      _checklistItems[item] = !(_checklistItems[item] ?? false);
     });
   }
 
   void _submitForm() async {
     if (_checklistItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add items to the checklist')),
+        const SnackBar(
+          content: Text('Please check at least one item in the checklist'),
+        ),
       );
       return;
     }
 
     final defects = _defectsController.text.trim();
+    final hasDefects = defects.isNotEmpty;
 
     try {
       // Get current user
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You must be logged in.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('You must be logged in.')));
         return;
       }
 
@@ -152,23 +127,30 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
 
       final vehicleId = userDoc['assignedVehicle'].toString();
 
-      // If there are defects, add maintenance record
-      if (defects.isNotEmpty) {
-        final priority = _determinePriority(defects);
+      // Get checked items
+      final checkedItems = _checklistItems.entries
+          .where((entry) => entry.value)
+          .map((entry) => entry.key)
+          .toList();
 
-        await FirebaseFirestore.instance
-            .collection('vehicles')
-            .doc(vehicleId)
-            .collection('maintenance')
-            .add({
-          'vehicleId': int.parse(vehicleId),
-          'title': defects,
-          'priority': priority,
-          'issueDate': FieldValue.serverTimestamp(),
-          'createdBy': user.email,
-          'checklistItems': _checklistItems.map((e) => e.title).toList(),
-        });
-      }
+      // Prepare maintenance data
+      final maintenanceData = {
+        'vehicleId': int.parse(vehicleId),
+        'title': hasDefects ? defects : 'No issues found',
+        'priority': hasDefects ? _determinePriority(defects) : 'LOW',
+        'issueDate': FieldValue.serverTimestamp(),
+        'createdBy': user.email,
+        'checklistItems': checkedItems,
+        'hasDefects': hasDefects,
+        'status': 'pending',
+      };
+
+      // Add maintenance record
+      await FirebaseFirestore.instance
+          .collection('vehicles')
+          .doc(vehicleId)
+          .collection('maintenance')
+          .add(maintenanceData);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -176,25 +158,24 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
         );
       }
 
+      // Reset form
       setState(() {
         _checklistItems.clear();
         _defectsController.clear();
+        _currentPriority = '';
       });
-
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error submitting: $e')));
       }
     }
   }
 
-
   @override
   void dispose() {
     _defectsController.dispose();
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -210,7 +191,6 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          controller: _scrollController,
           padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
           child: Column(
             children: [
@@ -269,7 +249,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
 
               SizedBox(height: isMobile ? 5 : 20),
 
-              // Dropdown Section
+              // Multi-Checkbox Section
               Container(
                 width: double.infinity,
                 padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
@@ -289,7 +269,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Select Inspection Item:',
+                      'Select Inspection Items:',
                       style: TextStyle(
                         fontSize: isMobile ? 14 : 16,
                         fontWeight: FontWeight.w600,
@@ -297,210 +277,59 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Colors.grey.shade400,
-                                width: 1.0,
-                              ),
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: _selectedItem,
-                                hint: Text(
-                                  'Choose an item...',
-                                  style: TextStyle(
-                                    fontSize: isMobile ? 13 : 14,
-                                  ),
-                                ),
-                                isExpanded: true,
-                                items: _inspectionItems.map((String item) {
-                                  return DropdownMenuItem<String>(
-                                    value: item,
-                                    child: Text(
-                                      item,
-                                      style: TextStyle(
-                                        fontSize: isMobile ? 13 : 14,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    _selectedItem = newValue;
-                                  });
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton(
-                          onPressed: _addItem,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0D2364),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isMobile ? 16 : 20,
-                              vertical: isMobile ? 12 : 14,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                          ),
-                          child: Text(
-                            'Add',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: isMobile ? 13 : 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: isMobile ? 16 : 20),
 
-              // Checklist Container
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12.0),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withAlpha(1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                  border: Border.all(color: Colors.grey.shade300, width: 1.0),
-                ),
-                child: Column(
-                  children: [
-                    // Table Header - UPDATED: Changed "Actions" to "Remove"
-                    Container(
-                      padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(12.0),
-                          topRight: Radius.circular(12.0),
-                        ),
+                    // Multi-checkbox grid
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: isMobile ? 2 : 3,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                        childAspectRatio: isMobile ? 3 : 4,
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Inspection Item',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: isMobile ? 14 : 16,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          Text(
-                            'Remove',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: isMobile ? 14 : 16,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                      itemCount: _inspectionItems.length,
+                      itemBuilder: (context, index) {
+                        final item = _inspectionItems[index];
+                        final isChecked = _checklistItems[item] ?? false;
 
-                    // Checklist Items - UPDATED: Removed checkbox, changed delete to 'x'
-                    _checklistItems.isEmpty
-                        ? SizedBox(
-                            height: 120,
-                            child: Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(20.0),
-                                child: Text(
-                                  'No items added yet.\nSelect an item from dropdown above.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: isMobile ? 13 : 14,
-                                  ),
-                                ),
+                        return Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: isChecked
+                                  ? const Color(0xFF0D2364)
+                                  : Colors.grey.shade400,
+                              width: isChecked ? 2 : 1,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            color: isChecked
+                                ? const Color(0xFF0D2364).withOpacity(0.1)
+                                : Colors.transparent,
+                          ),
+                          child: CheckboxListTile(
+                            title: Text(
+                              item,
+                              style: TextStyle(
+                                fontSize: isMobile ? 13 : 14,
+                                fontWeight: FontWeight.w500,
+                                color: isChecked
+                                    ? const Color(0xFF0D2364)
+                                    : Colors.black87,
                               ),
                             ),
-                          )
-                        : Column(
-                            children: _checklistItems.asMap().entries.map((
-                              entry,
-                            ) {
-                              final index = entry.key;
-                              final item = entry.value;
-                              return Container(
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    bottom: index < _checklistItems.length - 1
-                                        ? BorderSide(
-                                            color: Colors.grey.shade300,
-                                            width: 1.0,
-                                          )
-                                        : BorderSide.none,
-                                  ),
-                                ),
-                                child: Padding(
-                                  padding: EdgeInsets.all(
-                                    isMobile ? 12.0 : 16.0,
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          item.title,
-                                          style: TextStyle(
-                                            fontSize: isMobile ? 14 : 16,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                      // UPDATED: Removed checkbox, changed to simple 'x' button
-                                      Container(
-                                        width: isMobile ? 32 : 40,
-                                        height: isMobile ? 32 : 40,
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.shade50,
-                                          borderRadius: BorderRadius.circular(
-                                            20,
-                                          ),
-                                          border: Border.all(
-                                            color: Colors.red.shade200,
-                                            width: 1.0,
-                                          ),
-                                        ),
-                                        child: IconButton(
-                                          icon: Icon(
-                                            Icons.close,
-                                            size: isMobile ? 16 : 18,
-                                            color: Colors.red,
-                                          ),
-                                          padding: EdgeInsets.zero,
-                                          onPressed: () => _removeItem(index),
-                                          tooltip: 'Remove item',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }).toList(),
+                            value: isChecked,
+                            onChanged: (bool? value) {
+                              _toggleItem(item);
+                            },
+                            controlAffinity: ListTileControlAffinity.leading,
+                            dense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                            ),
                           ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -542,7 +371,6 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                         ),
                         borderRadius: BorderRadius.circular(8.0),
                       ),
-
                       child: TextField(
                         controller: _defectsController,
                         onChanged: (value) {
@@ -554,7 +382,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                         style: TextStyle(fontSize: isMobile ? 13 : 14),
                         decoration: InputDecoration(
                           hintText:
-                              'Describe any defects found during inspection...',
+                              'Describe any defects found during inspection... (Leave empty if no defects)',
                           hintStyle: TextStyle(fontSize: isMobile ? 13 : 14),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.all(12.0),
@@ -609,7 +437,6 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Extra space at the bottom to prevent overflow
                   SizedBox(height: isMobile ? 20 : 30),
                 ],
               ),
@@ -619,11 +446,4 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
       ),
     );
   }
-}
-
-class ChecklistItem {
-  String title;
-  bool checked;
-
-  ChecklistItem({required this.title, required this.checked});
 }
