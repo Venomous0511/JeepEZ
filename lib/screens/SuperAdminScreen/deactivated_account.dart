@@ -13,128 +13,236 @@ class DeactivatedAccountScreen extends StatefulWidget {
 }
 
 class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
+  int _currentPage = 0;
+  final int _pageSize = 10;
+  String _searchQuery = '';
+
+  static const double tabletBreakpoint = 768.0;
+
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Deactivated Account',
-          style: TextStyle(color: Colors.white),
+      backgroundColor: Colors.grey[100],
+      body: SafeArea(
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              /// ---------------- HEADER ----------------
+              _buildHeader(),
+              const SizedBox(height: 16),
+
+              /// ---------------- SEARCH AND FILTERS ----------------
+              _buildSearchAndFilters(),
+              const SizedBox(height: 16),
+
+              /// ---------------- LIST CONTAINER ----------------
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .where('status', isEqualTo: false)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return _buildLoadingState();
+                      }
+
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return _buildEmptyState();
+                      }
+
+                      final allUsers = snapshot.data!.docs;
+
+                      // Filter by search query
+                      final filteredUsers = _searchQuery.isEmpty
+                          ? allUsers
+                          : allUsers.where((doc) {
+                              final data = doc.data() as Map<String, dynamic>;
+                              final name =
+                                  data['name']?.toString().toLowerCase() ?? '';
+                              final email =
+                                  data['email']?.toString().toLowerCase() ?? '';
+                              final employeeId =
+                                  data['employeeId']
+                                      ?.toString()
+                                      .toLowerCase() ??
+                                  '';
+                              final role =
+                                  data['role']?.toString().toLowerCase() ?? '';
+
+                              return name.contains(
+                                    _searchQuery.toLowerCase(),
+                                  ) ||
+                                  email.contains(_searchQuery.toLowerCase()) ||
+                                  employeeId.contains(
+                                    _searchQuery.toLowerCase(),
+                                  ) ||
+                                  role.contains(_searchQuery.toLowerCase());
+                            }).toList();
+
+                      final totalPages = (filteredUsers.length / _pageSize)
+                          .ceil();
+
+                      // Calculate pagination
+                      final startIndex = _currentPage * _pageSize;
+                      final endIndex = startIndex + _pageSize;
+                      final users = filteredUsers.sublist(
+                        startIndex,
+                        endIndex > filteredUsers.length
+                            ? filteredUsers.length
+                            : endIndex,
+                      );
+
+                      return screenWidth >= tabletBreakpoint
+                          ? _buildDesktopView(
+                              users,
+                              startIndex,
+                              totalPages,
+                              filteredUsers.length,
+                            )
+                          : _buildMobileView(
+                              users,
+                              startIndex,
+                              totalPages,
+                              filteredUsers.length,
+                            );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-        backgroundColor: const Color(0xFF0D2364),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .where('status', isEqualTo: false)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text("No deactivated accounts."));
-          }
-
-          final users = snapshot.data!.docs;
-
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              // For mobile screens (width < 600)
-              if (constraints.maxWidth < 600) {
-                return _buildMobileList(users);
-              }
-              // For tablet screens (600 <= width < 900)
-              else if (constraints.maxWidth < 900) {
-                return _buildTabletView(users);
-              }
-              // For desktop screens (width >= 900)
-              else {
-                return _buildDesktopTable(users);
-              }
-            },
-          );
-        },
       ),
     );
   }
 
-  /// Mobile View - Vertical List
-  Widget _buildMobileList(List<QueryDocumentSnapshot> users) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: users.length,
-      itemBuilder: (context, index) {
-        final doc = users[index];
-        final data = doc.data() as Map<String, dynamic>;
-
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildMobileRow("Employee ID", data['employeeId'] ?? ''),
-                _buildMobileRow("Role", data['role'] ?? ''),
-                _buildMobileRow(
-                  "Status",
-                  "Inactive",
-                  valueColor: Colors.red,
-                  isBold: true,
-                ),
-                _buildMobileRow("Email", data['email'] ?? ''),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => _reactivateUser(doc.id, data),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text(
-                      "Reactivate",
-                      style: TextStyle(fontSize: 16),
+  /// ---------------- HEADER WIDGET ----------------
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Deactivated Accounts',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0D2364),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Manage all deactivated employee accounts',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .where('status', isEqualTo: false)
+                .snapshots(),
+            builder: (context, snapshot) {
+              final count = snapshot.hasData ? snapshot.data!.docs.length : 0;
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D2364),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '$count Deactivated Accounts',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
                     ),
                   ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
-  Widget _buildMobileRow(
-    String label,
-    String value, {
-    Color? valueColor,
-    bool isBold = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              "$label:",
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
+  /// ---------------- SEARCH AND FILTERS WIDGET ----------------
+  Widget _buildSearchAndFilters() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                color: valueColor ?? Colors.black87,
-                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-                fontSize: 14,
+        ],
+      ),
+      child: Column(
+        children: [
+          TextField(
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value;
+                _currentPage = 0;
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Search by name, email, ID, or role...',
+              prefixIcon: const Icon(Icons.search, color: Colors.grey),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
               ),
             ),
           ),
@@ -143,151 +251,738 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
     );
   }
 
-  /// Tablet View - Compact Table
-  Widget _buildTabletView(List<QueryDocumentSnapshot> users) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Container(
-        constraints: BoxConstraints(
-          minWidth: MediaQuery.of(context).size.width,
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Table(
-          columnWidths: const {
-            0: FlexColumnWidth(2), // Employee ID
-            1: FlexColumnWidth(2), // Role
-            2: FlexColumnWidth(1.5), // Status
-            3: FlexColumnWidth(3), // Email
-            4: FlexColumnWidth(2), // Action
-          },
-          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-          border: TableBorder.all(color: Colors.grey.shade300),
-          children: [
-            // Header
-            TableRow(
-              decoration: BoxDecoration(color: Colors.blue[50]),
-              children: const [
-                _HeaderCell("Emp ID"),
-                _HeaderCell("Role"),
-                _HeaderCell("Status"),
-                _HeaderCell("Email"),
-                _HeaderCell("Action"),
-              ],
-            ),
-            // Data Rows
-            ...users.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              return TableRow(
-                decoration: BoxDecoration(
-                  color: users.indexOf(doc) % 2 == 0
-                      ? Colors.white
-                      : Colors.grey[100],
+  /// ---------------- DESKTOP VIEW ----------------
+  Widget _buildDesktopView(
+    List<QueryDocumentSnapshot> users,
+    int startIndex,
+    int totalPages,
+    int totalItems,
+  ) {
+    return Column(
+      children: [
+        // Table Info
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Showing ${startIndex + 1}-${startIndex + users.length} of $totalItems deactivated accounts',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey,
                 ),
-                children: [
-                  _DataCell(data['employeeId'] ?? '', isCompact: true),
-                  _DataCell(data['role'] ?? '', isCompact: true),
-                  _DataCell(
-                    "Inactive",
-                    color: Colors.red,
-                    isBold: true,
-                    isCompact: true,
+              ),
+              if (totalPages > 1)
+                Text(
+                  'Page ${_currentPage + 1} of $totalPages',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey,
                   ),
-                  _DataCell(data['email'] ?? '', isCompact: true),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: ElevatedButton(
-                      onPressed: () => _reactivateUser(doc.id, data),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 8,
-                          horizontal: 8,
+                ),
+            ],
+          ),
+        ),
+
+        // Table with Horizontal Scroll
+        Expanded(
+          child: Container(
+            width: double.infinity,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Container(
+                constraints: BoxConstraints(
+                  minWidth: MediaQuery.of(context).size.width - 32,
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: DataTable(
+                    headingRowColor: WidgetStateProperty.all(Colors.grey[50]),
+                    headingTextStyle: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0D2364),
+                      fontSize: 14,
+                    ),
+                    dataRowHeight: 60,
+                    columnSpacing: 20,
+                    horizontalMargin: 16,
+                    columns: const [
+                      DataColumn(
+                        label: SizedBox(
+                          width: 50,
+                          child: Text('#', textAlign: TextAlign.center),
                         ),
-                        minimumSize: Size.zero,
                       ),
-                      child: const Text(
-                        "Reactivate",
-                        style: TextStyle(fontSize: 12),
-                        textAlign: TextAlign.center,
+                      DataColumn(
+                        label: SizedBox(
+                          width: 120,
+                          child: Text(
+                            'Employee ID',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
                       ),
+                      DataColumn(
+                        label: SizedBox(
+                          width: 150,
+                          child: Text('Name', textAlign: TextAlign.center),
+                        ),
+                      ),
+                      DataColumn(
+                        label: SizedBox(
+                          width: 200,
+                          child: Text('Email', textAlign: TextAlign.center),
+                        ),
+                      ),
+                      DataColumn(
+                        label: SizedBox(
+                          width: 120,
+                          child: Text('Role', textAlign: TextAlign.center),
+                        ),
+                      ),
+                      DataColumn(
+                        label: SizedBox(
+                          width: 100,
+                          child: Text('Status', textAlign: TextAlign.center),
+                        ),
+                      ),
+                      DataColumn(
+                        label: SizedBox(
+                          width: 150,
+                          child: Text('Actions', textAlign: TextAlign.center),
+                        ),
+                      ),
+                    ],
+                    rows: users.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final doc = entry.value;
+                      final data = doc.data() as Map<String, dynamic>;
+                      final rowNumber = startIndex + index + 1;
+
+                      return DataRow(
+                        cells: [
+                          DataCell(
+                            SizedBox(
+                              width: 50,
+                              child: Center(
+                                child: Text(
+                                  rowNumber.toString(),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF0D2364),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            SizedBox(
+                              width: 120,
+                              child: Center(
+                                child: Text(
+                                  data['employeeId']?.toString() ?? '',
+                                  style: const TextStyle(
+                                    fontFamily: 'Monospace',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            SizedBox(
+                              width: 150,
+                              child: Center(
+                                child: Text(
+                                  data['name'] ?? '',
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            SizedBox(
+                              width: 200,
+                              child: Center(
+                                child: Text(
+                                  data['email'] ?? '',
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            SizedBox(
+                              width: 120,
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _getRoleColor(
+                                      data['role'],
+                                    ).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _getRoleColor(data['role']),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    _formatRole(data['role'] ?? ''),
+                                    style: TextStyle(
+                                      color: _getRoleColor(data['role']),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            SizedBox(
+                              width: 100,
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.red),
+                                  ),
+                                  child: const Text(
+                                    'Inactive',
+                                    style: TextStyle(
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            SizedBox(
+                              width: 150,
+                              child: Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildActionButton(
+                                      icon: Icons.refresh,
+                                      color: Colors.green,
+                                      tooltip: 'Reactivate User',
+                                      onPressed: () =>
+                                          _reactivateUser(doc.id, data),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // Pagination
+        if (totalPages > 1) _buildPaginationControls(totalPages),
+      ],
+    );
+  }
+
+  /// ---------------- MOBILE VIEW ----------------
+  Widget _buildMobileView(
+    List<QueryDocumentSnapshot> users,
+    int startIndex,
+    int totalPages,
+    int totalItems,
+  ) {
+    return Column(
+      children: [
+        // List Info
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
+                  '$totalItems deactivated accounts',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (totalPages > 1)
+                Flexible(
+                  child: Text(
+                    '${_currentPage + 1}/$totalPages',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey,
+                    ),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+            ],
+          ),
+        ),
+
+        // List
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(8),
+            itemCount: users.length,
+            itemBuilder: (context, index) {
+              final doc = users[index];
+              final data = doc.data() as Map<String, dynamic>;
+              final rowNumber = startIndex + index + 1;
+
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header with row number and status
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0D2364),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '#$rowNumber',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.red),
+                            ),
+                            child: const Text(
+                              'Inactive',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Employee Details
+                      _buildMobileDetailItem(
+                        'Employee ID',
+                        data['employeeId']?.toString() ?? '',
+                      ),
+                      _buildMobileDetailItem('Name', data['name'] ?? ''),
+                      _buildMobileDetailItem('Email', data['email'] ?? ''),
+                      _buildMobileDetailItem(
+                        'Role',
+                        _formatRole(data['role'] ?? ''),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Action Buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildMobileActionButton(
+                              icon: Icons.refresh,
+                              text: 'Reactivate',
+                              color: Colors.green,
+                              onPressed: () => _reactivateUser(doc.id, data),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+
+        // Pagination
+        if (totalPages > 1) _buildMobilePaginationControls(totalPages),
+      ],
+    );
+  }
+
+  /// ---------------- MOBILE PAGINATION CONTROLS ----------------
+  Widget _buildMobilePaginationControls(int totalPages) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: Column(
+        children: [
+          // Page Info
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Page ${_currentPage + 1} of $totalPages',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0D2364),
+              ),
+            ),
+          ),
+
+          // Buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Previous Button
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: ElevatedButton(
+                    onPressed: _currentPage > 0
+                        ? () {
+                            setState(() {
+                              _currentPage--;
+                            });
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _currentPage > 0
+                          ? const Color(0xFF0D2364)
+                          : Colors.grey[300],
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.chevron_left, size: 18),
+                        SizedBox(width: 4),
+                        Text('Previous'),
+                      ],
                     ),
                   ),
-                ],
-              );
-            }),
-          ],
-        ),
+                ),
+              ),
+
+              // Next Button
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: ElevatedButton(
+                    onPressed: _currentPage < totalPages - 1
+                        ? () {
+                            setState(() {
+                              _currentPage++;
+                            });
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _currentPage < totalPages - 1
+                          ? const Color(0xFF0D2364)
+                          : Colors.grey[300],
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Next'),
+                        SizedBox(width: 4),
+                        Icon(Icons.chevron_right, size: 18),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  /// Desktop View - Full Table
-  Widget _buildDesktopTable(List<QueryDocumentSnapshot> users) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Container(
-          constraints: const BoxConstraints(minWidth: 800),
-          padding: const EdgeInsets.all(16),
-          child: Table(
-            columnWidths: const {
-              0: FlexColumnWidth(3), // Employee ID
-              1: FlexColumnWidth(3), // Role
-              2: FlexColumnWidth(2), // Status
-              3: FlexColumnWidth(4), // Email
-              4: FlexColumnWidth(4), // Action
-            },
-            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-            border: TableBorder.all(color: Colors.grey.shade300),
-            children: [
-              // Header
-              TableRow(
-                decoration: BoxDecoration(color: Colors.blue[50]),
-                children: const [
-                  _HeaderCell("Employee ID"),
-                  _HeaderCell("Role"),
-                  _HeaderCell("Status"),
-                  _HeaderCell("Email"),
-                  _HeaderCell("Action"),
-                ],
+  /// ---------------- DESKTOP PAGINATION CONTROLS ----------------
+  Widget _buildPaginationControls(int totalPages) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Previous Button
+          ElevatedButton(
+            onPressed: _currentPage > 0
+                ? () {
+                    setState(() {
+                      _currentPage--;
+                    });
+                  }
+                : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _currentPage > 0
+                  ? const Color(0xFF0D2364)
+                  : Colors.grey[300],
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
               ),
-              // Data Rows
-              ...users.map((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                return TableRow(
-                  decoration: BoxDecoration(
-                    color: users.indexOf(doc) % 2 == 0
-                        ? Colors.white
-                        : Colors.grey[100],
-                  ),
-                  children: [
-                    _DataCell(data['employeeId'] ?? ''),
-                    _DataCell(data['role'] ?? ''),
-                    _DataCell("Inactive", color: Colors.red, isBold: true),
-                    _DataCell(data['email'] ?? ''),
-                    Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: ElevatedButton(
-                        onPressed: () => _reactivateUser(doc.id, data),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 8,
-                            horizontal: 12,
-                          ),
-                        ),
-                        child: const Text("Reactivate"),
-                      ),
-                    ),
-                  ],
-                );
-              }),
-            ],
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.chevron_left, size: 20),
+                SizedBox(width: 4),
+                Text('Previous'),
+              ],
+            ),
           ),
-        ),
+
+          // Page Numbers
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Text(
+              '${_currentPage + 1} / $totalPages',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0D2364),
+              ),
+            ),
+          ),
+
+          // Next Button
+          ElevatedButton(
+            onPressed: _currentPage < totalPages - 1
+                ? () {
+                    setState(() {
+                      _currentPage++;
+                    });
+                  }
+                : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _currentPage < totalPages - 1
+                  ? const Color(0xFF0D2364)
+                  : Colors.grey[300],
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Next'),
+                SizedBox(width: 4),
+                Icon(Icons.chevron_right, size: 20),
+              ],
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  /// ---------------- HELPER WIDGETS ----------------
+  Widget _buildLoadingState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text(
+            'Loading deactivated accounts...',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.person_off, size: 64, color: Colors.grey),
+          SizedBox(height: 16),
+          Text(
+            'No deactivated accounts',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'All accounts are currently active',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required Color color,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      icon: Icon(icon, size: 20),
+      color: color,
+      onPressed: onPressed,
+      tooltip: tooltip,
+      style: IconButton.styleFrom(
+        backgroundColor: color.withOpacity(0.1),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        padding: const EdgeInsets.all(8),
+      ),
+    );
+  }
+
+  Widget _buildMobileActionButton({
+    required IconData icon,
+    required String text,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return ElevatedButton.icon(
+      icon: Icon(icon, size: 16),
+      label: Text(text, style: const TextStyle(fontSize: 12)),
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color.withOpacity(0.1),
+        foregroundColor: color,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      ),
+    );
+  }
+
+  Widget _buildMobileDetailItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Color _getRoleColor(String role) {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return Colors.red;
+      case 'legal_officer':
+        return Colors.orange;
+      case 'driver':
+        return Colors.green;
+      case 'conductor':
+        return Colors.blue;
+      case 'inspector':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _formatRole(String role) {
+    return role.replaceAll('_', ' ').toUpperCase();
   }
 
   /// ------------ REACTIVATE USER FUNCTION ------------
@@ -385,60 +1080,5 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
         ).showSnackBar(SnackBar(content: Text("Error: $e")));
       }
     }
-  }
-}
-
-/// ----------- SMALL WIDGETS TO AVOID REPETITION -----------
-class _HeaderCell extends StatelessWidget {
-  final String text;
-  const _HeaderCell(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-}
-
-class _DataCell extends StatelessWidget {
-  final String text;
-  final Color? color;
-  final bool isBold;
-  final bool isCompact;
-
-  const _DataCell(
-    this.text, {
-    this.color,
-    this.isBold = false,
-    this.isCompact = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: isCompact
-          ? const EdgeInsets.all(8.0)
-          : const EdgeInsets.all(12.0),
-      child: Tooltip(
-        message: text,
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          overflow: TextOverflow.ellipsis,
-          maxLines: 2,
-          style: TextStyle(
-            color: color ?? Colors.black87,
-            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            fontSize: isCompact ? 12 : 14,
-          ),
-        ),
-      ),
-    );
   }
 }

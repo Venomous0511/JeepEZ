@@ -23,7 +23,6 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
   final FocusNode _descriptionFocusNode = FocusNode();
 
   String? _vehicleId; // store assigned vehicle ID
-  Map<String, dynamic>? _vehicleData; // optional: store vehicle details
 
   @override
   void initState() {
@@ -36,23 +35,16 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) return;
 
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
       if (!userDoc.exists) return;
 
       final userData = userDoc.data()!;
       final assignedVehicleId = userData['assignedVehicle']?.toString();
-
-      Map<String, dynamic>? vehicleData;
-      if (assignedVehicleId != null) {
-        final vehicleDoc = await FirebaseFirestore.instance.collection('vehicles').doc(assignedVehicleId).get();
-        if (vehicleDoc.exists) {
-          vehicleData = vehicleDoc.data();
-        }
-      }
-
       setState(() {
         _vehicleId = assignedVehicleId;
-        _vehicleData = vehicleData;
       });
     } catch (e) {
       debugPrint('Error fetching assigned vehicle: $e');
@@ -67,7 +59,9 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
 
     if (currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must be logged in to submit a report.')),
+        const SnackBar(
+          content: Text('You must be logged in to submit a report.'),
+        ),
       );
       return;
     }
@@ -86,7 +80,9 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Incident report submitted successfully!')),
+          const SnackBar(
+            content: Text('Incident report submitted successfully!'),
+          ),
         );
       }
 
@@ -96,9 +92,9 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
       _descriptionController.clear();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting report: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error submitting report: $e')));
       }
     }
   }
@@ -202,16 +198,18 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                                 style: TextStyle(color: Colors.grey.shade700),
                                 decoration: InputDecoration(
                                   hintText:
-                                  _descriptionController.text.isEmpty &&
-                                      !_descriptionFocusNode.hasFocus
+                                      _descriptionController.text.isEmpty &&
+                                          !_descriptionFocusNode.hasFocus
                                       ? 'Describe what happened...'
                                       : null,
-                                  hintStyle: TextStyle(color: Colors.grey.shade500),
+                                  hintStyle: TextStyle(
+                                    color: Colors.grey.shade500,
+                                  ),
                                   border: InputBorder.none,
                                   contentPadding: const EdgeInsets.all(12.0),
                                 ),
                                 validator: (value) =>
-                                value!.isEmpty ? 'Required' : null,
+                                    value!.isEmpty ? 'Required' : null,
                               ),
                             ),
                           ],

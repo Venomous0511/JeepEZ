@@ -59,11 +59,6 @@ Project initialization
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('System Management'),
-        backgroundColor: const Color(0xFF0D2364),
-        foregroundColor: Colors.white,
-      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(

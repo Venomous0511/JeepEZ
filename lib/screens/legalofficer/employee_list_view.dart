@@ -13,138 +13,130 @@ class EmployeeListViewScreen extends StatefulWidget {
 
 class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
   final TextEditingController _searchController = TextEditingController();
+  int _rowsPerPage = 10;
+  int _currentPage = 0;
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
-    final isTablet = screenWidth >= 600 && screenWidth < 1024;
-    final isDesktop = screenWidth >= 1024;
-    final maxContentWidth = isDesktop ? 1400.0 : double.infinity;
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0D2364),
-        title: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            'Employee List View (View-only)',
-            style: TextStyle(color: Colors.white, fontSize: isMobile ? 16 : 20),
-          ),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      body: Center(
-        child: Container(
-          constraints: BoxConstraints(maxWidth: maxContentWidth),
-          padding: EdgeInsets.all(isMobile ? 12.0 : (isTablet ? 20.0 : 24.0)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Search Header
-              Text(
-                'Search',
-                style: TextStyle(
-                  fontSize: isMobile ? 18 : 20,
-                  fontWeight: FontWeight.bold,
+      body: Container(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            // Search Bar
+            TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search employees by name or email...',
+                hintStyle: const TextStyle(fontSize: 14),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF0D2364)),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: BorderSide.none,
                 ),
-              ),
-              SizedBox(height: isMobile ? 12 : 16),
-
-              // Search Bar
-              TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search employees by name or email...',
-                  hintStyle: TextStyle(fontSize: isMobile ? 14 : 16),
-                  prefixIcon: const Icon(Icons.search, color: Color(0xFF0D2364)),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                    borderSide: BorderSide.none,
+                focusedBorder: OutlineInputBorder(
+                  borderSide: const BorderSide(
+                    color: Color(0xFF0D2364),
+                    width: 2,
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(
-                      color: Color(0xFF0D2364),
-                      width: 2,
-                    ),
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
+                  borderRadius: BorderRadius.circular(8.0),
                 ),
-                onChanged: (_) => setState(() {}),
-              ),
-              SizedBox(height: isMobile ? 16 : 24),
-
-              // Realtime data from Firestore
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('users')
-                      .where('status', isEqualTo: true)
-                      .where('role', whereIn: ['driver', 'conductor', 'inspector'])
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snapshot.hasError) {
-                      return Center(child: Text('Error: ${snapshot.error}'));
-                    }
-
-                    final docs = snapshot.data?.docs ?? [];
-
-                    // ✅ Convert Firestore docs to a list of Map<String, dynamic>
-                    final employees = docs.map((doc) {
-                      final data = doc.data() as Map<String, dynamic>;
-                      return {
-                        'name': data['name'] ?? '',
-                        'email': data['email'] ?? '',
-                        'employeeId': data['employeeId'] ?? 'N/A',
-                        'role': data['role'] ?? 'N/A',
-                        'employmentType': data['employmentType'] ?? 'N/A',
-                        'joiningDate': data['createdAt'] != null
-                            ? (data['createdAt'] as Timestamp)
-                            .toDate()
-                            .toLocal()
-                            .toString()
-                            .split(' ')[0]
-                            : 'N/A',
-                        'dateOfBirth': data['dateOfBirth'] ?? 'N/A',
-                        'violation': data['violation'] ?? 'None',
-                        'status': (data['status'] == true) ? 'Active' : 'Inactive',
-                      };
-                    }).toList();
-
-                    // ✅ Apply search filter
-                    final search = _searchController.text.toLowerCase();
-                    final filteredEmployees = employees.where((emp) {
-                      return emp['name']!.toLowerCase().contains(search) ||
-                          emp['email']!.toLowerCase().contains(search);
-                    }).toList();
-
-                    if (filteredEmployees.isEmpty) {
-                      return const Center(child: Text('No employees found.'));
-                    }
-
-                    return isMobile
-                        ? _buildEmployeeCards(filteredEmployees)
-                        : _buildEmployeeTable(filteredEmployees, isTablet, isDesktop);
-                  },
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
                 ),
               ),
-            ],
-          ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 16),
+
+            // Table Section
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('users')
+                    .where('status', isEqualTo: true)
+                    .where(
+                      'role',
+                      whereIn: ['driver', 'conductor', 'inspector'],
+                    )
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+
+                  final docs = snapshot.data?.docs ?? [];
+
+                  final employees = docs.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return {
+                      'name': data['name'] ?? '',
+                      'email': data['email'] ?? '',
+                      'employeeId': data['employeeId'] ?? 'N/A',
+                      'role': data['role'] ?? 'N/A',
+                      'employmentType': data['employmentType'] ?? 'N/A',
+                      'status': (data['status'] == true)
+                          ? 'Active'
+                          : 'Inactive',
+                    };
+                  }).toList();
+
+                  final search = _searchController.text.toLowerCase();
+                  final filteredEmployees = employees.where((emp) {
+                    return emp['name']!.toLowerCase().contains(search) ||
+                        emp['email']!.toLowerCase().contains(search);
+                  }).toList();
+
+                  if (filteredEmployees.isEmpty) {
+                    return const Center(child: Text('No employees found.'));
+                  }
+
+                  final totalPages = (filteredEmployees.length / _rowsPerPage)
+                      .ceil();
+                  final startIndex = _currentPage * _rowsPerPage;
+                  final endIndex = startIndex + _rowsPerPage;
+                  final paginatedEmployees = filteredEmployees.sublist(
+                    startIndex,
+                    endIndex > filteredEmployees.length
+                        ? filteredEmployees.length
+                        : endIndex,
+                  );
+
+                  return isMobile
+                      ? _buildEmployeeCards(paginatedEmployees)
+                      : Column(
+                          children: [
+                            // Table
+                            Expanded(
+                              child: _buildEmployeeTable(paginatedEmployees),
+                            ),
+                            // Pagination
+                            _buildPaginationControls(
+                              totalPages,
+                              filteredEmployees.length,
+                            ),
+                          ],
+                        );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // Mobile card view (unchanged layout)
+  // Mobile card view
   Widget _buildEmployeeCards(List<Map<String, dynamic>> employees) {
     return ListView.builder(
       itemCount: employees.length,
@@ -159,7 +151,6 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -178,7 +169,10 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
                           const SizedBox(height: 4),
                           Text(
                             'Employee ID: ${emp['employeeId']}',
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
                           ),
                         ],
                       ),
@@ -189,11 +183,15 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
                 const SizedBox(height: 12),
                 const Divider(height: 1),
                 const SizedBox(height: 12),
-                _buildCardInfoRow(Icons.email, 'Gmail Account', emp['email']!),
+                _buildCardInfoRow(Icons.email, 'Email', emp['email']!),
                 const SizedBox(height: 8),
                 _buildCardInfoRow(Icons.person, 'Role', emp['role']!),
                 const SizedBox(height: 8),
-                _buildCardInfoRow(Icons.cases_outlined, 'Employment Type', emp['employmentType']!),
+                _buildCardInfoRow(
+                  Icons.cases_outlined,
+                  'Employment Type',
+                  emp['employmentType']!,
+                ),
               ],
             ),
           ),
@@ -211,14 +209,23 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 2),
               Text(
                 value,
-                style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w600,
+                ),
                 overflow: TextOverflow.ellipsis,
-                maxLines: 2,
               ),
             ],
           ),
@@ -227,54 +234,189 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
     );
   }
 
-  // Tablet/Desktop table view (unchanged layout)
-  Widget _buildEmployeeTable(
-      List<Map<String, dynamic>> employees, bool isTablet, bool isDesktop) {
-    return Center(
-      child:  Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: const [
-            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
-          ],
-        ),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columnSpacing: 40,
-              headingRowColor: WidgetStateProperty.all(
-                const Color(0xFF0D2364),
+  // Desktop table view
+  Widget _buildEmployeeTable(List<Map<String, dynamic>> employees) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: Column(
+        children: [
+          // Table Header
+          Container(
+            height: 50,
+            decoration: const BoxDecoration(
+              color: Color(0xFF0D2364),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(8),
+                topRight: Radius.circular(8),
               ),
-              headingTextStyle: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-              columns: const [
-                DataColumn(label: Text('Employee Name')),
-                DataColumn(label: Text('Employee ID')),
-                DataColumn(label: Text('Email')),
-                DataColumn(label: Text('Role')),
-                DataColumn(label: Text('Employment Type')),
-                DataColumn(label: Text('Status')),
+            ),
+            child: Row(
+              children: [
+                Expanded(flex: 1, child: _TableHeader(text: 'NO.')),
+                Expanded(flex: 2, child: _TableHeader(text: 'EMPLOYEE ID')),
+                Expanded(flex: 3, child: _TableHeader(text: 'NAME')),
+                Expanded(flex: 4, child: _TableHeader(text: 'EMAIL')),
+                Expanded(flex: 2, child: _TableHeader(text: 'ROLE')),
+                Expanded(flex: 2, child: _TableHeader(text: 'EMPLOYEE TYPE')),
+                Expanded(flex: 2, child: _TableHeader(text: 'STATUS')),
               ],
-              rows: employees.map((emp) {
-                return DataRow(
-                  cells: [
-                    DataCell(Text(emp['name']?.toString() ?? '')),
-                    DataCell(Text(emp['employeeId']?.toString() ?? 'N/A')),
-                    DataCell(Text(emp['email']?.toString() ?? 'N/A')),
-                    DataCell(Text(emp['role']?.toString() ?? 'N/A')),
-                    DataCell(Text(emp['employmentType']?.toString() ?? 'N/A')),
-                    DataCell(_buildStatusBadge(emp['status']?.toString() ?? 'Inactive')),
-                  ],
-                );
-              }).toList(),
             ),
           ),
-        ),
+
+          // Table Body
+          Expanded(
+            child: Container(
+              color: Colors.white,
+              child: ListView.builder(
+                itemCount: employees.length,
+                itemBuilder: (context, index) {
+                  final emp = employees[index];
+                  return Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 1,
+                          child: _TableCell(
+                            content:
+                                '${_currentPage * _rowsPerPage + index + 1}',
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: _TableCell(
+                            content: emp['employeeId']?.toString() ?? 'N/A',
+                          ),
+                        ),
+                        Expanded(
+                          flex: 3,
+                          child: _TableCell(
+                            content: emp['name']?.toString() ?? '',
+                          ),
+                        ),
+                        Expanded(
+                          flex: 4,
+                          child: _TableCell(
+                            content: emp['email']?.toString() ?? 'N/A',
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: _TableCell(
+                            content: emp['role']?.toString() ?? 'N/A',
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: _TableCell(
+                            content: emp['employmentType']?.toString() ?? 'N/A',
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Center(
+                              child: _buildStatusBadge(
+                                emp['status']?.toString() ?? 'Inactive',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaginationControls(int totalPages, int totalItems) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(top: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey[300]!,
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Total: $totalItems employees',
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+
+          Row(
+            children: [
+              const Text('Rows per page:', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: 8),
+              DropdownButton<int>(
+                value: _rowsPerPage,
+                items: [10, 20, 50].map((int value) {
+                  return DropdownMenuItem<int>(
+                    value: value,
+                    child: Text('$value'),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _rowsPerPage = value!;
+                    _currentPage = 0;
+                  });
+                },
+              ),
+              const SizedBox(width: 16),
+
+              IconButton(
+                icon: const Icon(Icons.chevron_left, size: 20),
+                onPressed: _currentPage > 0
+                    ? () {
+                        setState(() {
+                          _currentPage--;
+                        });
+                      }
+                    : null,
+              ),
+
+              Text(
+                'Page ${_currentPage + 1} of $totalPages',
+                style: const TextStyle(fontSize: 14),
+              ),
+
+              IconButton(
+                icon: const Icon(Icons.chevron_right, size: 20),
+                onPressed: _currentPage < totalPages - 1
+                    ? () {
+                        setState(() {
+                          _currentPage++;
+                        });
+                      }
+                    : null,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -282,11 +424,14 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
   Widget _buildStatusBadge(String status) {
     final isActive = status == 'Active';
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: isActive ? Colors.green.withAlpha(1) : Colors.red.withAlpha(1),
+        color: isActive ? Colors.green[50] : Colors.red[50],
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isActive ? Colors.green : Colors.red, width: 1.5),
+        border: Border.all(
+          color: isActive ? Colors.green : Colors.red,
+          width: 1,
+        ),
       ),
       child: Text(
         status,
@@ -303,5 +448,53 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+}
+
+// Custom Table Header Widget
+class _TableHeader extends StatelessWidget {
+  final String text;
+
+  const _TableHeader({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Center(
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
+}
+
+// Custom Table Cell Widget
+class _TableCell extends StatelessWidget {
+  final String content;
+
+  const _TableCell({required this.content});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Center(
+        child: Text(
+          content,
+          style: const TextStyle(fontSize: 12, color: Colors.black87),
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
   }
 }

@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.jeepez.app"
+    namespace = "com.example.jeepez"
     compileSdk = 36
     ndkVersion = "29.0.13846066"
 
@@ -23,31 +23,41 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.jeepez.app"
+        applicationId = "com.example.jeepez"
         minSdk = 23
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        multiDexEnabled = true // optional, helps if methods exceed 64K
     }
 
-    // Kotlin DSL version of keystore loading
-    val keystorePropertiesFile = rootProject.file("key.properties")
+    // Load key.properties and/or environment variables
     val keystoreProperties = Properties().apply {
-        load(FileInputStream(keystorePropertiesFile))
+        val file = rootProject.file("android/key.properties")
+        if (file.exists()) load(FileInputStream(file))
+        System.getenv("KEYSTORE_PATH")?.let { setProperty("storeFile", it) }
+        System.getenv("KEYSTORE_PASSWORD")?.let { setProperty("storePassword", it) }
+        System.getenv("KEY_ALIAS")?.let { setProperty("keyAlias", it) }
+        System.getenv("KEY_PASSWORD")?.let { setProperty("keyPassword", it) }
     }
 
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
-            storePassword = keystoreProperties["storePassword"] as String
+            val storeFilePath = keystoreProperties.getProperty("storeFile")
+            if (storeFilePath != null && file(storeFilePath).exists()) {
+                storeFile = file(storeFilePath)
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            } else {
+                println("⚠️ Release signing not configured. APK will be unsigned.")
+            }
         }
     }
 
     buildTypes {
         getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
+//            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             isShrinkResources = false
         }

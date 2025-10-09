@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'dart:math';
 import '../../firebase_options.dart';
 import '../../models/app_user.dart';
 
@@ -15,13 +16,14 @@ class AddAccountScreen extends StatefulWidget {
 
 class _AddAccountScreenState extends State<AddAccountScreen> {
   final TextEditingController emailCtrl = TextEditingController();
-  final TextEditingController passCtrl = TextEditingController();
-  final TextEditingController nameCtrl = TextEditingController();
-  final TextEditingController employeeIDCtrl = TextEditingController();
+  final TextEditingController firstNameCtrl = TextEditingController();
+  final TextEditingController middleNameCtrl = TextEditingController();
+  final TextEditingController lastNameCtrl = TextEditingController();
 
   bool loading = false;
-  String role = "conductor";
-  bool _obscurePassword = true; // Added for show/hide password
+  String? role;
+  bool _obscurePassword = true;
+  String generatedPassword = "";
 
   /// ----------- GET AND CREATE SECONDARY FUNCTION -----------
   Future<FirebaseApp> _getOrCreateSecondaryApp() async {
@@ -47,7 +49,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
 
     final prefix = rolePrefixes[role] ?? '99';
 
-    // Find the last employee_id with this prefix
     final query = await FirebaseFirestore.instance
         .collection('users')
         .where('employeeId', isGreaterThanOrEqualTo: prefix)
@@ -57,7 +58,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         .get();
 
     if (query.docs.isEmpty) {
-      // First ID for this role
       return '${prefix}001';
     } else {
       final lastId = query.docs.first['employeeId'] as String;
@@ -66,12 +66,34 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     }
   }
 
+  /// ----------- GENERATE PASSWORD FUNCTION -----------
+  String _generatePassword() {
+    const String upperCase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const String lowerCase = 'abcdefghijklmnopqrstuvwxyz';
+    const String numbers = '0123456789';
+    const String specialChars = '!@#\$%^&*()_+-=[]{}|;:,.<>?';
+
+    final random = Random();
+    String password = '';
+
+    password += upperCase[random.nextInt(upperCase.length)];
+    password += lowerCase[random.nextInt(lowerCase.length)];
+    password += numbers[random.nextInt(numbers.length)];
+    password += specialChars[random.nextInt(specialChars.length)];
+
+    const allChars = upperCase + lowerCase + numbers + specialChars;
+    for (int i = 0; i < 8; i++) {
+      password += allChars[random.nextInt(allChars.length)];
+    }
+
+    final passwordList = password.split('')..shuffle();
+    return passwordList.join();
+  }
+
   /// ----------- Called when role changes -----------
-  Future<void> _updateEmployeeId(String newRole) async {
-    final newId = await _generateEmployeeId(newRole);
+  Future<void> _updateEmployeeId(String? newRole) async {
     setState(() {
       role = newRole;
-      employeeIDCtrl.text = newId;
     });
   }
 
@@ -81,64 +103,81 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     return emailRegex.hasMatch(email);
   }
 
-  /// ----------- VALIDATE PASSWORD FUNCTION -----------
-  String? _validatePassword(String password) {
-    if (password.isEmpty) {
-      return 'Password is required';
+  /// ----------- VALIDATE NAME FUNCTION -----------
+  String? _validateName(String name, String fieldName) {
+    if (name.isEmpty) {
+      return '$fieldName is required';
     }
-
-    if (password.length < 8) {
-      return 'Password must be at least 8 characters';
+    if (name.length > 20) {
+      return '$fieldName must be 20 characters or less';
     }
-
-    // Check for uppercase letters
-    if (!RegExp(r'[A-Z]').hasMatch(password)) {
-      return 'Password must contain at least one uppercase letter';
+    // Check if name contains only letters and spaces
+    if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(name)) {
+      return '$fieldName can only contain letters and spaces';
     }
+    return null;
+  }
 
-    // Check for lowercase letters
-    if (!RegExp(r'[a-z]').hasMatch(password)) {
-      return 'Password must contain at least one lowercase letter';
-    }
-
-    // Check for numbers
-    if (!RegExp(r'[0-9]').hasMatch(password)) {
-      return 'Password must contain at least one number';
-    }
-
-    // Check for special characters
-    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password)) {
-      return 'Password must contain at least one special character';
-    }
-
-    return null; // Password is valid
+  /// ----------- FILTER NAME INPUT (NO NUMBERS) -----------
+  String _filterNameInput(String input) {
+    // Remove numbers and special characters except spaces
+    return input.replaceAll(RegExp(r'[^a-zA-Z\s]'), '');
   }
 
   /// ----------- CREATE FUNCTION -----------
   Future<void> _createUser() async {
     final email = emailCtrl.text.trim();
-    final password = passCtrl.text.trim();
-    final name = nameCtrl.text.trim();
-    final employeeId = employeeIDCtrl.text.trim();
+    final firstName = firstNameCtrl.text.trim();
+    final middleName = middleNameCtrl.text.trim();
+    final lastName = lastNameCtrl.text.trim();
 
-    // Name validation - 20 characters limit
-    if (name.isEmpty) {
+    // Role validation - must select a specific role, not "Employee"
+    if (role == null) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Please enter full name')));
+        ).showSnackBar(const SnackBar(content: Text('Please select a role')));
       }
       return;
     }
 
-    if (name.length > 20) {
+    // Name validations
+    final firstNameError = _validateName(firstName, 'First name');
+    if (firstNameError != null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Name must be 20 characters or less')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(firstNameError)));
       }
       return;
     }
+
+    final lastNameError = _validateName(lastName, 'Last name');
+    if (lastNameError != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(lastNameError)));
+      }
+      return;
+    }
+
+    // Validate middle name if provided
+    if (middleName.isNotEmpty) {
+      final middleNameError = _validateName(middleName, 'Middle name');
+      if (middleNameError != null) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(middleNameError)));
+        }
+        return;
+      }
+    }
+
+    // Generate display name (Last Name, First Name MI)
+    final mi = middleName.isNotEmpty ? ' ${middleName[0]}.' : '';
+    final displayName = '$lastName, $firstName$mi';
 
     // Email validation - Gmail only
     if (email.isEmpty) {
@@ -159,25 +198,9 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       return;
     }
 
-    // Password validation
-    final passwordError = _validatePassword(password);
-    if (passwordError != null) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(passwordError)));
-      }
-      return;
-    }
-
-    if (employeeId.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Employee ID not generated')),
-        );
-      }
-      return;
-    }
+    // Generate employee ID and password
+    final employeeId = await _generateEmployeeId(role!);
+    final password = _generatePassword();
 
     setState(() => loading = true);
 
@@ -192,20 +215,29 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       );
       final newUid = newCred.user!.uid;
 
+      // Update user profile with display name
+      await newCred.user!.updateDisplayName(displayName);
+
+      // Save to Firestore
       await FirebaseFirestore.instance.collection('users').doc(newUid).set({
         'uid': newUid,
         'email': email,
         'employeeId': employeeId,
-        'name': name,
+        'firstName': firstName,
+        'middleName': middleName,
+        'lastName': lastName,
+        'displayName': displayName,
         'role': role,
         'status': true,
         'createdAt': FieldValue.serverTimestamp(),
         'createdBy': widget.user.email,
+        'tempPassword': password,
       });
 
+      // Create notification
       await FirebaseFirestore.instance.collection('notifications').add({
         'title': 'New Account Created',
-        'message': '$name has been added as $role',
+        'message': '$displayName has been added as $role with ID $employeeId',
         'time': FieldValue.serverTimestamp(),
         'dismissed': false,
         'type': 'updates',
@@ -214,20 +246,26 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
 
       await secondaryAuth.signOut();
 
-      final createdRole = role;
-
+      // Clear all fields
       emailCtrl.clear();
-      passCtrl.clear();
-      nameCtrl.clear();
-      employeeIDCtrl.clear();
+      firstNameCtrl.clear();
+      middleNameCtrl.clear();
+      lastNameCtrl.clear();
+
       if (mounted) {
-        setState(() => role = 'conductor');
+        setState(() {
+          role = null; // Reset role selection
+          generatedPassword =
+              _generatePassword(); // Generate new password for next user
+        });
       }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('User created as $createdRole with ID $employeeId'),
+            content: Text(
+              'User $displayName created as $role with ID $employeeId. Temporary password has been set.',
+            ),
           ),
         );
       }
@@ -247,19 +285,15 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   @override
   void initState() {
     super.initState();
-    // Generate initial ID for default role
-    _updateEmployeeId(role);
+    // Generate initial password
+    generatedPassword = _generatePassword();
   }
 
   /// ----------- SCREEN VIEW -----------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add Account'),
-        backgroundColor: const Color(0xFF0D2364),
-        foregroundColor: Colors.white,
-      ),
+      // REMOVED: appBar and drawer properties
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
@@ -299,18 +333,89 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
 
                   const SizedBox(height: 16),
 
+                  // First Name Field
                   TextField(
-                    controller: nameCtrl,
-                    maxLength: 36, // Added 20 character limit
+                    controller: firstNameCtrl,
+                    maxLength: 20,
                     decoration: const InputDecoration(
-                      labelText: 'Full Name',
+                      labelText: 'First Name',
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 8,
                       ),
-                      counterText: "", // Hide character counter
+                      counterText: "",
                     ),
+                    onChanged: (value) {
+                      // Filter out numbers in real-time
+                      final filteredValue = _filterNameInput(value);
+                      if (filteredValue != value) {
+                        firstNameCtrl.value = firstNameCtrl.value.copyWith(
+                          text: filteredValue,
+                          selection: TextSelection.collapsed(
+                            offset: filteredValue.length,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Middle Name Field
+                  TextField(
+                    controller: middleNameCtrl,
+                    maxLength: 20,
+                    decoration: const InputDecoration(
+                      labelText: 'Middle Name (Optional)',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      counterText: "",
+                    ),
+                    onChanged: (value) {
+                      // Filter out numbers in real-time
+                      final filteredValue = _filterNameInput(value);
+                      if (filteredValue != value) {
+                        middleNameCtrl.value = middleNameCtrl.value.copyWith(
+                          text: filteredValue,
+                          selection: TextSelection.collapsed(
+                            offset: filteredValue.length,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Last Name Field
+                  TextField(
+                    controller: lastNameCtrl,
+                    maxLength: 20,
+                    decoration: const InputDecoration(
+                      labelText: 'Last Name',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      counterText: "",
+                    ),
+                    onChanged: (value) {
+                      // Filter out numbers in real-time
+                      final filteredValue = _filterNameInput(value);
+                      if (filteredValue != value) {
+                        lastNameCtrl.value = lastNameCtrl.value.copyWith(
+                          text: filteredValue,
+                          selection: TextSelection.collapsed(
+                            offset: filteredValue.length,
+                          ),
+                        );
+                      }
+                    },
                   ),
 
                   const SizedBox(height: 16),
@@ -330,50 +435,59 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
 
                   const SizedBox(height: 12),
 
-                  TextField(
-                    controller: passCtrl,
-                    obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      hintText: 'Include A-Z, a-z, 0-9, and special characters',
-                      border: const OutlineInputBorder(),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                          color: Colors.grey,
+                  // Auto-generated password display
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Auto-generated Password:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                          ),
                         ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-
-                  // Password requirements hint
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0, left: 4.0),
-                    child: Text(
-                      'Password must contain:\n• Uppercase letter (A-Z)\n• Lowercase letter (a-z)\n• Number (0-9)\n• Special character (!@#\$%^&* etc.)',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  TextField(
-                    controller: employeeIDCtrl,
-                    readOnly: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Employee ID (auto-generated)',
-                      border: OutlineInputBorder(),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _obscurePassword
+                                    ? '•' * generatedPassword.length
+                                    : generatedPassword,
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: Colors.grey,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'User will be required to change password on first login',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
@@ -382,13 +496,15 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                   DropdownButtonFormField<String>(
                     initialValue: role,
                     decoration: const InputDecoration(
-                      labelText: 'Role',
+                      labelText: 'Role *',
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 8,
                       ),
+                      hintText: 'Select a role',
                     ),
+                    hint: const Text('Select a role'),
                     items: const [
                       DropdownMenuItem(value: "admin", child: Text("Admin")),
                       DropdownMenuItem(
@@ -410,6 +526,22 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                         _updateEmployeeId(value);
                       }
                     },
+                    validator: (value) {
+                      if (value == null) {
+                        return 'Please select a role';
+                      }
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 8),
+                  Text(
+                    'Please select a specific role (Admin, Legal Officer, Driver, Conductor, or Inspector)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
 
                   const SizedBox(height: 20),
@@ -424,7 +556,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      onPressed: loading ? null : _createUser,
+                      onPressed: (role == null || loading) ? null : _createUser,
                       child: loading
                           ? const CircularProgressIndicator()
                           : const Text(

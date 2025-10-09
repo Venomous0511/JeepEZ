@@ -366,7 +366,7 @@ class _DriverDashboardState extends State<DriverDashboard>
 
               const SizedBox(height: 32),
 
-              // Time Logs Card
+              // Time Logs Card - UPDATED WITH BLUE CONTAINER AND WHITE TEXT
               Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: isMobile ? 16.0 : 24.0,
@@ -379,37 +379,44 @@ class _DriverDashboardState extends State<DriverDashboard>
                     width: double.infinity,
                     padding: EdgeInsets.all(isMobile ? 16 : 20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0D2364),
+                      color: const Color(0xFF0D2364), // BLUE CONTAINER
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withAlpha(1),
+                          color: Colors.black.withOpacity(0.1),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.access_time,
-                          color: Colors.white,
-                          size: isMobile ? 24 : 28,
+                        // Header with date - UPDATED WITH WHITE TEXT
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Today | Monday | 06/06/06",
+                              style: TextStyle(
+                                color: Colors.white, // WHITE TEXT
+                                fontSize: isMobile ? 14 : 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                        SizedBox(width: isMobile ? 12 : 16),
+                        const SizedBox(height: 12),
+
+                        // Unit number - UPDATED WITH WHITE TEXT
                         Text(
-                          "Time Logs",
+                          "UNIT20",
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: isMobile ? 16 : 18,
-                            fontWeight: FontWeight.w600,
+                            color: Colors.white, // WHITE TEXT
+                            fontSize: isMobile ? 20 : 24,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.0,
                           ),
-                        ),
-                        const Spacer(),
-                        const Icon(
-                          Icons.arrow_forward_ios,
-                          color: Colors.white,
-                          size: 18,
                         ),
                       ],
                     ),

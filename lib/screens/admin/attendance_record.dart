@@ -33,6 +33,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
+  /// Refresh data
+  void _refreshData() {
+    setState(() {
+      // This will trigger a rebuild and refetch the data
+    });
+  }
+
   /// Get the active date (today, yesterday, or custom)
   DateTime _getTargetDate() {
     if (mode == "today") return DateTime.now();
@@ -146,18 +153,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final targetDate = _getTargetDate();
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: widget.onBackPressed,
-        ),
-        title: const Text(
-          'Attendance Record',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: const Color(0xFF0D2364),
-        automaticallyImplyLeading: false,
-      ),
       body: SizedBox(
         width: double.infinity,
         height: double.infinity,
@@ -169,28 +164,48 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               padding: const EdgeInsets.all(16),
               color: Colors.grey[50],
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  ChoiceChip(
-                    label: const Text("Today"),
-                    selected: mode == "today",
-                    onSelected: (_) => setState(() => mode = "today"),
+                  // Date selection chips
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ChoiceChip(
+                        label: const Text("Today"),
+                        selected: mode == "today",
+                        onSelected: (_) => setState(() => mode = "today"),
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: const Text("Yesterday"),
+                        selected: mode == "yesterday",
+                        onSelected: (_) => setState(() => mode = "yesterday"),
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: Text(
+                          mode == "custom"
+                              ? DateFormat("MMM d, yyyy").format(selectedDate)
+                              : "Pick Date",
+                        ),
+                        selected: mode == "custom",
+                        onSelected: (_) => _pickDate(),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  ChoiceChip(
-                    label: const Text("Yesterday"),
-                    selected: mode == "yesterday",
-                    onSelected: (_) => setState(() => mode = "yesterday"),
-                  ),
-                  const SizedBox(width: 8),
-                  ChoiceChip(
-                    label: Text(
-                      mode == "custom"
-                          ? DateFormat("MMM d, yyyy").format(selectedDate)
-                          : "Pick Date",
+
+                  // Refresh button
+                  IconButton(
+                    onPressed: _refreshData,
+                    icon: const Icon(Icons.refresh),
+                    tooltip: 'Refresh data',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(color: Colors.grey.shade300),
+                      ),
                     ),
-                    selected: mode == "custom",
-                    onSelected: (_) => _pickDate(),
                   ),
                 ],
               ),

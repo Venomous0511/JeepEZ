@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../firebase_options.dart';
 import '../../models/app_user.dart';
+import 'dart:math';
 
 class EmployeeListScreen extends StatefulWidget {
   final AppUser user;
@@ -15,6 +16,8 @@ class EmployeeListScreen extends StatefulWidget {
 
 class _EmployeeListScreenState extends State<EmployeeListScreen> {
   final TextEditingController searchController = TextEditingController();
+  int _currentPage = 0;
+  final int _pageSize = 10;
 
   @override
   void dispose() {
@@ -34,17 +37,181 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     }
   }
 
+  /// ----------- GENERATE EMPLOYEE ID FUNCTION -----------
+  Future<String> _generateEmployeeId(String role) async {
+    final Map<String, String> rolePrefixes = {
+      'legal_officer': '20',
+      'driver': '30',
+      'conductor': '40',
+      'inspector': '50',
+    };
+
+    final prefix = rolePrefixes[role] ?? '99';
+
+    final query = await FirebaseFirestore.instance
+        .collection('users')
+        .where('employeeId', isGreaterThanOrEqualTo: prefix)
+        .where('employeeId', isLessThan: '${prefix}999999')
+        .orderBy('employeeId', descending: true)
+        .limit(1)
+        .get();
+
+    if (query.docs.isEmpty) {
+      return '${prefix}001';
+    } else {
+      final lastId = query.docs.first['employeeId'] as String;
+      final lastNum = int.tryParse(lastId) ?? int.parse('${prefix}000');
+      return (lastNum + 1).toString().padLeft(5, '0');
+    }
+  }
+
+  /// ----------- GENERATE PASSWORD FUNCTION -----------
+  String _generatePassword() {
+    const String upperCase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const String lowerCase = 'abcdefghijklmnopqrstuvwxyz';
+    const String numbers = '0123456789';
+    const String specialChars = '!@#\$%^&*()_+-=[]{}|;:,.<>?';
+
+    final random = Random();
+    String password = '';
+
+    password += upperCase[random.nextInt(upperCase.length)];
+    password += lowerCase[random.nextInt(lowerCase.length)];
+    password += numbers[random.nextInt(numbers.length)];
+    password += specialChars[random.nextInt(specialChars.length)];
+
+    const allChars = upperCase + lowerCase + numbers + specialChars;
+    for (int i = 0; i < 8; i++) {
+      password += allChars[random.nextInt(allChars.length)];
+    }
+
+    final passwordList = password.split('')..shuffle();
+    return passwordList.join();
+  }
+
+  /// ----------- VALIDATE GMAIL FUNCTION -----------
+  bool _isValidGmail(String email) {
+    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@gmail\.com$');
+    return emailRegex.hasMatch(email);
+  }
+
+  /// ----------- VALIDATE NAME FUNCTION -----------
+  String? _validateName(String name, String fieldName) {
+    if (name.isEmpty) {
+      return '$fieldName is required';
+    }
+    if (name.length > 20) {
+      return '$fieldName must be 20 characters or less';
+    }
+    if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(name)) {
+      return '$fieldName can only contain letters and spaces';
+    }
+    return null;
+  }
+
+  /// ----------- FILTER NAME INPUT (NO NUMBERS) -----------
+  String _filterNameInput(String input) {
+    return input.replaceAll(RegExp(r'[^a-zA-Z\s]'), '');
+  }
+
+  // Get paginated employee documents
+  List<QueryDocumentSnapshot> _getPaginatedEmployees(
+    List<QueryDocumentSnapshot> allEmployees,
+  ) {
+    final startIndex = _currentPage * _pageSize;
+    final endIndex = startIndex + _pageSize;
+
+    if (startIndex >= allEmployees.length) {
+      return [];
+    }
+
+    if (endIndex > allEmployees.length) {
+      return allEmployees.sublist(startIndex);
+    }
+
+    return allEmployees.sublist(startIndex, endIndex);
+  }
+
+  // Get total pages
+  int _getTotalPages(int totalEmployees) {
+    return (totalEmployees / _pageSize).ceil();
+  }
+
+  // Build pagination controls
+  Widget _buildPaginationControls(int totalEmployees) {
+    final totalPages = _getTotalPages(totalEmployees);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios, size: 16),
+            onPressed: _currentPage > 0
+                ? () {
+                    setState(() {
+                      _currentPage--;
+                    });
+                  }
+                : null,
+          ),
+
+          for (int i = 0; i < totalPages; i++)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              child: TextButton(
+                onPressed: () {
+                  setState(() {
+                    _currentPage = i;
+                  });
+                },
+                style: TextButton.styleFrom(
+                  backgroundColor: _currentPage == i
+                      ? const Color(0xFF0D2364)
+                      : Colors.transparent,
+                  foregroundColor: _currentPage == i
+                      ? Colors.white
+                      : const Color(0xFF0D2364),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    side: BorderSide(
+                      color: _currentPage == i
+                          ? const Color(0xFF0D2364)
+                          : Colors.grey.shade300,
+                    ),
+                  ),
+                  minimumSize: const Size(36, 36),
+                ),
+                child: Text(
+                  '${i + 1}',
+                  style: TextStyle(
+                    fontWeight: _currentPage == i
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
+                ),
+              ),
+            ),
+
+          IconButton(
+            icon: const Icon(Icons.arrow_forward_ios, size: 16),
+            onPressed: _currentPage < totalPages - 1
+                ? () {
+                    setState(() {
+                      _currentPage++;
+                    });
+                  }
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Employee List Management',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: const Color(0xFF0D2364),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
       body: SizedBox(
         width: double.infinity,
         height: double.infinity,
@@ -79,13 +246,14 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     ),
                   ),
                   onChanged: (_) {
-                    setState(() {}); // rebuild when typing
+                    setState(() {
+                      _currentPage = 0;
+                    });
                   },
                 ),
               ),
             ),
 
-            // 🟦 Add whitespace between search bar and list
             const SizedBox(height: 8),
 
             // ---------------- MAIN CONTENT ----------------
@@ -114,13 +282,11 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       return const Center(child: Text('No users yet.'));
                     }
 
-                    // get docs
                     var employeeDocs = snap.data!.docs.where((d) {
                       final data = d.data() as Map<String, dynamic>;
                       return data['status'] == true;
                     }).toList();
 
-                    // apply search filter
                     final query = searchController.text.toLowerCase();
                     if (query.isNotEmpty) {
                       employeeDocs = employeeDocs.where((d) {
@@ -146,32 +312,53 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       );
                     }
 
-                    return LayoutBuilder(
-                      builder: (context, constraints) {
-                        final bool isMobile = constraints.maxWidth < 600;
-                        final bool isTablet = constraints.maxWidth < 900;
+                    final paginatedEmployees = _getPaginatedEmployees(
+                      employeeDocs,
+                    );
 
-                        if (isMobile) {
-                          return _buildMobileList(employeeDocs);
-                        } else if (isTablet) {
-                          return _buildTabletView(employeeDocs);
-                        } else {
-                          return _buildDesktopView(employeeDocs);
-                        }
-                      },
+                    return Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            'Showing ${paginatedEmployees.length} of ${employeeDocs.length} employees',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+
+                        Expanded(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final bool isMobile = constraints.maxWidth < 600;
+                              final bool isTablet = constraints.maxWidth < 900;
+
+                              if (isMobile) {
+                                return _buildMobileList(paginatedEmployees);
+                              } else if (isTablet) {
+                                return _buildTabletView(paginatedEmployees);
+                              } else {
+                                return _buildDesktopView(paginatedEmployees);
+                              }
+                            },
+                          ),
+                        ),
+
+                        _buildPaginationControls(employeeDocs.length),
+                      ],
                     );
                   },
                 ),
               ),
             ),
 
-            // 🟦 Bottom spacing (good UI practice)
             const SizedBox(height: 16),
           ],
         ),
       ),
 
-      // ---------------- ADD BUTTON ----------------
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddUserDialog,
         backgroundColor: const Color(0xFF0D2364),
@@ -189,6 +376,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       itemBuilder: (context, index) {
         final doc = employeeDocs[index];
         final data = doc.data() as Map<String, dynamic>;
+        final displayNumber = (_currentPage * _pageSize) + index + 1;
 
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
@@ -197,7 +385,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header Row
                 Row(
                   children: [
                     CircleAvatar(
@@ -228,7 +415,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                             ),
                           ),
                           Text(
-                            data['email'] ?? 'No Email',
+                            '${displayNumber}. ${data['employeeId']?.toString() ?? 'N/A'}',
                             style: TextStyle(
                               color: Colors.grey[600],
                               fontSize: 14,
@@ -265,11 +452,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 const Divider(height: 1),
                 const SizedBox(height: 12),
 
-                // Details
-                _buildMobileDetailRow(
-                  "Employee ID",
-                  data['employeeId']?.toString() ?? 'N/A',
-                ),
+                _buildMobileDetailRow("Email", data['email'] ?? 'N/A'),
                 _buildMobileDetailRow(
                   "Role",
                   _capitalizeRole(data['role'] ?? 'N/A'),
@@ -280,7 +463,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     _capitalizeEmploymentType(data['employmentType']),
                   ),
 
-                // Actions
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -342,16 +524,24 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
             horizontalMargin: 8,
             headingRowColor: WidgetStateProperty.all(const Color(0xFFF5F7FA)),
             columns: const [
-              DataColumn(label: Text("ID")),
+              DataColumn(label: Text("Employee ID")),
               DataColumn(label: Text("Name")),
               DataColumn(label: Text("Status")),
               DataColumn(label: Text("Email")),
               DataColumn(label: Text("Role")),
               DataColumn(label: Text("Actions")),
             ],
-            rows: employeeDocs.map((doc) {
+            rows: employeeDocs.asMap().entries.map((entry) {
+              final index = entry.key;
+              final doc = entry.value;
               final data = doc.data() as Map<String, dynamic>;
-              return _buildDataRow(doc.id, data, isCompact: true);
+              final displayNumber = (_currentPage * _pageSize) + index + 1;
+              return _buildDataRow(
+                doc.id,
+                data,
+                displayNumber,
+                isCompact: true,
+              );
             }).toList(),
           ),
         ),
@@ -380,9 +570,17 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
               DataColumn(label: Text("Role")),
               DataColumn(label: Text("Actions")),
             ],
-            rows: employeeDocs.map((doc) {
+            rows: employeeDocs.asMap().entries.map((entry) {
+              final index = entry.key;
+              final doc = entry.value;
               final data = doc.data() as Map<String, dynamic>;
-              return _buildDataRow(doc.id, data, isCompact: false);
+              final displayNumber = (_currentPage * _pageSize) + index + 1;
+              return _buildDataRow(
+                doc.id,
+                data,
+                displayNumber,
+                isCompact: false,
+              );
             }).toList(),
           ),
         ),
@@ -393,14 +591,15 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
   /// Helper method to build DataRows for both tablet and desktop
   DataRow _buildDataRow(
     String docId,
-    Map<String, dynamic> data, {
+    Map<String, dynamic> data,
+    int displayNumber, {
     bool isCompact = false,
   }) {
     return DataRow(
       cells: [
         DataCell(
           Text(
-            data['employeeId'].toString(),
+            '${displayNumber}. ${data['employeeId'].toString()}',
             style: isCompact ? const TextStyle(fontSize: 12) : null,
           ),
         ),
@@ -483,43 +682,19 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         .join(' ');
   }
 
-  /// ---------------- ADD NEW USER ----------------
+  /// ---------------- ADD NEW USER (UPDATED TO MATCH SUPER-ADMIN) ----------------
   Future<void> _showAddUserDialog() async {
-    final nameCtrl = TextEditingController();
-    final emailCtrl = TextEditingController();
-    final passCtrl = TextEditingController();
-    final employeeIdCtrl = TextEditingController();
-    String role = "conductor";
-    String? employmentType;
+    final TextEditingController emailCtrl = TextEditingController();
+    final TextEditingController firstNameCtrl = TextEditingController();
+    final TextEditingController middleNameCtrl = TextEditingController();
+    final TextEditingController lastNameCtrl = TextEditingController();
+
     bool loading = false;
-
-    // Move helper outside async gaps (no underscore inside method)
-    Future<String> generateEmployeeId(String role) async {
-      final Map<String, String> rolePrefixes = {
-        'legal_officer': '20',
-        'driver': '30',
-        'conductor': '40',
-        'inspector': '50',
-      };
-
-      final prefix = rolePrefixes[role] ?? '99';
-
-      final query = await FirebaseFirestore.instance
-          .collection('users')
-          .where('employeeId', isGreaterThanOrEqualTo: prefix)
-          .where('employeeId', isLessThan: '${prefix}999999')
-          .orderBy('employeeId', descending: true)
-          .limit(1)
-          .get();
-
-      if (query.docs.isEmpty) {
-        return '${prefix}001';
-      } else {
-        final lastId = query.docs.first['employeeId'] as String;
-        final lastNum = int.tryParse(lastId) ?? int.parse('${prefix}000');
-        return (lastNum + 1).toString().padLeft(5, '0');
-      }
-    }
+    String? role;
+    bool _obscurePassword = true;
+    String generatedPassword = _generatePassword();
+    String? employmentType;
+    String? area;
 
     await showDialog(
       context: context,
@@ -527,52 +702,186 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text("Add New User"),
+              title: const Text('Create User'),
               content: SingleChildScrollView(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
                     maxWidth: MediaQuery.of(context).size.width * 0.8,
-                    maxHeight: MediaQuery.of(context).size.height * 0.7,
+                    maxHeight: MediaQuery.of(context).size.height * 0.8,
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // First Name Field
                       TextField(
-                        controller: nameCtrl,
+                        controller: firstNameCtrl,
+                        maxLength: 20,
                         decoration: const InputDecoration(
-                          labelText: "Full Name",
+                          labelText: 'First Name',
                           border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          counterText: "",
                         ),
+                        onChanged: (value) {
+                          final filteredValue = _filterNameInput(value);
+                          if (filteredValue != value) {
+                            firstNameCtrl.value = firstNameCtrl.value.copyWith(
+                              text: filteredValue,
+                              selection: TextSelection.collapsed(
+                                offset: filteredValue.length,
+                              ),
+                            );
+                          }
+                        },
                       ),
+
                       const SizedBox(height: 12),
+
+                      // Middle Name Field
+                      TextField(
+                        controller: middleNameCtrl,
+                        maxLength: 20,
+                        decoration: const InputDecoration(
+                          labelText: 'Middle Name (Optional)',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          counterText: "",
+                        ),
+                        onChanged: (value) {
+                          final filteredValue = _filterNameInput(value);
+                          if (filteredValue != value) {
+                            middleNameCtrl.value = middleNameCtrl.value
+                                .copyWith(
+                                  text: filteredValue,
+                                  selection: TextSelection.collapsed(
+                                    offset: filteredValue.length,
+                                  ),
+                                );
+                          }
+                        },
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Last Name Field
+                      TextField(
+                        controller: lastNameCtrl,
+                        maxLength: 20,
+                        decoration: const InputDecoration(
+                          labelText: 'Last Name',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          counterText: "",
+                        ),
+                        onChanged: (value) {
+                          final filteredValue = _filterNameInput(value);
+                          if (filteredValue != value) {
+                            lastNameCtrl.value = lastNameCtrl.value.copyWith(
+                              text: filteredValue,
+                              selection: TextSelection.collapsed(
+                                offset: filteredValue.length,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
                       TextField(
                         controller: emailCtrl,
                         decoration: const InputDecoration(
-                          labelText: "Email",
+                          labelText: 'Email',
                           border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Auto-generated password display
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Auto-generated Password:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _obscurePassword
+                                        ? '•' * generatedPassword.length
+                                        : generatedPassword,
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    _obscurePassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                    color: Colors.grey,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _obscurePassword = !_obscurePassword;
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'User will be required to change password on first login',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+
                       const SizedBox(height: 12),
-                      TextField(
-                        controller: passCtrl,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: "Password",
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: employeeIdCtrl,
-                        readOnly: true,
-                        decoration: const InputDecoration(
-                          labelText: "Employee ID (auto-generated)",
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
+
                       DropdownButtonFormField<String>(
                         value: role,
+                        decoration: const InputDecoration(
+                          labelText: 'Role *',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          hintText: 'Select a role',
+                        ),
+                        hint: const Text('Select a role'),
                         items: const [
                           DropdownMenuItem(
                             value: "legal_officer",
@@ -591,20 +900,19 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                             child: Text("Inspector"),
                           ),
                         ],
-                        onChanged: (value) async {
-                          if (value != null) {
-                            final newId = await generateEmployeeId(value);
-                            setState(() {
-                              role = value;
-                              employeeIdCtrl.text = newId;
-                              employmentType = null;
-                            });
-                          }
+                        onChanged: (value) {
+                          setState(() {
+                            role = value;
+                            employmentType = null;
+                            area = null;
+                          });
                         },
-                        decoration: const InputDecoration(
-                          labelText: "Role",
-                          border: OutlineInputBorder(),
-                        ),
+                        validator: (value) {
+                          if (value == null) {
+                            return 'Please select a role';
+                          }
+                          return null;
+                        },
                       ),
 
                       if (role == "driver" ||
@@ -634,6 +942,36 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           ),
                         ),
                       ],
+
+                      if (role == "inspector") ...[
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: area,
+                          items: const [
+                            DropdownMenuItem(
+                              value: "Gaya Gaya",
+                              child: Text("Gaya Gaya"),
+                            ),
+                            DropdownMenuItem(
+                              value: "SM Tungko",
+                              child: Text("SM Tungko"),
+                            ),
+                            DropdownMenuItem(
+                              value: "Road 2",
+                              child: Text("Road 2"),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              area = value;
+                            });
+                          },
+                          decoration: const InputDecoration(
+                            labelText: "Area",
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -647,25 +985,90 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   onPressed: loading
                       ? null
                       : () async {
-                          if (emailCtrl.text.isEmpty ||
-                              passCtrl.text.length < 8) {
+                          final email = emailCtrl.text.trim();
+                          final firstName = firstNameCtrl.text.trim();
+                          final middleName = middleNameCtrl.text.trim();
+                          final lastName = lastNameCtrl.text.trim();
+
+                          // Role validation
+                          if (role == null) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text(
-                                    "Enter email and 8+ char password",
-                                  ),
+                                  content: Text('Please select a role'),
                                 ),
                               );
                             }
                             return;
                           }
 
-                          if (employeeIdCtrl.text.isEmpty) {
+                          // Name validations
+                          final firstNameError = _validateName(
+                            firstName,
+                            'First name',
+                          );
+                          if (firstNameError != null) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(firstNameError)),
+                              );
+                            }
+                            return;
+                          }
+
+                          final lastNameError = _validateName(
+                            lastName,
+                            'Last name',
+                          );
+                          if (lastNameError != null) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(lastNameError)),
+                              );
+                            }
+                            return;
+                          }
+
+                          if (middleName.isNotEmpty) {
+                            final middleNameError = _validateName(
+                              middleName,
+                              'Middle name',
+                            );
+                            if (middleNameError != null) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(middleNameError)),
+                                );
+                              }
+                              return;
+                            }
+                          }
+
+                          // Generate display name
+                          final mi = middleName.isNotEmpty
+                              ? ' ${middleName[0]}.'
+                              : '';
+                          final displayName = '$lastName, $firstName$mi';
+
+                          // Email validation - Gmail only
+                          if (email.isEmpty) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text("Employee ID not generated"),
+                                  content: Text('Please enter email address'),
+                                ),
+                              );
+                            }
+                            return;
+                          }
+
+                          if (!_isValidGmail(email)) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Only Gmail accounts are allowed',
+                                  ),
                                 ),
                               );
                             }
@@ -675,71 +1078,76 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           setState(() => loading = true);
 
                           try {
+                            // Generate employee ID
+                            final employeeId = await _generateEmployeeId(role!);
+
+                            // Create User In Secondary Auth Instance
                             final secondaryApp =
                                 await _getOrCreateSecondaryApp();
                             final secondaryAuth = FirebaseAuth.instanceFor(
                               app: secondaryApp,
                             );
 
-                            final email = emailCtrl.text.trim();
-                            final password = passCtrl.text.trim();
-                            final employeeId = employeeIdCtrl.text.trim();
-
                             final newCred = await secondaryAuth
                                 .createUserWithEmailAndPassword(
                                   email: email,
-                                  password: password,
+                                  password: generatedPassword,
                                 );
                             final newUid = newCred.user!.uid;
 
-                            final newUser = {
+                            // Update user profile with display name
+                            await newCred.user!.updateDisplayName(displayName);
+
+                            // Save to Firestore
+                            final userData = {
                               'uid': newUid,
-                              "employeeId": employeeId,
-                              "name": nameCtrl.text.trim(),
-                              "email": emailCtrl.text.trim(),
-                              "role": role,
-                              "status": true,
-                              if (employmentType != null)
-                                "employmentType": employmentType,
-                              "createdAt": FieldValue.serverTimestamp(),
-                              "createdBy": widget.user.email,
+                              'email': email,
+                              'employeeId': employeeId,
+                              'firstName': firstName,
+                              'middleName': middleName,
+                              'lastName': lastName,
+                              'name': displayName,
+                              'role': role,
+                              'status': true,
+                              'createdAt': FieldValue.serverTimestamp(),
+                              'createdBy': widget.user.email,
+                              'tempPassword': generatedPassword,
                             };
 
-                            await FirebaseFirestore.instance
-                                .collection("users")
-                                .doc(newUid)
-                                .set(newUser);
+                            // Add optional fields
+                            if (employmentType != null) {
+                              userData['employmentType'] = employmentType;
+                            }
+                            if (role == "inspector" && area != null) {
+                              userData['area'] = area;
+                            }
 
                             await FirebaseFirestore.instance
-                                .collection("notifications")
+                                .collection('users')
+                                .doc(newUid)
+                                .set(userData);
+
+                            // Create notification
+                            await FirebaseFirestore.instance
+                                .collection('notifications')
                                 .add({
-                                  "title": "New Account",
-                                  "message":
-                                      "Added account for ${nameCtrl.text.trim()} as $role",
-                                  "time": FieldValue.serverTimestamp(),
-                                  "dismissed": false,
-                                  "type": "updates",
-                                  "createdBy": widget.user.email,
+                                  'title': 'New Account Created',
+                                  'message':
+                                      '$displayName has been added as $role with ID $employeeId',
+                                  'time': FieldValue.serverTimestamp(),
+                                  'dismissed': false,
+                                  'type': 'updates',
+                                  'createdBy': widget.user.email,
                                 });
 
                             await secondaryAuth.signOut();
-
-                            final createdRole = role;
-
-                            emailCtrl.clear();
-                            passCtrl.clear();
-                            nameCtrl.clear();
-                            employeeIdCtrl.clear();
-                            if (mounted) {
-                              setState(() => role = 'conductor');
-                            }
 
                             if (context.mounted) {
                               Navigator.pop(dialogCtx);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(
-                                    'User created as $createdRole with ID $employeeId',
+                                    'User $displayName created as $role with ID $employeeId. Temporary password has been set.',
                                   ),
                                 ),
                               );
@@ -747,7 +1155,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text("Error: $e")),
+                                SnackBar(content: Text('Error: $e')),
                               );
                             }
                           } finally {
@@ -760,7 +1168,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           width: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text("Create"),
+                      : const Text("Create User"),
                 ),
               ],
             );
@@ -771,102 +1179,155 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
   }
 
   /// ---------------- UPDATE USER ----------------
-  /// ---------------- UPDATE USER ----------------
   Future<void> _editUser(String docId, Map<String, dynamic> data) async {
     final nameCtrl = TextEditingController(text: data['name']);
-    final emailCtrl = TextEditingController(text: data['email']);
-
+    String? role = data['role'];
     String? employmentType = data['employmentType'];
-    final String role = data['role'] ?? '';
 
-    final updated = await showDialog<bool>(
+    await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Update User"),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: "Name"),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: emailCtrl,
-                decoration: const InputDecoration(labelText: "Email"),
-              ),
-              if (role == 'driver' ||
-                  role == 'conductor' ||
-                  role == 'inspector')
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: DropdownButtonFormField<String>(
-                    value: employmentType,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text("Update User"),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(labelText: "Name"),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: role,
+                    decoration: const InputDecoration(
+                      labelText: 'Role *',
+                      border: OutlineInputBorder(),
+                    ),
                     items: const [
                       DropdownMenuItem(
-                        value: "full_time",
-                        child: Text("Full-Time"),
+                        value: "legal_officer",
+                        child: Text("Legal Officer"),
+                      ),
+                      DropdownMenuItem(value: "driver", child: Text("Driver")),
+                      DropdownMenuItem(
+                        value: "conductor",
+                        child: Text("Conductor"),
                       ),
                       DropdownMenuItem(
-                        value: "part_time",
-                        child: Text("Part-Time"),
+                        value: "inspector",
+                        child: Text("Inspector"),
                       ),
                     ],
                     onChanged: (value) {
                       setState(() {
-                        employmentType = value;
+                        role = value;
+                        // Reset employment type when role changes
+                        if (value != "driver" &&
+                            value != "conductor" &&
+                            value != "inspector") {
+                          employmentType = null;
+                        }
                       });
                     },
-                    decoration: const InputDecoration(
-                      labelText: "Employment Type",
-                    ),
                   ),
-                ),
+                  if (role == 'driver' ||
+                      role == 'conductor' ||
+                      role == 'inspector')
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: DropdownButtonFormField<String>(
+                        value: employmentType,
+                        items: const [
+                          DropdownMenuItem(
+                            value: "full_time",
+                            child: Text("Full-Time"),
+                          ),
+                          DropdownMenuItem(
+                            value: "part_time",
+                            child: Text("Part-Time"),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            employmentType = value;
+                          });
+                        },
+                        decoration: const InputDecoration(
+                          labelText: "Employment Type",
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final updateData = {
+                    "name": nameCtrl.text.trim(),
+                    "role": role,
+                    "updatedAt": FieldValue.serverTimestamp(),
+                  };
+
+                  // Only add employmentType if it exists and user has a role that should have it
+                  if (employmentType != null &&
+                      (role == 'driver' ||
+                          role == 'conductor' ||
+                          role == 'inspector')) {
+                    updateData["employmentType"] = employmentType;
+                  }
+
+                  try {
+                    await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(docId)
+                        .update(updateData);
+
+                    await FirebaseFirestore.instance
+                        .collection('notifications')
+                        .add({
+                          'title': 'Updated Account',
+                          'message':
+                              'Updated account for ${nameCtrl.text.trim()}',
+                          'time': FieldValue.serverTimestamp(),
+                          'dismissed': false,
+                          'type': 'updates',
+                          'createdBy': widget.user.email,
+                        });
+
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            "Updated ${nameCtrl.text.trim()} successfully",
+                          ),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Error updating user: $e")),
+                      );
+                    }
+                  }
+                },
+                child: const Text("Update"),
+              ),
             ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Update"),
-          ),
-        ],
+          );
+        },
       ),
     );
 
-    if (updated == true) {
-      final updateData = {
-        "name": nameCtrl.text.trim(),
-        "email": emailCtrl.text.trim(),
-        "updatedAt": FieldValue.serverTimestamp(),
-      };
-
-      if (role == 'driver' || role == 'conductor' || role == 'inspector') {
-        updateData["employmentType"] = (employmentType as Object?)!;
-      }
-
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(docId)
-          .update(updateData);
-
-      await FirebaseFirestore.instance.collection('notifications').add({
-        'title': 'Updated Account',
-        'message': 'Updated account for ${nameCtrl.text.trim()}',
-        'time': FieldValue.serverTimestamp(),
-        'dismissed': false,
-        'type': 'updates',
-        'createdBy': widget.user.email,
-      });
-    }
-
     nameCtrl.dispose();
-    emailCtrl.dispose();
   }
 
   /// ---------------- DELETE USER ----------------
@@ -875,9 +1336,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Deactivate User"),
-        content: Text(
-          "Deactivate ${data['email']}? This will archive and free the slot.",
-        ),
+        content: Text("Deactivate ${data['email']}? Deactivate Account."),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -901,7 +1360,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
       final userData = snap.data()!;
 
-      // Archive the user
       await FirebaseFirestore.instance
           .collection('archived_users')
           .doc(docId)
@@ -912,13 +1370,11 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
             "status": false,
           });
 
-      // Update the original user record to reflect deactivation
       await userRef.update({
         "status": false,
         "updatedAt": FieldValue.serverTimestamp(),
       });
 
-      // Create a notification
       await FirebaseFirestore.instance.collection('notifications').add({
         'title': 'Deactivated Account',
         'message': 'Deactivated account for ${data['email']}',

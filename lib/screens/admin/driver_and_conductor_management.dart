@@ -24,9 +24,15 @@ class _DriverConductorManagementScreenState
         .snapshots();
   }
 
-  // Update employee schedule + save to schedules history
-  Future<void> _updateEmployeeSchedule(String docId, String newSchedule) async {
+  // Update employee schedule + save to schedules history with employee info
+  Future<void> _updateEmployeeSchedule(
+    String docId,
+    String newSchedule,
+    Map<String, dynamic> employeeData,
+  ) async {
     try {
+      final currentSchedule = employeeData['schedule']?.toString() ?? 'Not set';
+
       await _firestore.collection('users').doc(docId).update({
         'schedule': newSchedule,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -34,15 +40,16 @@ class _DriverConductorManagementScreenState
 
       await _firestore.collection('schedules').add({
         'userId': docId,
-        'schedule': newSchedule,
+        'employeeName': employeeData['name'] ?? 'Unknown',
+        'employeeId': employeeData['employeeId'] ?? 'Unknown',
+        'previousSchedule': currentSchedule,
+        'newSchedule': newSchedule,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Schedule updated & saved in schedules'),
-          ),
+          const SnackBar(content: Text('Schedule updated & history saved')),
         );
       }
     } catch (e) {
@@ -67,52 +74,96 @@ class _DriverConductorManagementScreenState
     return snapshot.docs.map((doc) => doc.data()).toList();
   }
 
-  void _showScheduleHistory(BuildContext context, String userId) async {
+  void _showScheduleHistory(
+    BuildContext context,
+    String userId,
+    String employeeName,
+  ) async {
     final schedules = await _getEmployeeSchedules(userId);
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Schedule History'),
+          title: Text('Schedule History - $employeeName'),
           content: SizedBox(
-            width: 300,
-            height: 300,
+            width: 400,
+            height: 400,
             child: schedules.isEmpty
                 ? const Center(child: Text("No schedule history"))
                 : SingleChildScrollView(
                     child: Column(
                       children: schedules.map((s) {
-                        return ListTile(
-                          title: Text(s['schedule']),
-                          subtitle: Text(
-                            s['createdAt'] != null
-                                ? (s['createdAt'] as Timestamp)
-                                      .toDate()
-                                      .toString()
-                                : '',
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          child: ListTile(
+                            title: Text('New: ${s['newSchedule']}'),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Previous: ${s['previousSchedule']}'),
+                                const SizedBox(height: 4),
+                                Text(
+                                  s['createdAt'] != null
+                                      ? 'Changed on: ${(s['createdAt'] as Timestamp).toDate().toString()}'
+                                      : '',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            leading: const Icon(
+                              Icons.calendar_today,
+                              color: Colors.blue,
+                            ),
                           ),
                         );
                       }).toList(),
                     ),
                   ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
         );
       },
     );
   }
 
-  // Update employee vehicle
-  Future<void> _updateEmployeeVehicle(String docId, String newVehicle) async {
+  // Update employee vehicle + save to vehicle history
+  Future<void> _updateEmployeeVehicle(
+    String docId,
+    String newVehicle,
+    Map<String, dynamic> employeeData,
+  ) async {
     try {
+      final currentVehicle =
+          employeeData['assignedVehicle']?.toString() ?? 'Not assigned';
+
       await _firestore.collection('users').doc(docId).update({
         'assignedVehicle': int.tryParse(newVehicle) ?? 0,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
+      await _firestore.collection('vehicle_history').add({
+        'userId': docId,
+        'employeeName': employeeData['name'] ?? 'Unknown',
+        'employeeId': employeeData['employeeId'] ?? 'Unknown',
+        'previousVehicle': currentVehicle != 'Not assigned'
+            ? 'UNIT $currentVehicle'
+            : currentVehicle,
+        'newVehicle': 'UNIT $newVehicle',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vehicle updated successfully')),
+          const SnackBar(content: Text('Vehicle updated & history saved')),
         );
       }
     } catch (e) {
@@ -122,6 +173,80 @@ class _DriverConductorManagementScreenState
         ).showSnackBar(SnackBar(content: Text('Error updating vehicle: $e')));
       }
     }
+  }
+
+  // Get the employee vehicle history
+  Future<List<Map<String, dynamic>>> _getEmployeeVehicleHistory(
+    String userId,
+  ) async {
+    final snapshot = await _firestore
+        .collection('vehicle_history')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .get();
+
+    return snapshot.docs.map((doc) => doc.data()).toList();
+  }
+
+  void _showVehicleHistory(
+    BuildContext context,
+    String userId,
+    String employeeName,
+  ) async {
+    final vehicleHistory = await _getEmployeeVehicleHistory(userId);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Vehicle History - $employeeName'),
+          content: SizedBox(
+            width: 400,
+            height: 400,
+            child: vehicleHistory.isEmpty
+                ? const Center(child: Text("No vehicle history"))
+                : SingleChildScrollView(
+                    child: Column(
+                      children: vehicleHistory.map((history) {
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          child: ListTile(
+                            title: Text('New: ${history['newVehicle']}'),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Previous: ${history['previousVehicle']}'),
+                                const SizedBox(height: 4),
+                                Text(
+                                  history['createdAt'] != null
+                                      ? 'Changed on: ${(history['createdAt'] as Timestamp).toDate().toString()}'
+                                      : '',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            leading: const Icon(
+                              Icons.directions_bus,
+                              color: Colors.green,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // Filter employees based on search query
@@ -139,8 +264,11 @@ class _DriverConductorManagementScreenState
     }).toList();
   }
 
-  // Action menu (schedule / vehicle / history)
+  // Action menu with the requested format
   void _showActionMenu(BuildContext context, QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    final employeeName = data['name']?.toString() ?? 'Employee';
+
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
@@ -149,10 +277,34 @@ class _DriverConductorManagementScreenState
             children: <Widget>[
               ListTile(
                 leading: const Icon(Icons.calendar_today),
+                title: const Text('Set Schedule'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showScheduleSelector(context, doc, data);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.directions_bus),
+                title: const Text('Assign Vehicle'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showVehicleSelector(context, doc, data);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.edit_calendar),
                 title: const Text('Change Schedule'),
                 onTap: () {
                   Navigator.pop(context);
-                  _showScheduleSelector(context, doc);
+                  _showScheduleSelector(context, doc, data);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('Change Vehicle'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showVehicleSelector(context, doc, data);
                 },
               ),
               ListTile(
@@ -160,15 +312,15 @@ class _DriverConductorManagementScreenState
                 title: const Text('View Schedule History'),
                 onTap: () {
                   Navigator.pop(context);
-                  _showScheduleHistory(context, doc.id);
+                  _showScheduleHistory(context, doc.id, employeeName);
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.directions_bus),
-                title: const Text('Change Vehicle'),
+                leading: const Icon(Icons.history_edu),
+                title: const Text('View Vehicle History'),
                 onTap: () {
                   Navigator.pop(context);
-                  _showVehicleSelector(context, doc);
+                  _showVehicleHistory(context, doc.id, employeeName);
                 },
               ),
             ],
@@ -179,7 +331,11 @@ class _DriverConductorManagementScreenState
   }
 
   // Schedule selector dialog
-  void _showScheduleSelector(BuildContext context, QueryDocumentSnapshot doc) {
+  void _showScheduleSelector(
+    BuildContext context,
+    QueryDocumentSnapshot doc,
+    Map<String, dynamic> employeeData,
+  ) {
     final data = doc.data() as Map<String, dynamic>;
 
     final Map<String, bool> selectedDays = {
@@ -241,7 +397,7 @@ class _DriverConductorManagementScreenState
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Select Schedule',
+                        'Select Schedule for ${employeeData['name']}',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 16),
@@ -291,6 +447,7 @@ class _DriverConductorManagementScreenState
                                 await _updateEmployeeSchedule(
                                   doc.id,
                                   selectedDayList.join(', '),
+                                  employeeData,
                                 );
                                 Navigator.pop(context);
                               } else {
@@ -328,6 +485,7 @@ class _DriverConductorManagementScreenState
   void _showVehicleSelector(
     BuildContext context,
     QueryDocumentSnapshot doc,
+    Map<String, dynamic> employeeData,
   ) async {
     final data = doc.data() as Map<String, dynamic>;
     final vehicles = await _getVehicles();
@@ -347,6 +505,14 @@ class _DriverConductorManagementScreenState
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    Text(
+                      'Select Vehicle for ${employeeData['name']}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     DropdownButton<String>(
                       value: currentVehicle,
                       isExpanded: true,
@@ -360,12 +526,27 @@ class _DriverConductorManagementScreenState
                         setState(() => currentVehicle = val!);
                       },
                     ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        await _updateEmployeeVehicle(doc.id, currentVehicle);
-                        Navigator.pop(context);
-                      },
-                      child: const Text('Save'),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () async {
+                            await _updateEmployeeVehicle(
+                              doc.id,
+                              currentVehicle,
+                              employeeData,
+                            );
+                            Navigator.pop(context);
+                          },
+                          child: const Text('Save'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -378,8 +559,10 @@ class _DriverConductorManagementScreenState
   }
 
   // Build responsive employee card for mobile view
-  Widget _buildEmployeeCard(QueryDocumentSnapshot doc) {
+  Widget _buildEmployeeCard(QueryDocumentSnapshot doc, int index) {
     final data = doc.data() as Map<String, dynamic>;
+    final employeeId = data['employeeId']?.toString() ?? 'N/A';
+    final formattedEmployeeId = '${index + 1}. $employeeId';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -405,7 +588,7 @@ class _DriverConductorManagementScreenState
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'ID: ${data['employeeId']?.toString() ?? 'N/A'}',
+                        'ID: $formattedEmployeeId',
                         style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                     ],
@@ -421,14 +604,14 @@ class _DriverConductorManagementScreenState
             const Divider(height: 1),
             const SizedBox(height: 12),
 
-            // Employee details
-            _buildInfoRow(
-              'Employment Type',
-              data['employmentType']?.toString() ?? 'N/A',
-            ),
+            // Employee details in specified order
             _buildInfoRow(
               'Role',
               _capitalizeRole(data['role']?.toString() ?? 'N/A'),
+            ),
+            _buildInfoRow(
+              'Employment Type',
+              data['employmentType']?.toString() ?? 'N/A',
             ),
             _buildInfoRow(
               'Vehicle',
@@ -483,14 +666,6 @@ class _DriverConductorManagementScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Driver & Conductor Oversight',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: const Color(0xFF0D2364),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
       body: SizedBox(
         width: double.infinity,
         height: double.infinity,
@@ -565,7 +740,7 @@ class _DriverConductorManagementScreenState
       padding: const EdgeInsets.only(bottom: 16),
       itemCount: filteredDocs.length,
       itemBuilder: (context, index) {
-        return _buildEmployeeCard(filteredDocs[index]);
+        return _buildEmployeeCard(filteredDocs[index], index);
       },
     );
   }
@@ -588,50 +763,52 @@ class _DriverConductorManagementScreenState
             columns: const [
               DataColumn(
                 label: Text(
-                  'Name',
+                  'EMP ID',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
               DataColumn(
                 label: Text(
-                  'Emp ID',
+                  'NAME',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
               DataColumn(
                 label: Text(
-                  'Type',
+                  'ROLE',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
               DataColumn(
                 label: Text(
-                  'Role',
+                  'EMPLO TYPE',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
               DataColumn(
                 label: Text(
-                  'Vehicle',
+                  'VEHICLE',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
               DataColumn(
                 label: Text(
-                  'Schedule',
+                  'SHCED',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
               DataColumn(
                 label: Text(
-                  'Actions',
+                  'ACTION',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
             ],
-            rows: filteredDocs.map((doc) {
+            rows: filteredDocs.asMap().entries.map((entry) {
+              final index = entry.key;
+              final doc = entry.value;
               final data = doc.data() as Map<String, dynamic>;
-              return _buildDataRow(doc, data, isCompact: true);
+              return _buildDataRow(doc, data, index, isCompact: true);
             }).toList(),
           ),
         ),
@@ -657,50 +834,52 @@ class _DriverConductorManagementScreenState
             columns: const [
               DataColumn(
                 label: Text(
-                  'Name',
+                  'EMP ID',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
               DataColumn(
                 label: Text(
-                  'Employee ID',
+                  'NAME',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
               DataColumn(
                 label: Text(
-                  'Employment Type',
+                  'ROLE',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
               DataColumn(
                 label: Text(
-                  'Role',
+                  'EMP-TYPE',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
               DataColumn(
                 label: Text(
-                  'Vehicle',
+                  'VEHICLE',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
               DataColumn(
                 label: Text(
-                  'Schedule',
+                  'SHCEDULE',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
               DataColumn(
                 label: Text(
-                  'Actions',
+                  'ACTION',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
             ],
-            rows: filteredDocs.map((doc) {
+            rows: filteredDocs.asMap().entries.map((entry) {
+              final index = entry.key;
+              final doc = entry.value;
               final data = doc.data() as Map<String, dynamic>;
-              return _buildDataRow(doc, data, isCompact: false);
+              return _buildDataRow(doc, data, index, isCompact: false);
             }).toList(),
           ),
         ),
@@ -711,11 +890,26 @@ class _DriverConductorManagementScreenState
   /// Helper method to build DataRows for both tablet and desktop
   DataRow _buildDataRow(
     QueryDocumentSnapshot doc,
-    Map<String, dynamic> data, {
+    Map<String, dynamic> data,
+    int index, {
     bool isCompact = false,
   }) {
+    final employeeId = data['employeeId']?.toString() ?? 'N/A';
+    final formattedEmployeeId = '${index + 1}. $employeeId';
+
     return DataRow(
       cells: [
+        // EMP ID (with number prefix)
+        DataCell(
+          SizedBox(
+            width: isCompact ? 100 : 120,
+            child: Text(
+              formattedEmployeeId,
+              style: TextStyle(fontSize: isCompact ? 12 : 14),
+            ),
+          ),
+        ),
+        // NAME
         DataCell(
           SizedBox(
             width: isCompact ? 120 : 150,
@@ -726,15 +920,17 @@ class _DriverConductorManagementScreenState
             ),
           ),
         ),
+        // ROLE
         DataCell(
           SizedBox(
             width: isCompact ? 80 : 100,
             child: Text(
-              data['employeeId']?.toString() ?? '',
+              _capitalizeRole(data['role']?.toString() ?? ''),
               style: TextStyle(fontSize: isCompact ? 12 : 14),
             ),
           ),
         ),
+        // EMPLO TYPE
         DataCell(
           SizedBox(
             width: isCompact ? 80 : 120,
@@ -745,15 +941,7 @@ class _DriverConductorManagementScreenState
             ),
           ),
         ),
-        DataCell(
-          SizedBox(
-            width: isCompact ? 80 : 100,
-            child: Text(
-              _capitalizeRole(data['role']?.toString() ?? ''),
-              style: TextStyle(fontSize: isCompact ? 12 : 14),
-            ),
-          ),
-        ),
+        // VEHICLE
         DataCell(
           SizedBox(
             width: isCompact ? 80 : 100,
@@ -766,6 +954,7 @@ class _DriverConductorManagementScreenState
             ),
           ),
         ),
+        // SHCED
         DataCell(
           SizedBox(
             width: isCompact ? 120 : 150,
@@ -776,6 +965,7 @@ class _DriverConductorManagementScreenState
             ),
           ),
         ),
+        // ACTION
         DataCell(
           IconButton(
             icon: Icon(Icons.more_vert, size: isCompact ? 18 : 24),

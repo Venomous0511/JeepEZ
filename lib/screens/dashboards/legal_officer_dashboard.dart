@@ -8,6 +8,7 @@ import '../legalofficer/violation_report_management.dart';
 import '../legalofficer/employee_list_view.dart';
 import '../legalofficer/inspector_report_management.dart';
 import '../legalofficer/hiring_management.dart';
+import '../legalofficer/ticket_log.dart';
 
 class LegalOfficerDashboardScreen extends StatefulWidget {
   const LegalOfficerDashboardScreen({super.key, required this.user});
@@ -23,53 +24,110 @@ class _LegalOfficerDashboardScreenState
     extends State<LegalOfficerDashboardScreen> {
   bool _isLoggingOut = false;
   int _selectedIndex = 0;
+  Widget? _currentScreen;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // --- sample inspector data: include 'reports' and 'score' to avoid missing keys ---
-  final List<Map<String, dynamic>> inspectors = const [
-    {
-      'name': 'Juan Dela Cruz',
-      'area': 'Area A (North)',
-      'inspections': 45,
-    },
-    {
-      'name': 'Maria Lopez',
-      'area': 'Area B (East)',
-      'inspections': 38,
-    },
-    {
-      'name': 'Pedro Santos',
-      'area': 'Area C (West)',
-      'inspections': 25,
-    },
-  ];
+  // Stream to get inspectors with their inspection counts
+  Stream<List<Map<String, dynamic>>> getInspectorsStream() {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .where('role', isEqualTo: 'inspector')
+        .snapshots()
+        .asyncMap((snapshot) async {
+          final inspectors = <Map<String, dynamic>>[];
 
-  final List<Map<String, dynamic>> incidents = const [
-    {
-      'id': 'INC-001',
-      'date': '2025-09-01',
-      'assigned': 'Juan Dela Cruz',
-      'type': 'Accident / Collision',
-      'priority': 'Critical',
-      'status': 'Open',
-    },
-    {
-      'id': 'INC-002',
-      'date': '2025-09-02',
-      'assigned': 'Pedro Santos',
-      'type': 'Traffic Violation',
-      'priority': 'Medium',
-      'status': 'Under Investigation',
-    },
-  ];
+          for (var doc in snapshot.docs) {
+            final inspectorData = doc.data();
+            final inspectorId = doc.id;
+
+            // Get inspection count for this inspector
+            final inspectionSnapshot = await FirebaseFirestore.instance
+                .collection('inspector_reports')
+                .where('inspectorId', isEqualTo: inspectorId)
+                .get();
+
+            final inspectionCount = inspectionSnapshot.docs.length;
+
+            inspectors.add({
+              ...inspectorData,
+              'inspectionCount': inspectionCount,
+            });
+          }
+
+          return inspectors;
+        });
+  }
+
+  Stream<List<Map<String, dynamic>>> getIncidentReportsStream() async* {
+    final incidentSnapshot = await FirebaseFirestore.instance
+        .collection('incident_report')
+        .get();
+
+    // Extract all unique createdById
+    final userIds = incidentSnapshot.docs
+        .map((doc) => doc.data()['createdById'] as String)
+        .toSet()
+        .toList();
+
+    // Fetch users in batch
+    final userSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where(FieldPath.documentId, whereIn: userIds)
+        .get();
+
+    // Map userId to name
+    final userMap = {
+      for (var doc in userSnapshot.docs) doc.id: doc.data()['name'],
+    };
+
+    // Build list of incidents with user name
+    final incidentsWithNames = incidentSnapshot.docs.map((doc) {
+      final data = doc.data();
+      return {
+        'id': doc.id,
+        'type': data['type'] ?? '',
+        'description': data['description'] ?? '',
+        'location': data['location'] ?? '',
+        'persons': data['persons'] ?? '',
+        'timestamp': data['timestamp'],
+        'employeeName': userMap[data['createdById']] ?? 'Unknown',
+      };
+    }).toList();
+
+    yield incidentsWithNames;
+  }
+
+  Stream<Map<String, int>> getViolationCountsStream() {
+    return FirebaseFirestore.instance
+        .collection('incident_report')
+        .snapshots()
+        .map((snapshot) {
+          final Map<String, int> counts = {};
+          for (var doc in snapshot.docs) {
+            final type = doc['type'] ?? 'Unknown';
+            counts[type] = (counts[type] ?? 0) + 1;
+          }
+          return counts;
+        });
+  }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+      _currentScreen = null; // Reset to main dashboard screens
+    });
+  }
+
+  void _navigateToScreen(Widget screen) {
+    setState(() {
+      _currentScreen = screen;
     });
   }
 
   /// ---------------- NOTIFICATION FUNCTIONS  ----------------
-  Stream<QuerySnapshot<Map<String, dynamic>>> getNotificationsStream(String role,) {
+  Stream<QuerySnapshot<Map<String, dynamic>>> getNotificationsStream(
+    String role,
+  ) {
     final collection = FirebaseFirestore.instance.collection('notifications');
 
     if (role == 'super_admin' || role == 'admin') {
@@ -288,22 +346,35 @@ class _LegalOfficerDashboardScreenState
   }
 
   @override
+  void initState() {
+    super.initState();
+    _currentScreen = null; // Start with main dashboard
+  }
+
+  @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
+      key: _scaffoldKey, // Add scaffold key here
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
         title: FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
-            'Legal Officer Dashboard',
+            _getAppBarTitle(),
             style: TextStyle(fontSize: screenWidth < 360 ? 16 : 20),
           ),
         ),
         backgroundColor: const Color(0xFF0D2364),
         foregroundColor: Colors.white,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            _scaffoldKey.currentState?.openDrawer();
+          },
+        ),
         actions: [
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: getNotificationsStream(widget.user.role),
@@ -357,8 +428,36 @@ class _LegalOfficerDashboardScreenState
         ],
       ),
       drawer: _buildResponsiveDrawer(),
-      body: _getSelectedScreen(),
+      body: _getCurrentScreen(),
     );
+  }
+
+  String _getAppBarTitle() {
+    if (_currentScreen != null) {
+      if (_currentScreen is InspectorReportHistoryScreen) {
+        return 'Inspector Report History';
+      } else if (_currentScreen is ViolationReportHistoryScreen) {
+        return 'Violation Report Management';
+      } else if (_currentScreen is IncidentReportManagementScreen) {
+        return 'Incident Report Management';
+      } else if (_currentScreen is EmployeeListViewScreen) {
+        return 'Employee List View';
+      } else if (_currentScreen is HiringManagementScreen) {
+        return 'Hiring Management';
+      } else if (_currentScreen is TicketTable) {
+        return 'Ticket Logs';
+      }
+    }
+
+    // Default dashboard titles based on selected index
+    switch (_selectedIndex) {
+      case 0:
+        return 'Legal Officer Dashboard';
+      case 1:
+        return 'Notifications';
+      default:
+        return 'Legal Officer Dashboard';
+    }
   }
 
   Widget _buildResponsiveDrawer() {
@@ -387,79 +486,75 @@ class _LegalOfficerDashboardScreenState
                 _buildDrawerItem(
                   icon: Icons.home,
                   title: 'Home',
-                  isSelected: _selectedIndex == 0,
+                  isSelected: _selectedIndex == 0 && _currentScreen == null,
                   onTap: () {
-                    _onItemTapped(0);
+                    setState(() {
+                      _selectedIndex = 0;
+                      _currentScreen = null;
+                    });
                     Navigator.pop(context);
                   },
                 ),
                 _buildDrawerItem(
                   icon: Icons.history,
                   title: 'Inspector Report History',
+                  isSelected: _currentScreen is InspectorReportHistoryScreen,
                   onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            InspectorReportHistoryScreen(user: widget.user),
-                      ),
+                    _navigateToScreen(
+                      InspectorReportHistoryScreen(user: widget.user),
                     );
+                    Navigator.pop(context);
                   },
                 ),
                 _buildDrawerItem(
                   icon: Icons.report_problem,
                   title: 'Violation Report Management',
+                  isSelected: _currentScreen is ViolationReportHistoryScreen,
                   onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ViolationReportHistoryScreen(user: widget.user),
-                      ),
+                    _navigateToScreen(
+                      ViolationReportHistoryScreen(user: widget.user),
                     );
+                    Navigator.pop(context);
                   },
                 ),
                 _buildDrawerItem(
                   icon: Icons.warning,
                   title: 'Incident Report Management',
+                  isSelected: _currentScreen is IncidentReportManagementScreen,
                   onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            IncidentReportManagementScreen(user: widget.user),
-                      ),
+                    _navigateToScreen(
+                      IncidentReportManagementScreen(user: widget.user),
                     );
+                    Navigator.pop(context);
                   },
                 ),
                 _buildDrawerItem(
                   icon: Icons.people,
                   title: 'Employee List View',
+                  isSelected: _currentScreen is EmployeeListViewScreen,
                   onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            EmployeeListViewScreen(user: widget.user),
-                      ),
+                    _navigateToScreen(
+                      EmployeeListViewScreen(user: widget.user),
                     );
+                    Navigator.pop(context);
                   },
                 ),
                 _buildDrawerItem(
                   icon: Icons.work,
                   title: 'Hiring Management',
+                  isSelected: _currentScreen is HiringManagementScreen,
                   onTap: () {
+                    _navigateToScreen(const HiringManagementScreen());
                     Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const HiringManagementScreen(),
-                      ),
-                    );
+                  },
+                ),
+                _buildDrawerItem(
+                  icon: Icons.confirmation_number,
+                  title: 'Ticket Logs',
+                  isSelected: _currentScreen is TicketTable,
+                  onTap: () {
+                    _navigateToScreen(const TicketTable());
+                    Navigator.pop(context);
                   },
                 ),
               ],
@@ -474,10 +569,10 @@ class _LegalOfficerDashboardScreenState
             ),
             trailing: _isLoggingOut
                 ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : null,
             onTap: _isLoggingOut ? null : _signOut,
           ),
@@ -500,14 +595,22 @@ class _LegalOfficerDashboardScreenState
         style: TextStyle(
           fontSize: 14,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? const Color(0xFF0D2364) : Colors.black87,
         ),
       ),
       selected: isSelected,
+      selectedTileColor: const Color(0xFF0D2364).withOpacity(0.1),
       onTap: onTap,
     );
   }
 
-  Widget _getSelectedScreen() {
+  Widget _getCurrentScreen() {
+    // If we have a specific screen selected from drawer, show that
+    if (_currentScreen != null) {
+      return _currentScreen!;
+    }
+
+    // Otherwise show the main dashboard screens
     switch (_selectedIndex) {
       case 0:
         return _buildHomeContent();
@@ -566,7 +669,9 @@ class _LegalOfficerDashboardScreenState
                         contentPadding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
                         leading: Icon(
                           _getIconForType((data['type'] ?? '') as String),
-                          color: _getColorForType((data['type'] ?? '') as String),
+                          color: _getColorForType(
+                            (data['type'] ?? '') as String,
+                          ),
                           size: isMobile ? 20 : 24,
                         ),
                         title: Text(
@@ -622,7 +727,6 @@ class _LegalOfficerDashboardScreenState
         final screenWidth = constraints.maxWidth;
         final isMobile = screenWidth < 600;
         final isTablet = screenWidth >= 600 && screenWidth < 1024;
-        final isDesktop = screenWidth >= 1024;
 
         return SingleChildScrollView(
           padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
@@ -664,7 +768,7 @@ class _LegalOfficerDashboardScreenState
   Widget _buildTabletLayout() {
     return Column(
       children: [
-        _sectionTitle('Inspector Leaderboard'),
+        _sectionTitle('Inspector Overview'),
         const SizedBox(height: 8),
         _buildInspectorTableWithScroll(),
         const SizedBox(height: 24),
@@ -689,7 +793,7 @@ class _LegalOfficerDashboardScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _sectionTitle('Inspector Leaderboard'),
+                  _sectionTitle('Inspector Overview'),
                   const SizedBox(height: 8),
                   _buildInspectorTableWithScroll(),
                 ],
@@ -756,123 +860,137 @@ class _LegalOfficerDashboardScreenState
 
   // Mobile Card Views for Inspector and Incidents
   Widget _buildInspectorCards() {
-    return Column(
-      children: inspectors.map((inspector) {
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 2,
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0D2364),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  inspector['name'] as String,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: getInspectorsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('No inspectors found'));
+        }
+
+        final inspectors = snapshot.data!;
+
+        return Column(
+          children: inspectors.map((inspector) {
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              elevation: 2,
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D2364),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const SizedBox(height: 8),
-                _buildInfoRow('Area', inspector['area'] as String),
-                _buildInfoRow(
-                  'Inspections',
-                  (inspector['inspections'] ?? '').toString(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      inspector['name'] ?? 'No Name',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildInfoRow('Area', inspector['area'] ?? ''),
+                    _buildInfoRow('Employee ID', inspector['employeeId'] ?? ''),
+                    _buildInfoRow(
+                      'Inspections',
+                      '${inspector['inspectionCount'] ?? 0} conducted',
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          }).toList(),
         );
-      }).toList(),
+      },
     );
   }
 
   Widget _buildIncidentCards() {
-    return Column(
-      children: incidents.map((incident) {
-        Color priorityColor = Colors.black;
-        switch (incident['priority']) {
-          case 'Critical':
-            priorityColor = Colors.red;
-            break;
-          case 'Medium':
-            priorityColor = Colors.orange;
-            break;
-          case 'Low':
-            priorityColor = Colors.green;
-            break;
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: getIncidentReportsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('No incidents found'));
         }
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 2,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        final incidents = snapshot.data!;
+
+        // Sort incidents by timestamp (optional)
+        final sortedIncidents = List<Map<String, dynamic>>.from(incidents)
+          ..sort((a, b) {
+            final t1 = a['timestamp'] as Timestamp?;
+            final t2 = b['timestamp'] as Timestamp?;
+            if (t1 == null || t2 == null) return 0;
+            return t1.compareTo(t2);
+          });
+
+        return Column(
+          children: sortedIncidents.asMap().entries.map((entry) {
+            final index = entry.key;
+            final incident = entry.value;
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      incident['id'] as String,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: priorityColor.withAlpha(20),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: priorityColor),
-                      ),
-                      child: Text(
-                        incident['priority'] as String,
-                        style: TextStyle(
-                          color: priorityColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // <-- GENERATED INCIDENT ID
+                        Text(
+                          'INC-${(index + 1).toString().padLeft(2, '0')}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _buildInfoRow(
+                      'Date',
+                      incident['timestamp'] != null
+                          ? DateFormat('MMM d, y hh:mm a').format(
+                              (incident['timestamp'] as Timestamp).toDate(),
+                            )
+                          : '',
+                      isDark: false,
+                    ),
+                    _buildInfoRow(
+                      'Assigned',
+                      incident['employeeName'] ?? incident['createdById'] ?? '',
+                      isDark: false,
+                    ),
+                    _buildInfoRow(
+                      'Type',
+                      incident['type'] ?? '',
+                      isDark: false,
+                    ),
+                    _buildInfoRow(
+                      'Location',
+                      incident['location'] ?? '',
+                      isDark: false,
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                _buildInfoRow(
-                  'Date',
-                  incident['date'] as String,
-                  isDark: false,
-                ),
-                _buildInfoRow(
-                  'Assigned',
-                  incident['assigned'] as String,
-                  isDark: false,
-                ),
-                _buildInfoRow(
-                  'Type',
-                  incident['type'] as String,
-                  isDark: false,
-                ),
-                _buildInfoRow(
-                  'Status',
-                  incident['status'] as String,
-                  isDark: false,
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          }).toList(),
         );
-      }).toList(),
+      },
     );
   }
 
@@ -911,91 +1029,65 @@ class _LegalOfficerDashboardScreenState
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600 && screenWidth < 1024;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0D2364),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minWidth: isTablet ? 600 : 700),
-          child: DataTable(
-            // FIX: use MaterialStateProperty (correct API)
-            headingRowColor: WidgetStateProperty.all(const Color(0xFF0D2364)),
-            dataRowMinHeight: 48,
-            dataRowMaxHeight: 64,
-            columns: [
-              DataColumn(
-                label: Text(
-                  'Inspector Name',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontSize: isTablet ? 12 : 14,
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: getInspectorsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('No inspectors found'));
+        }
+
+        final inspectors = snapshot.data!;
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: isTablet ? 600 : 700),
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(const Color(0xFF0D2364)),
+              dataRowColor: WidgetStateProperty.all(const Color(0xFF0D2364)),
+              headingTextStyle: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+              dataTextStyle: const TextStyle(color: Colors.white),
+              columns: [
+                DataColumn(
+                  label: Text(
+                    'Inspector Name',
+                    style: TextStyle(fontSize: isTablet ? 12 : 14),
                   ),
                 ),
-              ),
-              DataColumn(
-                label: Text(
-                  'Area Assigned',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontSize: isTablet ? 12 : 14,
+                DataColumn(
+                  label: Text(
+                    'Area Assigned',
+                    style: TextStyle(fontSize: isTablet ? 12 : 14),
                   ),
                 ),
-              ),
-              DataColumn(
-                label: Text(
-                  'Inspections',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontSize: isTablet ? 12 : 14,
+                DataColumn(
+                  label: Text(
+                    'Inspections Conducted',
+                    style: TextStyle(fontSize: isTablet ? 12 : 14),
                   ),
                 ),
-              ),
-            ],
-            rows: inspectors.map((i) {
-              return DataRow(
-                cells: [
-                  DataCell(
-                    Text(
-                      i['name'] as String,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: isTablet ? 12 : 14,
-                      ),
+              ],
+              rows: inspectors.map((i) {
+                return DataRow(
+                  cells: [
+                    DataCell(Text(i['name'] ?? '')),
+                    DataCell(Text(i['area'] ?? '')),
+                    DataCell(
+                      Center(child: Text('${i['inspectionCount'] ?? 0}')),
                     ),
-                  ),
-                  DataCell(
-                    Text(
-                      i['area'] as String,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: isTablet ? 12 : 14,
-                      ),
-                    ),
-                  ),
-                  DataCell(
-                    Center(
-                      child: Text(
-                        (i['inspections'] ?? '').toString(),
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isTablet ? 12 : 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
+                  ],
+                );
+              }).toList(),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -1004,142 +1096,69 @@ class _LegalOfficerDashboardScreenState
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600 && screenWidth < 1024;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: const [
-          BoxShadow(color: Colors.grey, blurRadius: 4, offset: Offset(0, 2)),
-        ],
-      ),
-      child: DataTable(
-        headingRowColor: WidgetStateProperty.all(Colors.grey.shade300),
-        columnSpacing: isTablet ? 12 : 20,
-        dataRowMinHeight: 48,
-        dataRowMaxHeight: 64,
-        columns: [
-          DataColumn(
-            label: Text(
-              'ID',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-                fontSize: isTablet ? 12 : 14,
-              ),
-            ),
-          ),
-          DataColumn(
-            label: Text(
-              'Date',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-                fontSize: isTablet ? 12 : 14,
-              ),
-            ),
-          ),
-          DataColumn(
-            label: Text(
-              'Assigned',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-                fontSize: isTablet ? 12 : 14,
-              ),
-            ),
-          ),
-          DataColumn(
-            label: Text(
-              'Incident Type',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-                fontSize: isTablet ? 12 : 14,
-              ),
-            ),
-          ),
-          DataColumn(
-            label: Text(
-              'Priority',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-                fontSize: isTablet ? 12 : 14,
-              ),
-            ),
-          ),
-          DataColumn(
-            label: Text(
-              'Status',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-                fontSize: isTablet ? 12 : 14,
-              ),
-            ),
-          ),
-        ],
-        rows: incidents.map((i) {
-          Color priorityColor = Colors.black;
-          switch (i['priority']) {
-            case 'Critical':
-              priorityColor = Colors.red;
-              break;
-            case 'Medium':
-              priorityColor = Colors.orange;
-              break;
-            case 'Low':
-              priorityColor = Colors.green;
-              break;
-          }
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: getIncidentReportsStream(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const CircularProgressIndicator();
+        final incidents = snapshot.data!;
 
-          return DataRow(
-            cells: [
-              DataCell(
-                Text(
-                  i['id'] as String,
-                  style: TextStyle(fontSize: isTablet ? 12 : 14),
-                ),
+        return FutureBuilder<QuerySnapshot>(
+          future: FirebaseFirestore.instance.collection('users').get(),
+          builder: (context, userSnapshot) {
+            if (!userSnapshot.hasData) return const CircularProgressIndicator();
+
+            // Map userId -> name
+            final userMap = {
+              for (var doc in userSnapshot.data!.docs)
+                doc.id: (doc.data() as Map<String, dynamic>)['name'],
+            };
+
+            final sortedIncidents = List<Map<String, dynamic>>.from(incidents)
+              ..sort((a, b) {
+                final t1 = a['timestamp'] as Timestamp?;
+                final t2 = b['timestamp'] as Timestamp?;
+                if (t1 == null || t2 == null) return 0;
+                return t1.compareTo(t2);
+              });
+
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columns: [
+                  DataColumn(label: Text('ID')),
+                  DataColumn(label: Text('Date')),
+                  DataColumn(label: Text('Assigned')),
+                  DataColumn(label: Text('Type')),
+                ],
+                rows: sortedIncidents.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final incident = entry.value;
+                  final assignedName = userMap[incident['createdById']] ?? '';
+
+                  return DataRow(
+                    cells: [
+                      DataCell(
+                        Text('INC-${(index + 1).toString().padLeft(2, '0')}'),
+                      ),
+                      DataCell(
+                        Text(
+                          incident['timestamp'] != null
+                              ? DateFormat('MMM d, y hh:mm a').format(
+                                  (incident['timestamp'] as Timestamp).toDate(),
+                                )
+                              : '',
+                        ),
+                      ),
+                      DataCell(Text(assignedName)),
+                      DataCell(Text(incident['type'] ?? '')),
+                    ],
+                  );
+                }).toList(),
               ),
-              DataCell(
-                Text(
-                  i['date'] as String,
-                  style: TextStyle(fontSize: isTablet ? 12 : 14),
-                ),
-              ),
-              DataCell(
-                Text(
-                  i['assigned'] as String,
-                  style: TextStyle(fontSize: isTablet ? 12 : 14),
-                ),
-              ),
-              DataCell(
-                Text(
-                  i['type'] as String,
-                  style: TextStyle(fontSize: isTablet ? 12 : 14),
-                ),
-              ),
-              DataCell(
-                Text(
-                  i['priority'] as String,
-                  style: TextStyle(
-                    color: priorityColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: isTablet ? 12 : 14,
-                  ),
-                ),
-              ),
-              DataCell(
-                Text(
-                  i['status'] as String,
-                  style: TextStyle(fontSize: isTablet ? 12 : 14),
-                ),
-              ),
-            ],
-          );
-        }).toList(),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1147,39 +1166,50 @@ class _LegalOfficerDashboardScreenState
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Most Common Violation Type: Traffic Violation',
-          style: TextStyle(
-            fontSize: isMobile ? 14 : 16,
-            fontWeight: FontWeight.w500,
-            color: Colors.white,
-          ),
-        ),
-        SizedBox(height: isMobile ? 8 : 12),
-        _buildViolationItem('Accident / Collision', 25),
-        SizedBox(height: isMobile ? 8 : 12),
-        _buildViolationItem('Traffic Violation', 40),
-        SizedBox(height: isMobile ? 8 : 12),
-        _buildViolationItem('Passenger Misconduct', 20),
-        SizedBox(height: isMobile ? 8 : 12),
-        _buildViolationItem('Fare / Ticket Issue', 15),
-        SizedBox(height: isMobile ? 12 : 16),
-        Wrap(
-          alignment: WrapAlignment.spaceEvenly,
-          spacing: isMobile ? 6 : 8,
-          runSpacing: isMobile ? 6 : 8,
-        ),
-      ],
+    return StreamBuilder<Map<String, int>>(
+      stream: getViolationCountsStream(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const CircularProgressIndicator();
+
+        final counts = snapshot.data!;
+        if (counts.isEmpty) return const Text('No violations found');
+
+        // Get the most common violation type
+        final mostCommon = counts.entries
+            .reduce((a, b) => a.value >= b.value ? a : b)
+            .key;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Most Common Violation Type: $mostCommon',
+              style: TextStyle(
+                fontSize: isMobile ? 14 : 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...counts.entries.map(
+              (e) => Padding(
+                padding: EdgeInsets.only(bottom: isMobile ? 8 : 12),
+                child: _buildViolationItem(e.key, e.value),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildViolationItem(String label, int percentage) {
+  Widget _buildViolationItem(String label, int count) {
+    final total = 100; // Or calculate total from counts if you want %
+    final percentage = (count / total * 100).clamp(0, 100).toInt();
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final bool isSmallScreen = constraints.maxWidth < 400;
+        final isSmallScreen = constraints.maxWidth < 400;
 
         return Row(
           children: [
@@ -1197,7 +1227,30 @@ class _LegalOfficerDashboardScreenState
             const SizedBox(width: 8),
             Expanded(
               child: LinearProgressIndicator(
-                value: (percentage.clamp(0, 100)) / 100,
+                value: percentage / 100,
+                backgroundColor: Colors.white.withAlpha(5),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  _getColorForViolationType(label),
+                ),
+                minHeight: isSmallScreen ? 16 : 20,
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: isSmallScreen ? 30 : 40,
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 12 : 14,
+                  color: Colors.white,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: LinearProgressIndicator(
+                value: percentage / 100,
                 backgroundColor: Colors.white.withAlpha(5),
                 valueColor: AlwaysStoppedAnimation<Color>(
                   _getColorForViolationType(label),
@@ -1235,29 +1288,5 @@ class _LegalOfficerDashboardScreenState
       default:
         return Colors.grey;
     }
-  }
-
-  Widget _buildChartLegend(Color color, String text) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: isMobile ? 10 : 12,
-          height: isMobile ? 10 : 12,
-          color: color,
-        ),
-        const SizedBox(width: 4),
-        Flexible(
-          child: Text(
-            text,
-            style: TextStyle(fontSize: isMobile ? 10 : 12, color: Colors.white),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
   }
 }

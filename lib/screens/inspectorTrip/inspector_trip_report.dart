@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -21,10 +23,10 @@ class InspectorTripScreen extends StatefulWidget {
   const InspectorTripScreen({super.key});
 
   @override
-  _InspectorTripScreenState createState() => _InspectorTripScreenState();
+  InspectorTripScreenState createState() => InspectorTripScreenState();
 }
 
-class _InspectorTripScreenState extends State<InspectorTripScreen> {
+class InspectorTripScreenState extends State<InspectorTripScreen> {
   final TextEditingController unitNumberController = TextEditingController();
   final TextEditingController driverNameController = TextEditingController();
   final TextEditingController conductorNameController = TextEditingController();
@@ -192,10 +194,9 @@ class _InspectorTripScreenState extends State<InspectorTripScreen> {
                                       const SizedBox(height: 15),
 
                                       // Inspection Time - BLUE TEXT
-                                      _buildFormField(
+                                      _buildTimePickerField(
                                         'Ticket inspection time',
                                         inspectionTimeController,
-                                        'Enter inspection time',
                                         textColor: const Color(0xFF0D2364),
                                       ),
                                       const SizedBox(height: 15),
@@ -296,6 +297,63 @@ class _InspectorTripScreenState extends State<InspectorTripScreen> {
     );
   }
 
+  Widget _buildTimePickerField(
+      String label,
+      TextEditingController controller, {
+        Color textColor = Colors.black,
+      }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0D2364),
+          ),
+        ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () async {
+            TimeOfDay? pickedTime = await showTimePicker(
+              context: context,
+              initialTime: TimeOfDay.now(),
+            );
+
+            if (pickedTime != null) {
+              // Format to 12-hour or 24-hour string
+              final formattedTime = pickedTime.format(context);
+              controller.text = formattedTime;
+            }
+          },
+          child: AbsorbPointer(
+            child: TextField(
+              controller: controller,
+              style: TextStyle(color: textColor, fontSize: 16),
+              decoration: InputDecoration(
+                hintText: 'Select time',
+                hintStyle: TextStyle(color: Colors.grey[600]),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey[400]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF0D2364)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 15,
+                  vertical: 15,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildFormField(
     String label,
     TextEditingController controller,
@@ -378,7 +436,7 @@ class _InspectorTripScreenState extends State<InspectorTripScreen> {
                     ),
                     child: Column(
                       children: [
-                        // Header Row - WHITE BACKGROUND WITH BLUE TEXT
+                        // Header Row
                         Container(
                           decoration: BoxDecoration(
                             border: Border.all(
@@ -399,28 +457,7 @@ class _InspectorTripScreenState extends State<InspectorTripScreen> {
                           ),
                         ),
 
-                        // NO.123 Static Row - WHITE BACKGROUND WITH BLUE TEXT
-                        Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Colors.grey[400]!,
-                              width: 1,
-                            ),
-                            color: Colors.white,
-                          ),
-                          child: Row(
-                            children: [
-                              _buildTableCell('NO.123'),
-                              _buildTableCell('NO.123'),
-                              _buildTableCell('NO.123'),
-                              _buildTableCell('NO.123'),
-                              _buildTableCell('NO.123'),
-                              _buildTableCell('NO.123'),
-                            ],
-                          ),
-                        ),
-
-                        // Editable Rows - WHITE BACKGROUND WITH BLACK TEXT
+                        // Editable Rows
                         for (int row = 0; row < 5; row++)
                           Container(
                             decoration: BoxDecoration(
@@ -495,26 +532,6 @@ class _InspectorTripScreenState extends State<InspectorTripScreen> {
     );
   }
 
-  Widget _buildTableCell(String text) {
-    return Expanded(
-      child: Container(
-        height: 40,
-        decoration: BoxDecoration(
-          border: Border(right: BorderSide(color: Colors.grey[400]!, width: 1)),
-        ),
-        child: Center(
-          child: Text(
-            text,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF0D2364), // BLUE TEXT
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildEditableTableCell(int row, int col) {
     return Expanded(
       child: Container(
@@ -534,7 +551,7 @@ class _InspectorTripScreenState extends State<InspectorTripScreen> {
           ),
           style: const TextStyle(
             fontSize: 14,
-            color: Colors.black, // BLACK TEXT for editable cells
+            color: Colors.black,
           ),
           onChanged: (value) {
             if (value.isNotEmpty && !RegExp(r'^[0-9]*$').hasMatch(value)) {
@@ -552,7 +569,19 @@ class _InspectorTripScreenState extends State<InspectorTripScreen> {
     );
   }
 
-  void _saveAndSubmit() {
+  void _saveAndSubmit() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User not logged in'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (unitNumberController.text.isEmpty ||
         driverNameController.text.isEmpty ||
         conductorNameController.text.isEmpty) {
@@ -565,34 +594,66 @@ class _InspectorTripScreenState extends State<InspectorTripScreen> {
       return;
     }
 
-    Map<String, String> formData = {
-      'Unit Number': unitNumberController.text,
-      'Driver Name': driverNameController.text,
-      'Conductor Name': conductorNameController.text,
-      'Inspection Time': inspectionTimeController.text,
-      'No. of Pass': noOfPassController.text,
-      'Location': locationController.text,
-      'No. of Trips': noOfTripsController.text,
+    // Convert ticket log table to List<Map<String, String>>
+    List<Map<String, String>> ticketLogData = [];
+    for (int row = 0; row < tableControllers.length; row++) {
+      Map<String, String> rowData = {};
+      for (int col = 0; col < tableControllers[row].length; col++) {
+        rowData['col$col'] = tableControllers[row][col].text;
+      }
+      ticketLogData.add(rowData);
+    }
+
+    Map<String, dynamic> formData = {
+      'unitNumber': unitNumberController.text,
+      'driverName': driverNameController.text,
+      'conductorName': conductorNameController.text,
+      'inspectionTime': inspectionTimeController.text,
+      'noOfPass': noOfPassController.text,
+      'location': locationController.text,
+      'noOfTrips': noOfTripsController.text,
+      'ticketLog': ticketLogData,
+      'uid': user.uid,
+      'timestamp': FieldValue.serverTimestamp(),
     };
 
-    setState(() {
-      submittedForms.add(formData);
-    });
+    try {
+      await FirebaseFirestore.instance
+          .collection('inspector_trip')
+          .add(formData);
 
-    // Clear form
-    unitNumberController.clear();
-    driverNameController.clear();
-    conductorNameController.clear();
-    inspectionTimeController.clear();
-    noOfPassController.clear();
-    locationController.clear();
-    noOfTripsController.clear();
+      // Clear form
+      unitNumberController.clear();
+      driverNameController.clear();
+      conductorNameController.clear();
+      inspectionTimeController.clear();
+      noOfPassController.clear();
+      locationController.clear();
+      noOfTripsController.clear();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Form submitted successfully!'),
-        backgroundColor: Color(0xFF0D2364),
-      ),
-    );
+      for (var row in tableControllers) {
+        for (var cell in row) {
+          cell.clear();
+        }
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Form submitted successfully!'),
+            backgroundColor: Color(0xFF0D2364),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving form: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

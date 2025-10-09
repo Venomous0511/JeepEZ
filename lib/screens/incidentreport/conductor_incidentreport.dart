@@ -23,7 +23,6 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
   final FocusNode _descriptionFocusNode = FocusNode();
 
   String? _vehicleId; // store assigned vehicle ID
-  Map<String, dynamic>? _vehicleData; // optional: store vehicle details
 
   @override
   void initState() {
@@ -44,21 +43,8 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
 
       final userData = userDoc.data()!;
       final assignedVehicleId = userData['assignedVehicle']?.toString();
-
-      Map<String, dynamic>? vehicleData;
-      if (assignedVehicleId != null) {
-        final vehicleDoc = await FirebaseFirestore.instance
-            .collection('vehicles')
-            .doc(assignedVehicleId)
-            .get();
-        if (vehicleDoc.exists) {
-          vehicleData = vehicleDoc.data();
-        }
-      }
-
       setState(() {
         _vehicleId = assignedVehicleId;
-        _vehicleData = vehicleData;
       });
     } catch (e) {
       debugPrint('Error fetching assigned vehicle: $e');
