@@ -34,7 +34,6 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
   // Ticket data based on the image content
   List<List<String>> ticketData = [
     ['20', '15', '10', '5', '2', '1'],
-    ['NO.123', 'NO.123', 'NO.123', 'NO.123', 'NO.123', 'NO.123'],
     ['44', '44', '44', '44', '44', '44'],
     ['10', '10', '10', '10', '10', '10'],
     ['02', '02', '02', '02', '02', '02'],

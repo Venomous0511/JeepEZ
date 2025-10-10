@@ -33,6 +33,81 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _timeController = TextEditingController();
 
+  String? _reportedEmployeeId;
+  String? _reporterEmployeeId;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchReporterEmployeeId();
+  }
+
+  /// Fetch the reporter's employeeId from users collection
+  Future<void> _fetchReporterEmployeeId() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (userDoc.exists) {
+        setState(() {
+          _reporterEmployeeId = userDoc.data()?['employeeId']?.toString();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching reporter employeeId: $e');
+    }
+  }
+
+  /// Fetch employeeId for the violator based on name and position
+  Future<String?> _fetchViolatorEmployeeId(
+      String name, String position) async {
+    try {
+      // Try exact match first
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('name', isEqualTo: name)
+          .where('role', isEqualTo: position.toLowerCase())
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final employeeId = querySnapshot.docs.first.data()['employeeId']?.toString();
+        if (employeeId != null && employeeId.isNotEmpty) {
+          return employeeId;
+        }
+      }
+
+      // If no exact match, try case-insensitive search
+      final allUsers = await FirebaseFirestore.instance
+          .collection('users')
+          .get();
+
+      for (var doc in allUsers.docs) {
+        final data = doc.data();
+        final userName = data['name']?.toString().toLowerCase() ?? '';
+        final userRole = data['role']?.toString().toLowerCase() ?? '';
+
+        if (userName == name.toLowerCase() && userRole == position.toLowerCase()) {
+          final employeeId = data['employeeId']?.toString();
+          if (employeeId != null && employeeId.isNotEmpty) {
+            return employeeId;
+          }
+        }
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching violator employeeId: $e');
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -42,9 +117,9 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
           'Violation Report',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: const Color(0xFF0D2364), // Updated color
+        backgroundColor: const Color(0xFF0D2364),
         elevation: 0,
-        foregroundColor: Colors.white, // White text for contrast
+        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -56,7 +131,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF0D2364), // Updated color
+                color: const Color(0xFF0D2364),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
@@ -67,7 +142,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white, // White text for contrast
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -75,7 +150,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                     'Study according to the form on accurate and correct information.',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.white70, // Light white for contrast
+                      color: Colors.white70,
                     ),
                   ),
                 ],
@@ -104,6 +179,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                         horizontal: 12,
                         vertical: 8,
                       ),
+                      hintText: 'Enter violator name',
                     ),
                   ),
                 ],
@@ -132,6 +208,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                         horizontal: 12,
                         vertical: 8,
                       ),
+                      hintText: 'e.g., Driver, Manager, etc.',
                     ),
                   ),
                 ],
@@ -161,6 +238,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                         horizontal: 12,
                         vertical: 8,
                       ),
+                      hintText: 'Describe the violation in detail',
                     ),
                   ),
                 ],
@@ -189,6 +267,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                         horizontal: 12,
                         vertical: 8,
                       ),
+                      hintText: 'Enter location',
                     ),
                   ),
                 ],
@@ -214,9 +293,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                         initialTime: TimeOfDay.now(),
                       );
                       if (pickedTime != null) {
-                        // Format the selected time as hh:mm AM/PM
-                        final formattedTime =
-                        pickedTime.format(context);
+                        final formattedTime = pickedTime.format(context);
                         setState(() {
                           _timeController.text = formattedTime;
                         });
@@ -250,20 +327,31 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: _isLoading ? null : () {
                     _saveAndSubmit();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D2364), // Updated color
+                    backgroundColor: const Color(0xFF0D2364),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4),
                     ),
+                    disabledBackgroundColor: Colors.grey,
                   ),
-                  child: const Text(
+                  child: _isLoading
+                      ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      valueColor:
+                      AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                      : const Text(
                     'Save & Submit',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -285,22 +373,51 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
       return;
     }
 
-    // Get logged-in user
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      _showDialog('Error', 'You must be logged in to submit a report');
-      return;
-    }
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
-      // Directly add to Firestore
+      // Get logged-in user
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        _showDialog('Error', 'You must be logged in to submit a report');
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Fetch violator's employeeId
+      _reportedEmployeeId = await _fetchViolatorEmployeeId(
+        _nameController.text.trim(),
+        _positionController.text.trim(),
+      );
+
+      if (_reportedEmployeeId == null || _reportedEmployeeId!.isEmpty) {
+        final shouldContinue = await _showConfirmationDialog(
+          'Employee Not Found',
+          'The violator "${_nameController.text.trim()}" with position "${_positionController.text.trim()}" was not found in the system.\n\nDo you want to submit the report anyway?',
+        );
+
+        if (!shouldContinue) {
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+
+      // Add to Firestore
       await FirebaseFirestore.instance.collection('violation_report').add({
-        'name': _nameController.text.trim(),
-        'position': _positionController.text.trim(),
+        'reportedName': _nameController.text.trim(),
+        'reportedPosition': _positionController.text.trim(),
+        'reportedEmployeeId': _reportedEmployeeId ?? '',
         'violation': _violationController.text.trim(),
         'location': _locationController.text.trim(),
         'time': _timeController.text.trim(),
-        'employeeId': user.uid, // or user.displayName if you prefer
+        'reporterUid': user.uid,
+        'reporterEmployeeId': _reporterEmployeeId ?? 'Not found',
         'submittedAt': FieldValue.serverTimestamp(),
       });
 
@@ -312,8 +429,15 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
       _violationController.clear();
       _locationController.clear();
       _timeController.clear();
+      setState(() {
+        _reportedEmployeeId = null;
+      });
     } catch (e) {
       _showDialog('Error', 'Failed to submit report: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -335,6 +459,33 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
         );
       },
     );
+  }
+
+  Future<bool> _showConfirmationDialog(String title, String message) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              child: const Text('Continue'),
+            ),
+          ],
+        );
+      },
+    );
+    return result ?? false;
   }
 
   @override

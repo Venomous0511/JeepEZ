@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/app_user.dart';
@@ -17,6 +19,30 @@ class _InspectorReportHistoryScreenState
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String _searchQuery = '';
   String _selectedFilter = 'All Time';
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      setState(() {
+        _searchQuery = _searchController.text.trim();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,12 +122,46 @@ class _InspectorReportHistoryScreenState
   }
 
   Stream<QuerySnapshot> _getInspectorTripsStream() {
-    // Get trips for the current inspector
     return _firestore
         .collection('inspector_trip')
-        .where('employeeId', isEqualTo: widget.user.uid)
         .orderBy('timestamp', descending: true)
         .snapshots();
+  }
+
+  Future<int> _getViolationCount(
+      String driverName,
+      String conductorName,
+      Timestamp tripTimestamp,
+      String inspectorUid,
+      ) async {
+    try {
+      final tripDate = tripTimestamp.toDate();
+      final startOfDay = DateTime(tripDate.year, tripDate.month, tripDate.day);
+      final endOfDay = DateTime(tripDate.year, tripDate.month, tripDate.day, 23, 59, 59);
+
+      final querySnapshot = await _firestore
+          .collection('violation_report')
+          .where('reporterUid', isEqualTo: inspectorUid)
+          .where('submittedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where('submittedAt', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
+          .get();
+
+      int violations = 0;
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        final name = data['reportedName']?.toString().toLowerCase() ?? '';
+        if (name.contains(driverName.toLowerCase()) ||
+            name.contains(conductorName.toLowerCase())) {
+          violations++;
+        }
+      }
+
+      debugPrint('Trip: $driverName/$conductorName — Violations: $violations');
+      return violations;
+    } catch (e) {
+      debugPrint('Error getting violation count: $e');
+      return 0;
+    }
   }
 
   List<DocumentSnapshot> _filterTrips(List<DocumentSnapshot> trips) {
@@ -112,7 +172,8 @@ class _InspectorReportHistoryScreenState
       final now = DateTime.now();
       filtered = trips.where((doc) {
         final data = doc.data() as Map<String, dynamic>;
-        final timestamp = (data['timestamp'] as Timestamp).toDate();
+        final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
+        if (timestamp == null) return false;
 
         switch (_selectedFilter) {
           case 'Today':
@@ -269,14 +330,9 @@ class _InspectorReportHistoryScreenState
 
           // Search Field
           TextField(
-            onChanged: (value) {
-              setState(() {
-                _searchQuery = value;
-              });
-            },
+            controller: _searchController,
             decoration: InputDecoration(
-              hintText:
-              'Search by Trip No, Unit Number, or Driver Name...',
+              hintText: 'Search by Trip No, Unit Number, or Driver Name...',
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -358,110 +414,243 @@ class _InspectorReportHistoryScreenState
     return Column(
       children: trips.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
-        final timestamp = (data['timestamp'] as Timestamp).toDate();
-        final violations = (data['violations'] as List?)?.length ?? 0;
+        final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
+        final driverName = data['driverName']?.toString() ?? 'N/A';
+        final conductorName = data['conductorName']?.toString() ?? 'N/A';
+        final inspectorUid = data['uid']?.toString() ?? '';
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header row with Trip No
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return FutureBuilder<int>(
+          future: _getViolationCount(driverName, conductorName, data['timestamp'] as Timestamp, inspectorUid),
+          builder: (context, violationSnapshot) {
+            final violations = violationSnapshot.data ?? 0;
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        'TRIP NO: ${doc.id}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0D2364),
+                    // Header row with Trip No
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'TRIP NO: ${data['noOfTrips']?.toString() ?? doc.id}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0D2364),
+                            ),
+                          ),
                         ),
-                      ),
+                        GestureDetector(
+                          onTap: () => _showViolationDetails(context, driverName, conductorName, data['timestamp'] as Timestamp, inspectorUid),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getViolationsColor(violations).withAlpha(30),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _getViolationsColor(violations),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Text(
+                              '$violations Violation${violations == 1 ? '' : 's'}',
+                              style: TextStyle(
+                                color: _getViolationsColor(violations),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _getViolationsColor(violations).withAlpha(30),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: _getViolationsColor(violations),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Text(
-                        '$violations Violation${violations == 1 ? '' : 's'}',
-                        style: TextStyle(
-                          color: _getViolationsColor(violations),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
+                    const SizedBox(height: 16),
+
+                    FutureBuilder<String>(
+                      future: _getInspectorName(inspectorUid),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return _buildInfoRow('Inspector Name', 'Loading...', Icons.person);
+                        }
+                        if (snapshot.hasError) {
+                          return _buildInfoRow('Inspector Name', 'Error', Icons.person);
+                        }
+                        return _buildInfoRow('Inspector Name', snapshot.data ?? 'Unknown', Icons.person);
+                      },
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    _buildInfoRow(
+                      'Date',
+                      timestamp != null
+                          ? '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}'
+                          : 'N/A',
+                      Icons.calendar_today,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildInfoRow(
+                      'Unit Number',
+                      data['unitNumber']?.toString() ?? 'N/A',
+                      Icons.confirmation_number,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildInfoRow(
+                      'Driver Name',
+                      driverName,
+                      Icons.person_outline,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildInfoRow(
+                      'Conductor Name',
+                      conductorName,
+                      Icons.people_outline,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildInfoRow(
+                      'Ticket Inspection Time',
+                      data['inspectionTime']?.toString() ?? 'N/A',
+                      Icons.access_time,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildInfoRow(
+                      'Number of Passengers',
+                      data['noOfPass']?.toString() ?? 'N/A',
+                      Icons.people,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildInfoRow(
+                      'Location',
+                      data['location']?.toString() ?? 'N/A',
+                      Icons.location_on,
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-
-                _buildInfoRow(
-                  'Inspector Name',
-                  widget.user.name ?? 'N/A',
-                  Icons.person,
-                ),
-                const SizedBox(height: 12),
-                _buildInfoRow(
-                  'Date',
-                  '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}',
-                  Icons.calendar_today,
-                ),
-                const SizedBox(height: 12),
-                _buildInfoRow(
-                  'Unit Number',
-                  data['unitNumber']?.toString() ?? 'N/A',
-                  Icons.confirmation_number,
-                ),
-                const SizedBox(height: 12),
-                _buildInfoRow(
-                  'Driver Name',
-                  data['driverName']?.toString() ?? 'N/A',
-                  Icons.person_outline,
-                ),
-                const SizedBox(height: 12),
-                _buildInfoRow(
-                  'Conductor Name',
-                  data['conductorName']?.toString() ?? 'N/A',
-                  Icons.people_outline,
-                ),
-                const SizedBox(height: 12),
-                _buildInfoRow(
-                  'Ticket Inspection Time',
-                  data['inspectionTime']?.toString() ?? 'N/A',
-                  Icons.access_time,
-                ),
-                const SizedBox(height: 12),
-                _buildInfoRow(
-                  'Number of Passengers',
-                  data['noOfPass']?.toString() ?? 'N/A',
-                  Icons.people,
-                ),
-                const SizedBox(height: 12),
-                _buildInfoRow(
-                  'Location',
-                  data['location']?.toString() ?? 'N/A',
-                  Icons.location_on,
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       }).toList(),
+    );
+  }
+
+  Future<String> _getInspectorName(String inspectorUid) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(inspectorUid)
+          .get();
+
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>;
+        return data['name']?.toString() ?? 'Unknown Inspector';
+      } else {
+        return 'Unknown Inspector';
+      }
+    } catch (e) {
+      debugPrint('Error fetching inspector name: $e');
+      return 'Unknown Inspector';
+    }
+  }
+
+  void _showViolationDetails(BuildContext context, String driverName, String conductorName, Timestamp tripTimestamp, String inspectorUid) {
+    final tripDate = tripTimestamp.toDate();
+    final startOfDay = DateTime(tripDate.year, tripDate.month, tripDate.day);
+    final endOfDay = DateTime(tripDate.year, tripDate.month, tripDate.day, 23, 59, 59);
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          constraints: BoxConstraints(
+            maxWidth: 500,
+            maxHeight: MediaQuery.of(context).size.height * 0.7,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Violation Details',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0D2364),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _firestore
+                      .collection('violation_report')
+                      .where('reporterUid', isEqualTo: inspectorUid)
+                      .where('submittedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+                      .where('submittedAt', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (!snapshot.hasData) {
+                      return const Center(child: Text('No violations found'));
+                    }
+
+                    final violations = snapshot.data!.docs.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      final name = data['reportedName']?.toString().toLowerCase() ?? '';
+                      return name == driverName.toLowerCase() || name == conductorName.toLowerCase();
+                    }).toList();
+
+                    if (violations.isEmpty) {
+                      return const Center(child: Text('No violations found'));
+                    }
+
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: violations.length,
+                      itemBuilder: (context, index) {
+                        final data = violations[index].data() as Map<String, dynamic>;
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            leading: const Icon(Icons.warning, color: Colors.red),
+                            title: Text(data['violation']?.toString() ?? 'N/A'),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Violator: ${data['reportedName'] ?? 'N/A'}'),
+                                Text('Position: ${data['reportedPosition'] ?? 'N/A'}'),
+                                Text('Location: ${data['location'] ?? 'N/A'}'),
+                                Text('Time: ${data['time'] ?? 'N/A'}'),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -518,9 +707,7 @@ class _InspectorReportHistoryScreenState
             fontSize: isTablet ? 11 : 13,
             color: Colors.black87,
           ),
-          dataRowColor: WidgetStateProperty.resolveWith<Color>((
-              Set<WidgetState> states,
-              ) {
+          dataRowColor: WidgetStateProperty.resolveWith<Color>((states) {
             if (states.contains(WidgetState.selected)) {
               return Theme.of(context).colorScheme.primary.withAlpha(8);
             }
@@ -530,210 +717,93 @@ class _InspectorReportHistoryScreenState
           horizontalMargin: isTablet ? 16 : 20,
           dataRowMinHeight: 60,
           dataRowMaxHeight: 60,
-          columns: [
-            DataColumn(
-              label: SizedBox(
-                width: isTablet ? 100 : 120,
-                child: const Text('Trip No', overflow: TextOverflow.ellipsis),
-              ),
-            ),
-            DataColumn(
-              label: SizedBox(
-                width: isTablet ? 120 : 140,
-                child: const Text(
-                  'Inspector Name',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-            DataColumn(
-              label: SizedBox(
-                width: isTablet ? 90 : 110,
-                child: const Text('Date', overflow: TextOverflow.ellipsis),
-              ),
-            ),
-            DataColumn(
-              label: SizedBox(
-                width: isTablet ? 100 : 120,
-                child: const Text(
-                  'Unit Number',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-            DataColumn(
-              label: SizedBox(
-                width: isTablet ? 120 : 140,
-                child: const Text(
-                  'Driver Name',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-            DataColumn(
-              label: SizedBox(
-                width: isTablet ? 120 : 140,
-                child: const Text(
-                  'Conductor Name',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-            DataColumn(
-              label: SizedBox(
-                width: isTablet ? 120 : 140,
-                child: const Text(
-                  'Ticket Inspection Time',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-            DataColumn(
-              label: SizedBox(
-                width: isTablet ? 100 : 120,
-                child: const Text(
-                  'Passengers',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-            DataColumn(
-              label: SizedBox(
-                width: isTablet ? 120 : 140,
-                child: const Text('Location', overflow: TextOverflow.ellipsis),
-              ),
-            ),
-            DataColumn(
-              label: SizedBox(
-                width: isTablet ? 80 : 100,
-                child: const Text(
-                  'Violations',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
+          columns: const [
+            DataColumn(label: Text('Trip No')),
+            DataColumn(label: Text('Inspector Name')),
+            DataColumn(label: Text('Date')),
+            DataColumn(label: Text('Unit Number')),
+            DataColumn(label: Text('Driver Name')),
+            DataColumn(label: Text('Conductor Name')),
+            DataColumn(label: Text('Ticket Inspection Time')),
+            DataColumn(label: Text('Passengers')),
+            DataColumn(label: Text('Location')),
+            DataColumn(label: Text('Violations')),
           ],
           rows: trips.map((doc) {
             final data = doc.data() as Map<String, dynamic>;
-            final timestamp = (data['timestamp'] as Timestamp).toDate();
-            final violations = (data['violations'] as List?)?.length ?? 0;
+            final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
+            final driverName = data['driverName']?.toString() ?? 'N/A';
+            final conductorName = data['conductorName']?.toString() ?? 'N/A';
+            final inspectorUid = data['uid']?.toString() ?? ''; // ✅ Moved here
 
             return DataRow(
               cells: [
-                DataCell(
-                  SizedBox(
-                    width: isTablet ? 100 : 120,
-                    child: Text(
-                      doc.id,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
+                DataCell(Text(doc.id, style: const TextStyle(fontWeight: FontWeight.w600))),
                 DataCell(
                   SizedBox(
                     width: isTablet ? 120 : 140,
-                    child: Text(
-                      widget.user.name ?? 'N/A',
-                      overflow: TextOverflow.ellipsis,
+                    child: FutureBuilder<String>(
+                      future: _getInspectorName(inspectorUid),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Text('Loading...');
+                        }
+                        return Text(snapshot.data ?? 'Unknown');
+                      },
                     ),
                   ),
                 ),
+                DataCell(Text(
+                  timestamp != null
+                      ? '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}'
+                      : 'N/A',
+                )),
+                DataCell(Text(data['unitNumber']?.toString() ?? 'N/A')),
+                DataCell(Text(driverName)),
+                DataCell(Text(conductorName)),
+                DataCell(Text(data['inspectionTime']?.toString() ?? 'N/A')),
+                DataCell(Text(data['noOfPass']?.toString() ?? 'N/A')),
+                DataCell(Text(data['location']?.toString() ?? 'N/A')),
                 DataCell(
-                  SizedBox(
-                    width: isTablet ? 90 : 110,
-                    child: Text(
-                      '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}',
-                      overflow: TextOverflow.ellipsis,
+                  FutureBuilder<int>(
+                    future: _getViolationCount(
+                      driverName,
+                      conductorName,
+                      data['timestamp'] as Timestamp,
+                      inspectorUid,
                     ),
-                  ),
-                ),
-                DataCell(
-                  SizedBox(
-                    width: isTablet ? 100 : 120,
-                    child: Text(
-                      data['unitNumber']?.toString() ?? 'N/A',
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-                DataCell(
-                  SizedBox(
-                    width: isTablet ? 120 : 140,
-                    child: Text(
-                      data['driverName']?.toString() ?? 'N/A',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  SizedBox(
-                    width: isTablet ? 120 : 140,
-                    child: Text(
-                      data['conductorName']?.toString() ?? 'N/A',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  SizedBox(
-                    width: isTablet ? 120 : 140,
-                    child: Text(
-                      data['inspectionTime']?.toString() ?? 'N/A',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  SizedBox(
-                    width: isTablet ? 100 : 120,
-                    child: Center(
-                      child: Text(
-                        data['noOfPass']?.toString() ?? 'N/A',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
-                ),
-                DataCell(
-                  SizedBox(
-                    width: isTablet ? 120 : 140,
-                    child: Text(
-                      data['location']?.toString() ?? 'N/A',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  SizedBox(
-                    width: isTablet ? 80 : 100,
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                    builder: (context, snapshot) {
+                      final violations = snapshot.data ?? 0;
+                      return GestureDetector(
+                        onTap: () => _showViolationDetails(
+                          context,
+                          driverName,
+                          conductorName,
+                          data['timestamp'] as Timestamp,
+                          inspectorUid,
                         ),
-                        decoration: BoxDecoration(
-                          color: _getViolationsColor(violations).withAlpha(30),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: _getViolationsColor(violations),
-                            width: 1.5,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _getViolationsColor(violations).withAlpha(30),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: _getViolationsColor(violations),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Text(
+                            '$violations',
+                            style: TextStyle(
+                              color: _getViolationsColor(violations),
+                              fontWeight: FontWeight.bold,
+                              fontSize: isTablet ? 11 : 12,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
                         ),
-                        child: Text(
-                          '$violations',
-                          style: TextStyle(
-                            color: _getViolationsColor(violations),
-                            fontWeight: FontWeight.bold,
-                            fontSize: isTablet ? 11 : 12,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
               ],
