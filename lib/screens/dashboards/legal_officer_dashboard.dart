@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
@@ -26,6 +27,17 @@ class _LegalOfficerDashboardScreenState
   int _selectedIndex = 0;
   Widget? _currentScreen;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // Password change variables
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final _currentPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  bool _isChangingPassword = false;
+  bool _showCurrentPassword = false;
+  bool _showNewPassword = false;
+  bool _showConfirmPassword = false;
 
   // Stream to get inspectors with their inspection counts
   Stream<List<Map<String, dynamic>>> getInspectorsStream() {
@@ -115,6 +127,186 @@ class _LegalOfficerDashboardScreenState
     setState(() {
       _currentScreen = screen;
     });
+  }
+
+  /// ---------------- CHANGE PASSWORD FUNCTIONALITY ----------------
+  Future<void> _changePassword() async {
+    final currentPassword = _currentPasswordController.text.trim();
+    final newPassword = _newPasswordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+    final user = _auth.currentUser;
+
+    if (currentPassword.isEmpty ||
+        newPassword.isEmpty ||
+        confirmPassword.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill in all fields")),
+      );
+      return;
+    }
+
+    if (newPassword != confirmPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("New passwords do not match")),
+      );
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Password must be at least 6 characters")),
+      );
+      return;
+    }
+
+    setState(() => _isChangingPassword = true);
+
+    try {
+      // Re-authenticate user with current password
+      final cred = EmailAuthProvider.credential(
+        email: user!.email!,
+        password: currentPassword,
+      );
+
+      await user.reauthenticateWithCredential(cred);
+
+      // Update password
+      await user.updatePassword(newPassword);
+
+      // Update a flag in Firestore
+      await _firestore.collection('users').doc(user.uid).update({
+        'lastPasswordChange': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Password changed successfully!")),
+      );
+
+      // Clear fields and close dialog
+      _currentPasswordController.clear();
+      _newPasswordController.clear();
+      _confirmPasswordController.clear();
+
+      Navigator.of(context).pop(); // Close the dialog
+    } on FirebaseAuthException catch (e) {
+      String message = "Password change failed";
+      if (e.code == 'wrong-password') {
+        message = "Current password is incorrect";
+      } else if (e.code == 'weak-password') {
+        message = "New password is too weak";
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    } finally {
+      if (mounted) setState(() => _isChangingPassword = false);
+    }
+  }
+
+  /// ---------------- CHANGE PASSWORD DIALOG ----------------
+  Future<void> _showChangePasswordDialog() async {
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Change Password'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildPasswordField(
+                      controller: _currentPasswordController,
+                      label: "Current Password",
+                      showPassword: _showCurrentPassword,
+                      onToggle: () {
+                        setState(() {
+                          _showCurrentPassword = !_showCurrentPassword;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildPasswordField(
+                      controller: _newPasswordController,
+                      label: "New Password",
+                      showPassword: _showNewPassword,
+                      onToggle: () {
+                        setState(() {
+                          _showNewPassword = !_showNewPassword;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildPasswordField(
+                      controller: _confirmPasswordController,
+                      label: "Confirm New Password",
+                      showPassword: _showConfirmPassword,
+                      onToggle: () {
+                        setState(() {
+                          _showConfirmPassword = !_showConfirmPassword;
+                        });
+                      },
+                    ),
+                    if (_isChangingPassword)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 16),
+                        child: CircularProgressIndicator(),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: _isChangingPassword
+                      ? null
+                      : () {
+                          _currentPasswordController.clear();
+                          _newPasswordController.clear();
+                          _confirmPasswordController.clear();
+                          Navigator.of(context).pop();
+                        },
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: _isChangingPassword ? null : _changePassword,
+                  child: const Text('Change Password'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Password field widget with show/hide functionality
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String label,
+    required bool showPassword,
+    required VoidCallback onToggle,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: !showPassword,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        suffixIcon: IconButton(
+          icon: Icon(
+            showPassword ? Icons.visibility : Icons.visibility_off,
+            color: Colors.grey,
+          ),
+          onPressed: onToggle,
+        ),
+      ),
+    );
   }
 
   /// ---------------- NOTIFICATION FUNCTIONS  ----------------
@@ -345,6 +537,14 @@ class _LegalOfficerDashboardScreenState
   }
 
   @override
+  void dispose() {
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
 
@@ -554,6 +754,16 @@ class _LegalOfficerDashboardScreenState
             ),
           ),
           const Divider(height: 1),
+          // CHANGE PASSWORD BUTTON - ADDED ABOVE LOGOUT
+          ListTile(
+            leading: const Icon(Icons.lock, color: Color(0xFF0D2364)),
+            title: const Text(
+              'Change Password',
+              style: TextStyle(color: Color(0xFF0D2364)),
+            ),
+            onTap: _showChangePasswordDialog,
+          ),
+          // LOGOUT BUTTON
           ListTile(
             leading: const Icon(Icons.logout, color: Color(0xFF0D2364)),
             title: Text(
