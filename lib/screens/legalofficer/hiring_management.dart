@@ -25,16 +25,17 @@ class Candidate {
     Map<String, bool>? requirements,
     this.createdAt,
     this.updatedAt,
-  }) : requirements = requirements ??
-      {
-        'Driver License': false,
-        'Government Issued IDs': false,
-        'NBI Clearance': false,
-        'Barangay Clearance': false,
-        'Medical Certificate': false,
-        'Initial Interview': false,
-        'Training': false,
-      };
+  }) : requirements =
+           requirements ??
+           {
+             'Driver License': false,
+             'Government Issued IDs': false,
+             'NBI Clearance': false,
+             'Barangay Clearance': false,
+             'Medical Certificate': false,
+             'Initial Interview': false,
+             'Training': false,
+           };
 
   Map<String, dynamic> toMap() {
     return {
@@ -88,7 +89,9 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
   }
 
   Stream<List<Candidate>> _getCandidatesStream() {
-    Query query = _firestore.collection('candidates').orderBy('createdAt', descending: true);
+    Query query = _firestore
+        .collection('candidates')
+        .orderBy('createdAt', descending: true);
 
     if (_selectedFilter != 'All') {
       query = query.where('position', isEqualTo: _selectedFilter);
@@ -141,9 +144,9 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error adding candidate: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error adding candidate: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -154,9 +157,10 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
     try {
       setState(() => _isLoading = true);
 
-      await _firestore.collection('candidates').doc(candidate.id).update(
-        candidate.toMap(),
-      );
+      await _firestore
+          .collection('candidates')
+          .doc(candidate.id)
+          .update(candidate.toMap());
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -165,9 +169,9 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating candidate: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating candidate: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -251,7 +255,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                             setDialogState(() {
                               selectedDate = pickedDate;
                               dateController.text =
-                              '${pickedDate.month.toString().padLeft(2, '0')}/'
+                                  '${pickedDate.month.toString().padLeft(2, '0')}/'
                                   '${pickedDate.day.toString().padLeft(2, '0')}/'
                                   '${pickedDate.year.toString().substring(2)}';
                             });
@@ -350,9 +354,9 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error uploading file: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error uploading file: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -361,9 +365,9 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
 
   void _viewResume(Candidate candidate) {
     if (candidate.resumeUrl == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No resume available')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No resume available')));
       return;
     }
 
@@ -476,7 +480,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                         return _buildRequirementItem(
                           key,
                           candidate.requirements[key] ?? false,
-                              (value) {
+                          (value) {
                             setDialogState(() {
                               candidate.requirements[key] = value;
                             });
@@ -531,11 +535,11 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
   }
 
   Widget _buildRequirementItem(
-      String title,
-      bool isChecked,
-      Function(bool) onChanged,
-      bool isMobile,
-      ) {
+    String title,
+    bool isChecked,
+    Function(bool) onChanged,
+    bool isMobile,
+  ) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
@@ -561,8 +565,9 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
   }
 
   Widget _buildCompletionStatus(Candidate candidate, bool isMobile) {
-    int completed =
-        candidate.requirements.values.where((value) => value).length;
+    int completed = candidate.requirements.values
+        .where((value) => value)
+        .length;
     int total = candidate.requirements.length;
     double percentage = total > 0 ? (completed / total) * 100 : 0;
 
@@ -588,15 +593,17 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
   }
 
   String _getRequirementsStatus(Candidate candidate) {
-    int completed =
-        candidate.requirements.values.where((value) => value).length;
+    int completed = candidate.requirements.values
+        .where((value) => value)
+        .length;
     int total = candidate.requirements.length;
     return '$completed/$total';
   }
 
   Color _getCompletionColor(Candidate candidate) {
-    int completed =
-        candidate.requirements.values.where((value) => value).length;
+    int completed = candidate.requirements.values
+        .where((value) => value)
+        .length;
     int total = candidate.requirements.length;
     double percentage = total > 0 ? (completed / total) * 100 : 0;
 
@@ -668,9 +675,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
   Widget _buildDesktopTable(List<Candidate> candidates, bool isTablet) {
     return Card(
       elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       margin: EdgeInsets.zero,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -766,11 +771,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
-                            Icons.star,
-                            color: Colors.amber,
-                            size: 16,
-                          ),
+                          const Icon(Icons.star, color: Colors.amber, size: 16),
                           const SizedBox(width: 8),
                           Flexible(
                             child: Text(
@@ -817,8 +818,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: _getCompletionColor(candidate)
-                                .withAlpha(1),
+                            color: _getCompletionColor(candidate).withAlpha(1),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: _getCompletionColor(candidate),
@@ -860,9 +860,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                                 candidate.resumeUrl == null
                                     ? 'Upload'
                                     : 'Reupload',
-                                style: TextStyle(
-                                  fontSize: isTablet ? 12 : 14,
-                                ),
+                                style: TextStyle(fontSize: isTablet ? 12 : 14),
                                 overflow: TextOverflow.ellipsis,
                               ),
                               onPressed: () => _uploadResume(candidate),
@@ -879,10 +877,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                           if (candidate.resumeUrl != null) ...[
                             const SizedBox(width: 8),
                             IconButton(
-                              icon: const Icon(
-                                Icons.visibility,
-                                size: 18,
-                              ),
+                              icon: const Icon(Icons.visibility, size: 18),
                               onPressed: () => _viewResume(candidate),
                               tooltip: 'View Resume',
                               style: IconButton.styleFrom(
@@ -938,9 +933,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
   Widget _buildMobileCards(List<Candidate> candidates) {
     return Card(
       elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       margin: EdgeInsets.zero,
       child: ListView.builder(
         itemCount: candidates.length,
@@ -959,11 +952,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(
-                      Icons.star,
-                      color: Colors.amber,
-                      size: 20,
-                    ),
+                    const Icon(Icons.star, color: Colors.amber, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -1000,11 +989,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                _buildCardInfoRow(
-                  Icons.work,
-                  'Position',
-                  candidate.position,
-                ),
+                _buildCardInfoRow(Icons.work, 'Position', candidate.position),
                 _buildCardInfoRow(
                   Icons.calendar_today,
                   'Interview Date',
@@ -1026,9 +1011,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0D2364),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),
                     ),
@@ -1108,135 +1091,135 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
         padding: const EdgeInsets.all(12.0),
         child: isMobile
             ? Column(
-          children: [
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search by name or position...',
-                prefixIcon: const Icon(
-                  Icons.search,
-                  color: Color(0xFF0D2364),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              onChanged: (_) {
-                setState(() {
-                  _currentPage = 0;
-                });
-              },
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _selectedFilter,
-              onChanged: (value) {
-                setState(() {
-                  _selectedFilter = value!;
-                  _currentPage = 0;
-                });
-              },
-              items: ['All', 'Driver', 'Conductor', 'Inspector']
-                  .map(
-                    (position) => DropdownMenuItem(
-                  value: position,
-                  child: Text(position),
-                ),
+                children: [
+                  TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search by name or position...',
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: Color(0xFF0D2364),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onChanged: (_) {
+                      setState(() {
+                        _currentPage = 0;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: _selectedFilter,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedFilter = value!;
+                        _currentPage = 0;
+                      });
+                    },
+                    items: ['All', 'Driver', 'Conductor', 'Inspector']
+                        .map(
+                          (position) => DropdownMenuItem(
+                            value: position,
+                            child: Text(position),
+                          ),
+                        )
+                        .toList(),
+                    decoration: InputDecoration(
+                      labelText: 'Filter by Position',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.add, size: 20),
+                      label: const Text('Add Candidate'),
+                      onPressed: () => _showCandidateDialog(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0D2364),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
               )
-                  .toList(),
-              decoration: InputDecoration(
-                labelText: 'Filter by Position',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.add, size: 20),
-                label: const Text('Add Candidate'),
-                onPressed: () => _showCandidateDialog(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0D2364),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-          ],
-        )
             : Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search by name or position...',
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: Color(0xFF0D2364),
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search by name or position...',
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Color(0xFF0D2364),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                        ),
+                      ),
+                      onChanged: (_) {
+                        setState(() {
+                          _currentPage = 0;
+                        });
+                      },
+                    ),
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 1,
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedFilter,
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedFilter = value!;
+                          _currentPage = 0;
+                        });
+                      },
+                      items: ['All', 'Driver', 'Conductor', 'Inspector']
+                          .map(
+                            (position) => DropdownMenuItem(
+                              value: position,
+                              child: Text(position),
+                            ),
+                          )
+                          .toList(),
+                      decoration: InputDecoration(
+                        labelText: 'Filter by Position',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 12,
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.add, size: 20),
+                    label: const Text('Add Candidate'),
+                    onPressed: () => _showCandidateDialog(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0D2364),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
                   ),
-                ),
-                onChanged: (_) {
-                  setState(() {
-                    _currentPage = 0;
-                  });
-                },
+                ],
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 1,
-              child: DropdownButtonFormField<String>(
-                value: _selectedFilter,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedFilter = value!;
-                    _currentPage = 0;
-                  });
-                },
-                items: ['All', 'Driver', 'Conductor', 'Inspector']
-                    .map(
-                      (position) => DropdownMenuItem(
-                    value: position,
-                    child: Text(position),
-                  ),
-                )
-                    .toList(),
-                decoration: InputDecoration(
-                  labelText: 'Filter by Position',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.add, size: 20),
-              label: const Text('Add Candidate'),
-              onPressed: () => _showCandidateDialog(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0D2364),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -1264,8 +1247,8 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                 items: [5, 10, 15, 20]
                     .map(
                       (value) =>
-                      DropdownMenuItem(value: value, child: Text('$value')),
-                )
+                          DropdownMenuItem(value: value, child: Text('$value')),
+                    )
                     .toList(),
               ),
               const Spacer(),
@@ -1274,10 +1257,10 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
               icon: const Icon(Icons.arrow_back_ios, size: 16),
               onPressed: _currentPage > 0
                   ? () {
-                setState(() {
-                  _currentPage--;
-                });
-              }
+                      setState(() {
+                        _currentPage--;
+                      });
+                    }
                   : null,
             ),
             Text(
@@ -1288,10 +1271,10 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
               icon: const Icon(Icons.arrow_forward_ios, size: 16),
               onPressed: _currentPage < totalPages - 1
                   ? () {
-                setState(() {
-                  _currentPage++;
-                });
-              }
+                      setState(() {
+                        _currentPage++;
+                      });
+                    }
                   : null,
             ),
             if (isMobile) ...[
@@ -1337,9 +1320,9 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting candidate: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error deleting candidate: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -1372,8 +1355,11 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.error_outline,
-                                size: 48, color: Colors.red),
+                            const Icon(
+                              Icons.error_outline,
+                              size: 48,
+                              color: Colors.red,
+                            ),
                             const SizedBox(height: 16),
                             Text('Error: ${snapshot.error}'),
                           ],
@@ -1383,18 +1369,17 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
 
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Expanded(
-                        child: Center(
-                          child: CircularProgressIndicator(),
-                        ),
+                        child: Center(child: CircularProgressIndicator()),
                       );
                     }
 
                     final allCandidates = snapshot.data ?? [];
                     final filteredCandidates = _filterCandidates(allCandidates);
-                    final paginatedCandidates =
-                    _paginateCandidates(filteredCandidates);
+                    final paginatedCandidates = _paginateCandidates(
+                      filteredCandidates,
+                    );
                     final totalPages =
-                    (filteredCandidates.length / _rowsPerPage).ceil();
+                        (filteredCandidates.length / _rowsPerPage).ceil();
 
                     return Expanded(
                       child: Column(
@@ -1413,7 +1398,9 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                             child: isMobile
                                 ? _buildMobileCards(paginatedCandidates)
                                 : _buildDesktopTable(
-                                paginatedCandidates, isTablet),
+                                    paginatedCandidates,
+                                    isTablet,
+                                  ),
                           ),
                           if (filteredCandidates.length > _rowsPerPage)
                             _buildPaginationControls(isMobile, totalPages),
@@ -1428,9 +1415,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
           if (_isLoading)
             Container(
               color: Colors.black26,
-              child: const Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: const Center(child: CircularProgressIndicator()),
             ),
         ],
       ),

@@ -15,14 +15,71 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
   final TextEditingController _reasonController = TextEditingController();
   DateTime? _startDate;
   DateTime? _endDate;
+  bool _hasSubmittedToday = false;
+  bool _isCheckingSubmission = true;
 
   final List<String> _leaveTypes = ['Sick Leave', 'Vacation Leave'];
+
+  @override
+  void initState() {
+    super.initState();
+    _checkTodaySubmission();
+  }
+
+  Future<void> _checkTodaySubmission() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final today = DateTime.now();
+      final startOfDay = DateTime(today.year, today.month, today.day);
+      final endOfDay = DateTime(today.year, today.month, today.day, 23, 59, 59);
+
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('leave_application')
+          .where('submittedAt', isGreaterThanOrEqualTo: startOfDay)
+          .where('submittedAt', isLessThanOrEqualTo: endOfDay)
+          .get();
+
+      setState(() {
+        _hasSubmittedToday = querySnapshot.docs.isNotEmpty;
+        _isCheckingSubmission = false;
+      });
+    } catch (e) {
+      debugPrint('Error checking today submission: $e');
+      setState(() {
+        _isCheckingSubmission = false;
+      });
+    }
+  }
 
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
       if (_startDate == null || _endDate == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please select a date range.')),
+        );
+        return;
+      }
+
+      // Check character limit
+      if (_reasonController.text.length > 100) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reason must not exceed 100 characters.'),
+          ),
+        );
+        return;
+      }
+
+      // Check if already submitted today
+      if (_hasSubmittedToday) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You can only submit one leave application per day.'),
+          ),
         );
         return;
       }
@@ -64,6 +121,11 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
             ),
           );
         }
+
+        // Update submission status
+        setState(() {
+          _hasSubmittedToday = true;
+        });
 
         // Clear form after submission
         if (mounted) {
@@ -111,32 +173,45 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
         }
 
         final now = DateTime.now();
-        final docs = snapshot.data!.docs.where((doc) {
+        final List<DocumentSnapshot> validDocs = [];
+
+        for (final doc in snapshot.data!.docs) {
           final data = doc.data() as Map<String, dynamic>;
           final status = data['status'] ?? '';
           final rejectedAt = (data['rejectedAt'] as Timestamp?)?.toDate();
+          final endDate = (data['endDate'] as Timestamp?)?.toDate();
 
-          // If it's rejected and older than 5 days → mark for deletion
+          // Auto-delete rejected applications after 5 days
           if (status == 'Rejected' && rejectedAt != null) {
             final diff = now.difference(rejectedAt).inDays;
             if (diff >= 5) {
-              // Schedule deletion in the background (non-blocking)
               FirebaseFirestore.instance
                   .collection('users')
                   .doc(user.uid)
                   .collection('leave_application')
                   .doc(doc.id)
                   .delete();
-              return false; // Don't show it
+              continue;
             }
           }
 
-          return true;
-        }).toList();
+          // Auto-delete completed leave applications (end date has passed)
+          if (endDate != null && endDate.isBefore(now)) {
+            FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .collection('leave_application')
+                .doc(doc.id)
+                .delete();
+            continue;
+          }
 
-        if (docs.isEmpty) {
+          validDocs.add(doc);
+        }
+
+        if (validDocs.isEmpty) {
           return const Text(
-            'No leave applications to show.',
+            'No active leave applications to show.',
             style: TextStyle(color: Colors.grey),
           );
         }
@@ -145,7 +220,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Your Submitted Leave Applications',
+              'Your Active Leave Applications',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -153,13 +228,14 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            ...docs.map((doc) {
+            ...validDocs.map((doc) {
               final data = doc.data() as Map<String, dynamic>;
               final leaveType = data['leaveType'] ?? 'N/A';
               final startDate = (data['startDate'] as Timestamp?)?.toDate();
               final endDate = (data['endDate'] as Timestamp?)?.toDate();
               final status = data['status'] ?? 'Pending';
               final reason = data['reason'] ?? 'No reason provided';
+              final submittedAt = (data['submittedAt'] as Timestamp?)?.toDate();
 
               return Container(
                 width: double.infinity,
@@ -209,6 +285,17 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                         fontStyle: FontStyle.italic,
                       ),
                     ),
+                    if (submittedAt != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Submitted: ${_formatDateTime(submittedAt)}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               );
@@ -222,7 +309,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
   Future<void> _selectDateRange(BuildContext context) async {
     final DateTimeRange? picked = await showDateRangePicker(
       context: context,
-      firstDate: DateTime(2025),
+      firstDate: DateTime.now(),
       lastDate: DateTime(2026),
       initialDateRange: _startDate != null && _endDate != null
           ? DateTimeRange(start: _startDate!, end: _endDate!)
@@ -277,9 +364,28 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
         '${date.year}';
   }
 
+  String _formatDateTime(DateTime date) {
+    return '${_formatDate(date)} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
   int _calculateNumberOfDays() {
     if (_startDate == null || _endDate == null) return 0;
     return _endDate!.difference(_startDate!).inDays + 1;
+  }
+
+  bool get _canSubmit {
+    return _reasonController.text.length <= 100 &&
+        !_hasSubmittedToday &&
+        !_isCheckingSubmission &&
+        _selectedLeaveType != null &&
+        _startDate != null &&
+        _endDate != null;
+  }
+
+  String get _submitButtonText {
+    if (_isCheckingSubmission) return 'Checking...';
+    if (_hasSubmittedToday) return 'Already Submitted Today';
+    return 'Submit Leave Application';
   }
 
   @override
@@ -288,21 +394,23 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
     final isMobile = screenWidth < 600;
 
     return Scaffold(
-      resizeToAvoidBottomInset: true,
+      resizeToAvoidBottomInset:
+          false, // Changed to false for better performance
       body: SafeArea(
         child: Container(
           width: double.infinity,
-          padding: EdgeInsets.zero, // Remove all padding
+          padding: EdgeInsets.zero,
           child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(), // Smoother scrolling
             child: Column(
               children: [
-                // Header Section - Full width
+                // Header Section
                 Container(
                   width: double.infinity,
                   padding: EdgeInsets.all(isMobile ? 20.0 : 24.0),
                   decoration: BoxDecoration(
                     color: const Color(0xFF0D2364),
-                    borderRadius: BorderRadius.zero, // Remove border radius
+                    borderRadius: BorderRadius.zero,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,15 +431,37 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                           color: Colors.white70,
                         ),
                       ),
+                      if (_hasSubmittedToday)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.orange,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'You have already submitted a leave application today',
+                              style: TextStyle(
+                                fontSize: isMobile ? 12 : 13,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
 
-                // Form Section - Full width
+                // Form Section
                 Container(
                   width: double.infinity,
                   padding: EdgeInsets.all(isMobile ? 20.0 : 24.0),
-                  decoration: BoxDecoration(color: Colors.white),
+                  decoration: const BoxDecoration(color: Colors.white),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -378,11 +508,13 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                                 ),
                               );
                             }).toList(),
-                            onChanged: (newValue) {
-                              setState(() {
-                                _selectedLeaveType = newValue;
-                              });
-                            },
+                            onChanged: _hasSubmittedToday
+                                ? null
+                                : (newValue) {
+                                    setState(() {
+                                      _selectedLeaveType = newValue;
+                                    });
+                                  },
                             validator: (value) => value == null
                                 ? 'Please select leave type'
                                 : null,
@@ -400,10 +532,14 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                               SizedBox(
                                 width: double.infinity,
                                 child: OutlinedButton(
-                                  onPressed: () => _selectDateRange(context),
+                                  onPressed: _hasSubmittedToday
+                                      ? null
+                                      : () => _selectDateRange(context),
                                   style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(
-                                      color: Color(0xFF0D2364),
+                                    side: BorderSide(
+                                      color: _hasSubmittedToday
+                                          ? Colors.grey
+                                          : const Color(0xFF0D2364),
                                     ),
                                     padding: EdgeInsets.symmetric(
                                       horizontal: isMobile ? 16 : 24,
@@ -414,7 +550,9 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                                     'Pick Date Range from Calendar',
                                     style: TextStyle(
                                       fontSize: isMobile ? 14 : 16,
-                                      color: const Color(0xFF0D2364),
+                                      color: _hasSubmittedToday
+                                          ? Colors.grey
+                                          : const Color(0xFF0D2364),
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -435,59 +573,127 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                         ),
                         SizedBox(height: isMobile ? 16 : 20),
 
-                        // Reason
+                        // Reason - Improved for stable typing
                         _buildFormSection(
                           label: 'Reason for requesting leave:',
                           isMobile: isMobile,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Colors.grey.shade400,
-                                width: 1.0,
-                              ),
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                            child: TextFormField(
-                              controller: _reasonController,
-                              maxLines: 3,
-                              style: TextStyle(fontSize: isMobile ? 14 : 16),
-                              decoration: InputDecoration(
-                                hintText: 'Enter reason for leave',
-                                hintStyle: TextStyle(
-                                  fontSize: isMobile ? 14 : 16,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: _hasSubmittedToday
+                                        ? Colors.grey
+                                        : Colors.grey.shade400,
+                                    width: 1.0,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8.0),
                                 ),
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  children: [
+                                    TextFormField(
+                                      controller: _reasonController,
+                                      maxLength: 100,
+                                      maxLines: 3,
+                                      enabled: !_hasSubmittedToday,
+                                      // Removed the setState listener for stable typing
+                                      style: TextStyle(
+                                        fontSize: isMobile ? 14 : 16,
+                                        color: _hasSubmittedToday
+                                            ? Colors.grey
+                                            : Colors.black,
+                                      ),
+                                      decoration: InputDecoration(
+                                        hintText: 'Enter reason for leave',
+                                        hintStyle: TextStyle(
+                                          fontSize: isMobile ? 14 : 16,
+                                          color: _hasSubmittedToday
+                                              ? Colors.grey
+                                              : Colors.grey.shade500,
+                                        ),
+                                        border: InputBorder.none,
+                                        contentPadding: const EdgeInsets.all(
+                                          16.0,
+                                        ),
+                                        counterText: "",
+                                      ),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Required';
+                                        }
+                                        if (value.length > 100) {
+                                          return 'Reason must not exceed 100 characters';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    // Character counter - only updates when needed
+                                    if (_reasonController.text.isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 12.0,
+                                          bottom: 8.0,
+                                        ),
+                                        child: Text(
+                                          '${_reasonController.text.length}/100',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color:
+                                                _reasonController.text.length >
+                                                    100
+                                                ? Colors.red
+                                                : Colors.grey.shade600,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
-                              validator: (value) =>
-                                  value!.isEmpty ? 'Required' : null,
-                            ),
+                              if (_reasonController.text.length > 100)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    'Character limit exceeded!',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                         SizedBox(height: isMobile ? 24 : 32),
 
                         // Submit Button
-                        SizedBox(
-                          width: double.infinity,
-                          height: isMobile ? 50 : 56,
-                          child: ElevatedButton(
-                            onPressed: _submitForm,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0D2364),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8.0),
+                        if (_isCheckingSubmission)
+                          const Center(child: CircularProgressIndicator())
+                        else
+                          SizedBox(
+                            width: double.infinity,
+                            height: isMobile ? 50 : 56,
+                            child: ElevatedButton(
+                              onPressed: _canSubmit ? _submitForm : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _canSubmit
+                                    ? const Color(0xFF0D2364)
+                                    : Colors.grey,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8.0),
+                                ),
                               ),
-                            ),
-                            child: Text(
-                              'Submit Leave Application',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: isMobile ? 16 : 18,
-                                fontWeight: FontWeight.w600,
+                              child: Text(
+                                _submitButtonText,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: isMobile ? 16 : 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ),

@@ -28,6 +28,11 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
   void initState() {
     super.initState();
     _fetchAssignedVehicle(); // fetch vehicle when screen opens
+
+    // Add listeners to update character count
+    _typeController.addListener(() => setState(() {}));
+    _locationController.addListener(() => setState(() {}));
+    _personsController.addListener(() => setState(() {}));
   }
 
   Future<void> _fetchAssignedVehicle() async {
@@ -153,6 +158,8 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                           controller: _typeController,
                           focusNode: _typeFocusNode,
                           isRequired: true,
+                          maxLength: 100,
+                          currentLength: _typeController.text.length,
                         ),
                         const SizedBox(height: 20),
                         _buildFormField(
@@ -161,6 +168,8 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                           controller: _locationController,
                           focusNode: _locationFocusNode,
                           isRequired: true,
+                          maxLength: 100,
+                          currentLength: _locationController.text.length,
                         ),
                         const SizedBox(height: 20),
                         _buildFormField(
@@ -169,6 +178,8 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                           controller: _personsController,
                           focusNode: _personsFocusNode,
                           isRequired: true,
+                          maxLength: 100,
+                          currentLength: _personsController.text.length,
                         ),
                         const SizedBox(height: 20),
                         Column(
@@ -254,6 +265,8 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
     required TextEditingController controller,
     required FocusNode focusNode,
     required bool isRequired,
+    required int maxLength,
+    required int currentLength,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,21 +285,46 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
             border: Border.all(color: Colors.grey.shade400, width: 1.0),
             borderRadius: BorderRadius.circular(8.0),
           ),
-          child: TextFormField(
-            controller: controller,
-            focusNode: focusNode,
-            style: TextStyle(color: Colors.grey.shade700),
-            decoration: InputDecoration(
-              hintText: controller.text.isEmpty && !focusNode.hasFocus
-                  ? hintText
-                  : null,
-              hintStyle: TextStyle(color: Colors.grey.shade500),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.all(12.0),
-            ),
-            validator: isRequired
-                ? (value) => value!.isEmpty ? 'Required' : null
-                : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              TextFormField(
+                controller: controller,
+                focusNode: focusNode,
+                style: TextStyle(color: Colors.grey.shade700),
+                maxLength: maxLength,
+                buildCounter:
+                    (
+                      BuildContext context, {
+                      int? currentLength,
+                      int? maxLength,
+                      bool? isFocused,
+                    }) => null, // Hide default counter
+                decoration: InputDecoration(
+                  hintText: controller.text.isEmpty && !focusNode.hasFocus
+                      ? hintText
+                      : null,
+                  hintStyle: TextStyle(color: Colors.grey.shade500),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.all(12.0),
+                ),
+                validator: isRequired
+                    ? (value) => value!.isEmpty ? 'Required' : null
+                    : null,
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 12.0, bottom: 8.0),
+                child: Text(
+                  '$currentLength/$maxLength',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: currentLength > maxLength
+                        ? Colors.red
+                        : Colors.grey.shade600,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],

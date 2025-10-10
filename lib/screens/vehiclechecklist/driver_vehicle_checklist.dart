@@ -18,6 +18,13 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
   void initState() {
     super.initState();
     _fetchAssignedVehicle();
+    _defectsController.addListener(_updatePriority);
+  }
+
+  void _updatePriority() {
+    setState(() {
+      _currentPriority = _determinePriority(_defectsController.text);
+    });
   }
 
   Future<void> _fetchAssignedVehicle() async {
@@ -175,6 +182,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
 
   @override
   void dispose() {
+    _defectsController.removeListener(_updatePriority);
     _defectsController.dispose();
     super.dispose();
   }
@@ -371,22 +379,41 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                         ),
                         borderRadius: BorderRadius.circular(8.0),
                       ),
-                      child: TextField(
-                        controller: _defectsController,
-                        onChanged: (value) {
-                          setState(() {
-                            _currentPriority = _determinePriority(value);
-                          });
-                        },
-                        maxLines: 3,
-                        style: TextStyle(fontSize: isMobile ? 13 : 14),
-                        decoration: InputDecoration(
-                          hintText:
-                              'Describe any defects found during inspection... (Leave empty if no defects)',
-                          hintStyle: TextStyle(fontSize: isMobile ? 13 : 14),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.all(12.0),
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          TextField(
+                            controller: _defectsController,
+                            maxLength: 100, // Character limit
+                            maxLines: 3,
+                            style: TextStyle(fontSize: isMobile ? 13 : 14),
+                            decoration: InputDecoration(
+                              hintText:
+                                  'Describe any defects found during inspection... (Leave empty if no defects)',
+                              hintStyle: TextStyle(
+                                fontSize: isMobile ? 13 : 14,
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.all(12.0),
+                              counterText: "", // Hide default counter
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              right: 12.0,
+                              bottom: 8.0,
+                            ),
+                            child: Text(
+                              '${_defectsController.text.length}/100',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _defectsController.text.length > 100
+                                    ? Colors.red
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -397,16 +424,30 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
               if (_defectsController.text.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'Priority: $_currentPriority',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: _currentPriority == 'HIGH'
-                          ? Colors.red
-                          : _currentPriority == 'MEDIUM'
-                          ? Colors.orange
-                          : Colors.green,
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Priority: $_currentPriority',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: _currentPriority == 'HIGH'
+                              ? Colors.red
+                              : _currentPriority == 'MEDIUM'
+                              ? Colors.orange
+                              : Colors.green,
+                        ),
+                      ),
+                      if (_defectsController.text.length > 100)
+                        Text(
+                          'Character limit exceeded!',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.red,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
 
@@ -419,9 +460,13 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                     width: double.infinity,
                     height: isMobile ? 45 : 50,
                     child: ElevatedButton(
-                      onPressed: _submitForm,
+                      onPressed: _defectsController.text.length <= 100
+                          ? _submitForm
+                          : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0D2364),
+                        backgroundColor: _defectsController.text.length <= 100
+                            ? const Color(0xFF0D2364)
+                            : Colors.grey,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8.0),
                         ),
