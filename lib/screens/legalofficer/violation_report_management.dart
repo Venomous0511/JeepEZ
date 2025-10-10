@@ -39,83 +39,63 @@ class _ViolationReportHistoryScreenState
     );
   }
 
-  Future<List<Map<String, dynamic>>> getViolationsByUser(
-      String name,
-      String position,
-      ) async {
-    final querySnapshot = await _firestore
-        .collection('violation_report')
-        .where('name', isEqualTo: name)
-        .where('position', isEqualTo: position)
-        .get();
-
-    return querySnapshot.docs.map((doc) {
-      final data = doc.data();
-      data['id'] = doc.id;
-      return data;
-    }).toList();
-  }
-
-  Future<String> getReportedUserEmail(String employeeDocId) async {
-    try {
-      final doc = await _firestore.collection('users').doc(employeeDocId).get();
-      if (doc.exists) {
-        return doc.data()?['email']?.toString() ?? 'Unknown';
-      }
-      return 'Unknown';
-    } catch (e) {
-      return 'Unknown';
-    }
-  }
-
-  Future<String> getActualEmployeeId(String firebaseUid) async {
-    try {
-      final doc = await _firestore.collection('users').doc(firebaseUid).get();
-      if (doc.exists) {
-        final data = doc.data();
-        final employeeId = data?['employeeId']?.toString() ?? 'Unknown';
-        
-        return employeeId;
-      }
-
-      return 'Unknown';
-    } catch (e) {
-
-      return 'Unknown';
-    }
-  }
-
-  Future<String> getEmployeeIdByNameAndPosition(String name, String position) async {
+  /// Get all violations for a specific reported employee
+  Future<List<Map<String, dynamic>>> getViolationsByEmployee(
+      String reportedEmployeeId) async {
     try {
       final querySnapshot = await _firestore
+          .collection('violation_report')
+          .where('reportedEmployeeId', isEqualTo: reportedEmployeeId)
+          .get();
+
+      return querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    } catch (e) {
+      debugPrint('Error fetching violations: $e');
+      return [];
+    }
+  }
+
+  /// Get reporter's email using reporterEmployeeId
+  Future<String> getReporterEmail(String reporterEmployeeId) async {
+    try {
+      if (reporterEmployeeId.isEmpty || reporterEmployeeId == 'Not found') {
+        return 'Unknown';
+      }
+
+      final querySnapshot = await _firestore
           .collection('users')
-          .where('name', isEqualTo: name)
-          .where('role', isEqualTo: position.toLowerCase())
+          .where('employeeId', isEqualTo: reporterEmployeeId)
           .limit(1)
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
-        final data = querySnapshot.docs.first.data();
-        final employeeId = data['employeeId']?.toString() ?? 'Unknown';
-
-        return employeeId;
+        return querySnapshot.docs.first.data()['email']?.toString() ?? 'Unknown';
       }
-
       return 'Unknown';
     } catch (e) {
-
+      debugPrint('Error fetching reporter email: $e');
       return 'Unknown';
     }
   }
 
+  /// Update violation status
   Future<void> updateViolationStatus(
       String violationId,
       String newStatus,
       ) async {
-    await _firestore.collection('violation_report').doc(violationId).update({
-      'status': newStatus,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      await _firestore.collection('violation_report').doc(violationId).update({
+        'status': newStatus,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error updating status: $e');
+      rethrow;
+    }
   }
 
   List<Map<String, dynamic>> _filterReports(
@@ -124,12 +104,12 @@ class _ViolationReportHistoryScreenState
     if (_searchQuery.isEmpty) return reports;
 
     return reports.where((report) {
-      final name = report['name']?.toString().toLowerCase() ?? '';
-      final position = report['position']?.toString().toLowerCase() ?? '';
-      final empId = report['displayEmployeeId']?.toString().toLowerCase() ?? '';
+      final name = report['reportedName']?.toString().toLowerCase() ?? '';
+      final position = report['reportedPosition']?.toString().toLowerCase() ?? '';
+      final empId = report['reportedEmployeeId']?.toString().toLowerCase() ?? '';
       final location = report['location']?.toString().toLowerCase() ?? '';
       final violation = report['violation']?.toString().toLowerCase() ?? '';
-      final status = report['status']?.toString().toLowerCase() ?? '';
+      final status = report['status']?.toString().toLowerCase() ?? 'new';
 
       final query = _searchQuery.toLowerCase();
       return name.contains(query) ||
@@ -186,70 +166,22 @@ class _ViolationReportHistoryScreenState
                     }
 
                     final reports = snapshot.data!;
-                    final filteredReports = reports
-                        .where(
-                          (r) =>
-                      r['position'] == 'Driver' ||
-                          r['position'] == 'Conductor' ||
-                          r['position'] == 'Inspector',
-                    )
-                        .toList();
+                    final filteredReports = _filterReports(reports);
+                    final paginatedReports = _getPaginatedReports(filteredReports);
 
-                    final users = {
-                      for (var report in filteredReports)
-                        '${report['name']}-${report['position']}': report,
-                    }.values.toList();
-
-                    return FutureBuilder<List<Map<String, dynamic>>>(
-                      future: Future.wait(
-                        users.map((report) async {
-                          final reporterUid = report['employeeId']?.toString() ?? '';
-                          final reportedName = report['name']?.toString() ?? '';
-                          final reportedPosition = report['position']?.toString() ?? '';
-
-                          // Get the employee ID of the REPORTED person (by name and position)
-                          final actualEmployeeId = await getEmployeeIdByNameAndPosition(
-                            reportedName,
-                            reportedPosition,
-                          );
-
-                          return {
-                            ...report,
-                            'reporterUid': reporterUid,
-                            'displayEmployeeId': actualEmployeeId,
-                          };
-                        }).toList(),
-                      ),
-                      builder: (context, userSnapshot) {
-                        if (userSnapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
-                        }
-
-                        if (!userSnapshot.hasData) {
-                          return const Center(
-                            child: Text('No violation reports found'),
-                          );
-                        }
-
-                        final usersWithEmployeeIds = userSnapshot.data!;
-                        final filteredUsers = _filterReports(usersWithEmployeeIds);
-                        final paginatedUsers = _getPaginatedReports(filteredUsers);
-
-                        return Column(
-                          children: [
-                            Expanded(
-                              child: isMobile
-                                  ? _buildMobileList(paginatedUsers)
-                                  : _buildDesktopList(paginatedUsers, isTablet),
-                            ),
-                            if (filteredUsers.length > _itemsPerPage)
-                              _buildPaginationControls(
-                                filteredUsers.length,
-                                isMobile,
-                              ),
-                          ],
-                        );
-                      },
+                    return Column(
+                      children: [
+                        Expanded(
+                          child: isMobile
+                              ? _buildMobileList(paginatedReports)
+                              : _buildDesktopList(paginatedReports, isTablet),
+                        ),
+                        if (filteredReports.length > _itemsPerPage)
+                          _buildPaginationControls(
+                            filteredReports.length,
+                            isMobile,
+                          ),
+                      ],
                     );
                   },
                 ),
@@ -386,52 +318,48 @@ class _ViolationReportHistoryScreenState
     );
   }
 
-  Widget _buildDesktopList(List<Map<String, dynamic>> users, bool isTablet) {
+  Widget _buildDesktopList(List<Map<String, dynamic>> reports, bool isTablet) {
     return ListView.builder(
-      itemCount: users.length,
+      itemCount: reports.length,
       itemBuilder: (context, index) {
-        final userData = users[index];
+        final report = reports[index];
         return _UserItemDesktop(
-          name: userData['name']?.toString() ?? 'Unknown',
-          employeeId: userData['displayEmployeeId']?.toString() ?? 'Unknown',
-          reporterUid: userData['reporterUid']?.toString() ?? '',
-          position: userData['position']?.toString() ?? 'Unknown',
-          location: userData['location']?.toString() ?? 'N/A',
-          status: userData['status']?.toString() ?? 'New',
+          name: report['reportedName']?.toString() ?? 'Unknown',
+          employeeId: report['reportedEmployeeId']?.toString() ?? 'Unknown',
+          reporterEmployeeId: report['reporterEmployeeId']?.toString() ?? '',
+          position: report['reportedPosition']?.toString() ?? 'Unknown',
+          location: report['location']?.toString() ?? 'N/A',
+          status: report['status']?.toString() ?? 'New',
           isTablet: isTablet,
-          fetchViolations: () => getViolationsByUser(
-            userData['name']?.toString() ?? '',
-            userData['position']?.toString() ?? '',
-          ),
-          getEmail: () =>
-              getReportedUserEmail(userData['reporterUid']?.toString() ?? ''),
-          updateStatus: (violationId, newStatus) =>
-              updateViolationStatus(violationId, newStatus),
+          reportData: report,
+          getReporterEmail: () =>
+              getReporterEmail(report['reporterEmployeeId']?.toString() ?? ''),
+          fetchViolations: () =>
+              getViolationsByEmployee(report['reportedEmployeeId']?.toString() ?? ''),
+          updateStatus: updateViolationStatus,
         );
       },
     );
   }
 
-  Widget _buildMobileList(List<Map<String, dynamic>> users) {
+  Widget _buildMobileList(List<Map<String, dynamic>> reports) {
     return ListView.builder(
-      itemCount: users.length,
+      itemCount: reports.length,
       itemBuilder: (context, index) {
-        final userData = users[index];
+        final report = reports[index];
         return _UserItemMobile(
-          name: userData['name']?.toString() ?? 'Unknown',
-          employeeId: userData['displayEmployeeId']?.toString() ?? 'Unknown',
-          reporterUid: userData['reporterUid']?.toString() ?? '',
-          position: userData['position']?.toString() ?? 'Unknown',
-          location: userData['location']?.toString() ?? 'N/A',
-          status: userData['status']?.toString() ?? 'New',
-          fetchViolations: () => getViolationsByUser(
-            userData['name']?.toString() ?? '',
-            userData['position']?.toString() ?? '',
-          ),
-          getEmail: () =>
-              getReportedUserEmail(userData['reporterUid']?.toString() ?? ''),
-          updateStatus: (violationId, newStatus) =>
-              updateViolationStatus(violationId, newStatus),
+          name: report['reportedName']?.toString() ?? 'Unknown',
+          employeeId: report['reportedEmployeeId']?.toString() ?? 'Unknown',
+          reporterEmployeeId: report['reporterEmployeeId']?.toString() ?? '',
+          position: report['reportedPosition']?.toString() ?? 'Unknown',
+          location: report['location']?.toString() ?? 'N/A',
+          status: report['status']?.toString() ?? 'New',
+          reportData: report,
+          getReporterEmail: () =>
+              getReporterEmail(report['reporterEmployeeId']?.toString() ?? ''),
+          fetchViolations: () =>
+              getViolationsByEmployee(report['reportedEmployeeId']?.toString() ?? ''),
+          updateStatus: updateViolationStatus,
         );
       },
     );
@@ -495,27 +423,28 @@ class _UserItemDesktop extends StatelessWidget {
   const _UserItemDesktop({
     required this.name,
     required this.employeeId,
-    required this.reporterUid,
+    required this.reporterEmployeeId,
     required this.position,
     required this.location,
     required this.status,
     required this.isTablet,
+    required this.reportData,
+    required this.getReporterEmail,
     required this.fetchViolations,
-    required this.getEmail,
     required this.updateStatus,
   });
 
   final String name;
   final String employeeId;
-  final String reporterUid;
+  final String reporterEmployeeId;
   final String position;
   final String location;
   final String status;
   final bool isTablet;
+  final Map<String, dynamic> reportData;
+  final Future<String> Function() getReporterEmail;
   final Future<List<Map<String, dynamic>>> Function() fetchViolations;
-  final Future<String> Function() getEmail;
-  final Future<void> Function(String violationId, String newStatus)
-  updateStatus;
+  final Future<void> Function(String, String) updateStatus;
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
@@ -547,6 +476,7 @@ class _UserItemDesktop extends StatelessWidget {
               employeeId: employeeId,
               status: status,
               violations: violations,
+              reportData: reportData,
               updateStatus: updateStatus,
               isTablet: isTablet,
             );
@@ -568,7 +498,7 @@ class _UserItemDesktop extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<String>(
-      future: getEmail(),
+      future: getReporterEmail(),
       builder: (context, snapshot) {
         final reporterEmail = snapshot.data ?? 'Loading...';
 
@@ -683,28 +613,31 @@ class _UserItemMobile extends StatelessWidget {
   const _UserItemMobile({
     required this.name,
     required this.employeeId,
-    required this.reporterUid,
+    required this.reporterEmployeeId,
     required this.position,
     required this.location,
     required this.status,
+    required this.reportData,
+    required this.getReporterEmail,
     required this.fetchViolations,
-    required this.getEmail,
     required this.updateStatus,
   });
 
   final String name;
   final String employeeId;
-  final String reporterUid;
+  final String reporterEmployeeId;
   final String position;
   final String location;
   final String status;
+  final Map<String, dynamic> reportData;
+  final Future<String> Function() getReporterEmail;
   final Future<List<Map<String, dynamic>>> Function() fetchViolations;
-  final Future<String> Function() getEmail;
-  final Future<void> Function(String violationId, String newStatus)
-  updateStatus;
+  final Future<void> Function(String, String) updateStatus;
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
+      case 'new':
+        return Colors.purple;
       case 'open':
         return Colors.orange;
       case 'under investigation':
@@ -731,6 +664,7 @@ class _UserItemMobile extends StatelessWidget {
               employeeId: employeeId,
               status: status,
               violations: violations,
+              reportData: reportData,
               updateStatus: updateStatus,
               isTablet: false,
             );
@@ -752,7 +686,7 @@ class _UserItemMobile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<String>(
-      future: getEmail(),
+      future: getReporterEmail(),
       builder: (context, snapshot) {
         final reporterEmail = snapshot.data ?? 'Loading...';
 
@@ -860,6 +794,7 @@ class _ViolationReportDialog extends StatefulWidget {
     required this.employeeId,
     required this.status,
     required this.violations,
+    required this.reportData,
     required this.updateStatus,
     required this.isTablet,
   });
@@ -868,8 +803,8 @@ class _ViolationReportDialog extends StatefulWidget {
   final String employeeId;
   final String status;
   final List<Map<String, dynamic>> violations;
-  final Future<void> Function(String violationId, String newStatus)
-  updateStatus;
+  final Map<String, dynamic> reportData;
+  final Future<void> Function(String violationId, String newStatus) updateStatus;
   final bool isTablet;
 
   @override
@@ -877,18 +812,18 @@ class _ViolationReportDialog extends StatefulWidget {
 }
 
 class _ViolationReportDialogState extends State<_ViolationReportDialog> {
-  late List<Map<String, dynamic>> _violations;
   late String _currentStatus;
 
   @override
   void initState() {
     super.initState();
-    _violations = List.from(widget.violations);
     _currentStatus = widget.status;
   }
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
+      case 'new':
+        return Colors.purple;
       case 'open':
         return Colors.orange;
       case 'under investigation':
@@ -923,21 +858,26 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Select new status for all violations:',
+                    'Select new status:',
                     style: TextStyle(fontSize: widget.isTablet ? 13 : 14),
                   ),
                   const SizedBox(height: 16),
                   DropdownButton<String>(
                     value: selectedStatus,
                     isExpanded: true,
-                    items: ['New', 'Open', 'Under Investigation', 'Resolved', 'Closed']
+                    items: [
+                      'New',
+                      'Open',
+                      'Under Investigation',
+                      'Resolved',
+                      'Closed'
+                    ]
                         .map((String status) {
                       return DropdownMenuItem<String>(
                         value: status,
                         child: Text(status),
                       );
-                    })
-                        .toList(),
+                    }).toList(),
                     onChanged: (String? newValue) {
                       setState(() {
                         selectedStatus = newValue!;
@@ -952,20 +892,9 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _currentStatus = selectedStatus;
-                      for (final violation in _violations) {
-                        violation['status'] = selectedStatus;
-                      }
-                    });
+                  onPressed: () async {
                     Navigator.pop(dialogContext);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Status changed to $selectedStatus'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
+                    await _updateStatus(selectedStatus);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0D2364),
@@ -980,72 +909,34 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
     );
   }
 
-  void _showSaveConfirmationDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: Text(
-            'Save Changes',
-            style: TextStyle(
-              color: const Color(0xFF0D2364),
-              fontWeight: FontWeight.bold,
-              fontSize: widget.isTablet ? 16 : 18,
+  Future<void> _updateStatus(String newStatus) async {
+    try {
+      final violationId = widget.reportData['id']?.toString();
+      if (violationId != null && violationId.isNotEmpty) {
+        await widget.updateStatus(violationId, newStatus);
+        setState(() {
+          _currentStatus = newStatus;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Status updated to $newStatus'),
+              backgroundColor: Colors.green,
             ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating status: $e'),
+            backgroundColor: Colors.red,
           ),
-          content: Text(
-            'Are you sure you want to save all status changes?',
-            style: TextStyle(fontSize: widget.isTablet ? 13 : 14),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(dialogContext);
-
-                try {
-                  for (final violation in _violations) {
-                    final violationId = violation['id']?.toString();
-                    final newStatus =
-                        violation['status']?.toString() ?? _currentStatus;
-
-                    if (violationId != null && violationId.isNotEmpty) {
-                      await widget.updateStatus(violationId, newStatus);
-                    }
-                  }
-
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('All status changes saved successfully'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error saving changes: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0D2364),
-              ),
-              child: const Text('SAVE'),
-            ),
-          ],
         );
-      },
-    );
+      }
+    }
   }
 
   Widget _buildSummaryItem(String title, String value) {
@@ -1074,7 +965,10 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
+    final screenWidth = MediaQuery
+        .of(context)
+        .size
+        .width;
     final isMobile = screenWidth < 600;
 
     return Dialog(
@@ -1082,7 +976,10 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
       child: Container(
         constraints: BoxConstraints(
           maxWidth: isMobile ? double.infinity : 800,
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
+          maxHeight: MediaQuery
+              .of(context)
+              .size
+              .height * 0.85,
         ),
         padding: EdgeInsets.all(isMobile ? 16 : 20),
         child: Column(
@@ -1121,8 +1018,8 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
                 children: [
                   _buildSummaryItem('EMP ID', widget.employeeId),
                   _buildSummaryItem(
-                    'Total Violations',
-                    _violations.length.toString(),
+                    'Total Reports',
+                    widget.violations.length.toString(),
                   ),
                   _buildSummaryItem('Current Status', _currentStatus),
                 ],
@@ -1140,48 +1037,27 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
                     color: const Color(0xFF0D2364),
                   ),
                 ),
-                Row(
-                  children: [
-                    ElevatedButton.icon(
-                      icon: Icon(Icons.edit, size: isMobile ? 16 : 18),
-                      label: Text(
-                        'Edit Status',
-                        style: TextStyle(fontSize: isMobile ? 12 : 14),
-                      ),
-                      onPressed: () => _showEditStatusDialog(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0D2364),
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isMobile ? 12 : 16,
-                          vertical: isMobile ? 8 : 10,
-                        ),
-                      ),
+                ElevatedButton.icon(
+                  icon: Icon(Icons.edit, size: isMobile ? 16 : 18),
+                  label: Text(
+                    'Edit Status',
+                    style: TextStyle(fontSize: isMobile ? 12 : 14),
+                  ),
+                  onPressed: () => _showEditStatusDialog(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0D2364),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 12 : 16,
+                      vertical: isMobile ? 8 : 10,
                     ),
-                    SizedBox(width: isMobile ? 8 : 12),
-                    ElevatedButton.icon(
-                      icon: Icon(Icons.save, size: isMobile ? 16 : 18),
-                      label: Text(
-                        'Save',
-                        style: TextStyle(fontSize: isMobile ? 12 : 14),
-                      ),
-                      onPressed: () => _showSaveConfirmationDialog(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isMobile ? 12 : 16,
-                          vertical: isMobile ? 8 : 10,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: _violations.isEmpty
+              child: widget.violations.isEmpty
                   ? Center(
                 child: Text(
                   'No violation details found',
@@ -1192,21 +1068,18 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
                 ),
               )
                   : ListView.builder(
-                itemCount: _violations.length,
+                itemCount: widget.violations.length,
                 itemBuilder: (context, index) {
-                  final violation = _violations[index];
-                  final violationType =
-                      violation['violation']?.toString() ??
-                          'No violation description';
-                  final violationStatus =
-                      violation['status']?.toString() ?? _currentStatus;
-                  final violationLocation = violation['location']
-                      ?.toString();
-                  final violationDate = violation['date'];
-                  final violationDescription = violation['description']
-                      ?.toString();
-                  final reportedBy = violation['reportedBy']?.toString();
-                  final evidence = violation['evidence']?.toString();
+                  final violation = widget.violations[index];
+                  final violationType = violation['violation']?.toString() ??
+                      'No description';
+                  final location = violation['location']?.toString() ?? 'N/A';
+                  final time = violation['time']?.toString() ?? 'N/A';
+                  final violationStatus = violation['status']?.toString() ??
+                      _currentStatus;
+                  final submittedAt = violation['submittedAt'];
+                  final reporterEmployeeId = violation['reporterEmployeeId']
+                      ?.toString() ?? 'Unknown';
 
                   return Card(
                     margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
@@ -1217,8 +1090,7 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
-                            mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Expanded(
                                 child: Text(
@@ -1228,6 +1100,7 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
                                     fontSize: isMobile ? 14 : 16,
                                   ),
                                   overflow: TextOverflow.ellipsis,
+                                  maxLines: 2,
                                 ),
                               ),
                               Container(
@@ -1250,44 +1123,32 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
                               ),
                             ],
                           ),
-                          SizedBox(height: isMobile ? 6 : 8),
-                          if (violationLocation != null &&
-                              violationLocation.isNotEmpty)
-                            _buildViolationDetail(
-                              Icons.location_on,
-                              'Location',
-                              violationLocation,
-                              isMobile,
-                            ),
-                          if (violationDate != null)
+                          SizedBox(height: isMobile ? 8 : 12),
+                          _buildViolationDetail(
+                            Icons.location_on,
+                            'Location',
+                            location,
+                            isMobile,
+                          ),
+                          _buildViolationDetail(
+                            Icons.access_time,
+                            'Time',
+                            time,
+                            isMobile,
+                          ),
+                          if (submittedAt != null)
                             _buildViolationDetail(
                               Icons.calendar_today,
-                              'Date',
-                              _formatDate(violationDate),
+                              'Reported Date',
+                              _formatDate(submittedAt),
                               isMobile,
                             ),
-                          if (violationDescription != null &&
-                              violationDescription.isNotEmpty)
-                            _buildViolationDetail(
-                              Icons.description,
-                              'Description',
-                              violationDescription,
-                              isMobile,
-                            ),
-                          if (reportedBy != null && reportedBy.isNotEmpty)
-                            _buildViolationDetail(
-                              Icons.person,
-                              'Reported By',
-                              reportedBy,
-                              isMobile,
-                            ),
-                          if (evidence != null && evidence.isNotEmpty)
-                            _buildViolationDetail(
-                              Icons.attachment,
-                              'Evidence',
-                              evidence,
-                              isMobile,
-                            ),
+                          _buildViolationDetail(
+                            Icons.person,
+                            'Reported By (EMP ID)',
+                            reporterEmployeeId,
+                            isMobile,
+                          ),
                         ],
                       ),
                     ),
@@ -1301,19 +1162,17 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
     );
   }
 
-  Widget _buildViolationDetail(
-      IconData icon,
+  Widget _buildViolationDetail(IconData icon,
       String label,
       String value,
-      bool isMobile,
-      ) {
+      bool isMobile,) {
     return Padding(
-      padding: EdgeInsets.only(bottom: isMobile ? 4 : 6),
+      padding: EdgeInsets.only(bottom: isMobile ? 6 : 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: isMobile ? 14 : 16, color: Colors.grey[600]),
-          SizedBox(width: isMobile ? 6 : 8),
+          SizedBox(width: isMobile ? 8 : 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1345,7 +1204,19 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
   String _formatDate(dynamic date) {
     if (date == null) return 'Unknown';
     if (date is Timestamp) {
-      return '${date.toDate().month}/${date.toDate().day}/${date.toDate().year}';
+      return '${date
+          .toDate()
+          .month}/${date
+          .toDate()
+          .day}/${date
+          .toDate()
+          .year} ${date
+          .toDate()
+          .hour}:${date
+          .toDate()
+          .minute
+          .toString()
+          .padLeft(2, '0')}';
     }
     return date.toString();
   }

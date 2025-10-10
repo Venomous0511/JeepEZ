@@ -763,7 +763,8 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
       'location': locationController.text,
       'noOfTrips': noOfTripsController.text,
       'unitNoData': unitNoData,
-      'uid': user.uid,
+      'uid': user.uid,  // ✅ Keep as 'uid'
+      'violations': [],  // ✅ Add violations array
       'timestamp': FieldValue.serverTimestamp(),
     };
 
