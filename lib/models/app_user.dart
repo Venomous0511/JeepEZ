@@ -5,6 +5,7 @@ class AppUser {
   final String role;
   final String? name;
   final bool status;
+  final int assignedVehicle;
 
   AppUser({
     required this.uid,
@@ -13,6 +14,7 @@ class AppUser {
     required this.role,
     required this.status,
     this.name,
+    required this.assignedVehicle,
   });
 
   factory AppUser.fromMap(String uid, Map<String, dynamic> data) {
@@ -21,8 +23,11 @@ class AppUser {
       employeeId: data['employeeId']?.toString() ?? '',
       email: data['email'] ?? '',
       role: data['role'] ?? '',
-      status: data['status'],
+      status: data['status'] ?? false,
       name: data['name'],
+      assignedVehicle: data['assignedVehicle'] != null
+          ? data['assignedVehicle'] as int
+          : 0,
     );
   }
 
@@ -32,6 +37,7 @@ class AppUser {
     'email': email,
     'role': role,
     'status': status,
+    'assignedVehicle': assignedVehicle,
     if (name != null) 'name': name,
   };
 }
