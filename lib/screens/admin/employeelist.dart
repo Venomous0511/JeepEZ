@@ -114,6 +114,24 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     return input.replaceAll(RegExp(r'[^a-zA-Z\s]'), '');
   }
 
+  /// ----------- ROLE COLOR FUNCTION -----------
+  Color _getRoleColor(String role) {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return Colors.red;
+      case 'legal_officer':
+        return Colors.orange;
+      case 'driver':
+        return Colors.green;
+      case 'conductor':
+        return Colors.blue;
+      case 'inspector':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+
   // Get paginated employee documents
   List<QueryDocumentSnapshot> _getPaginatedEmployees(
     List<QueryDocumentSnapshot> allEmployees,
@@ -377,6 +395,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         final doc = employeeDocs[index];
         final data = doc.data() as Map<String, dynamic>;
         final displayNumber = (_currentPage * _pageSize) + index + 1;
+        final role = data['role'] ?? '';
+        final roleColor = _getRoleColor(role);
 
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
@@ -388,7 +408,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 Row(
                   children: [
                     CircleAvatar(
-                      backgroundColor: Colors.blue[100],
+                      backgroundColor: roleColor.withOpacity(0.2),
                       child: Text(
                         data['name']?.toString().isNotEmpty == true
                             ? data['name']
@@ -396,9 +416,9 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                   .substring(0, 1)
                                   .toUpperCase()
                             : 'U',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.blue,
+                          color: roleColor,
                         ),
                       ),
                     ),
@@ -415,7 +435,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                             ),
                           ),
                           Text(
-                            '${displayNumber}. ${data['employeeId']?.toString() ?? 'N/A'}',
+                            '$displayNumber. ${data['employeeId']?.toString() ?? 'N/A'}',
                             style: TextStyle(
                               color: Colors.grey[600],
                               fontSize: 14,
@@ -431,9 +451,14 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: data['status'] == true
-                            ? Colors.green.withAlpha(1)
-                            : Colors.red.withAlpha(1),
-                        borderRadius: BorderRadius.circular(4),
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: data['status'] == true
+                              ? Colors.green
+                              : Colors.red,
+                        ),
                       ),
                       child: Text(
                         data['status'] == true ? "Active" : "Inactive",
@@ -452,10 +477,16 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 const Divider(height: 1),
                 const SizedBox(height: 12),
 
+                _buildMobileDetailRow("No.", displayNumber.toString()),
+                _buildMobileDetailRow(
+                  "Employee ID",
+                  data['employeeId'] ?? 'N/A',
+                ),
                 _buildMobileDetailRow("Email", data['email'] ?? 'N/A'),
                 _buildMobileDetailRow(
                   "Role",
-                  _capitalizeRole(data['role'] ?? 'N/A'),
+                  _capitalizeRole(role),
+                  valueColor: roleColor,
                 ),
                 if (data['employmentType'] != null)
                   _buildMobileDetailRow(
@@ -467,13 +498,28 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.blue),
-                      onPressed: () => _editUser(doc.id, data),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () => _editUser(doc.id, data),
+                      ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _deleteUser(doc.id, data),
+                    const SizedBox(width: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _deleteUser(doc.id, data),
+                      ),
                     ),
                   ],
                 ),
@@ -485,7 +531,11 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     );
   }
 
-  Widget _buildMobileDetailRow(String label, String value) {
+  Widget _buildMobileDetailRow(
+    String label,
+    String value, {
+    Color? valueColor,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -502,7 +552,13 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           Expanded(
             child: Text(
               value,
-              style: TextStyle(color: Colors.grey[700], fontSize: 14),
+              style: TextStyle(
+                color: valueColor ?? Colors.grey[700],
+                fontSize: 14,
+                fontWeight: valueColor != null
+                    ? FontWeight.w600
+                    : FontWeight.normal,
+              ),
             ),
           ),
         ],
@@ -524,6 +580,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
             horizontalMargin: 8,
             headingRowColor: WidgetStateProperty.all(const Color(0xFFF5F7FA)),
             columns: const [
+              DataColumn(label: Text("No.")),
               DataColumn(label: Text("Employee ID")),
               DataColumn(label: Text("Name")),
               DataColumn(label: Text("Status")),
@@ -563,6 +620,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
             horizontalMargin: 12,
             headingRowColor: WidgetStateProperty.all(const Color(0xFFF5F7FA)),
             columns: const [
+              DataColumn(label: Text("No.")),
               DataColumn(label: Text("Employee ID")),
               DataColumn(label: Text("Employee Name")),
               DataColumn(label: Text("Status")),
@@ -595,11 +653,20 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     int displayNumber, {
     bool isCompact = false,
   }) {
+    final role = data['role'] ?? '';
+    final roleColor = _getRoleColor(role);
+
     return DataRow(
       cells: [
         DataCell(
           Text(
-            '${displayNumber}. ${data['employeeId'].toString()}',
+            displayNumber.toString(),
+            style: isCompact ? const TextStyle(fontSize: 12) : null,
+          ),
+        ),
+        DataCell(
+          Text(
+            data['employeeId'].toString(),
             style: isCompact ? const TextStyle(fontSize: 12) : null,
           ),
         ),
@@ -614,9 +681,12 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: data['status'] == true
-                  ? Colors.green.withAlpha(1)
-                  : Colors.red.withAlpha(1),
-              borderRadius: BorderRadius.circular(4),
+                  ? Colors.green.withOpacity(0.1)
+                  : Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: data['status'] == true ? Colors.green : Colors.red,
+              ),
             ),
             child: Text(
               data['status'] == true ? "Active" : "Inactive",
@@ -635,29 +705,56 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           ),
         ),
         DataCell(
-          Text(
-            _capitalizeRole(data['role'] ?? ''),
-            style: isCompact ? const TextStyle(fontSize: 12) : null,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: roleColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: roleColor.withOpacity(0.3)),
+            ),
+            child: Text(
+              _capitalizeRole(role),
+              style: TextStyle(
+                color: roleColor,
+                fontWeight: FontWeight.w600,
+                fontSize: isCompact ? 11 : 12,
+              ),
+            ),
           ),
         ),
         DataCell(
           Row(
             children: [
-              IconButton(
-                icon: Icon(
-                  Icons.edit,
-                  color: Colors.blue,
-                  size: isCompact ? 18 : 24,
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue),
                 ),
-                onPressed: () => _editUser(docId, data),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.edit,
+                    color: Colors.blue,
+                    size: isCompact ? 18 : 20,
+                  ),
+                  onPressed: () => _editUser(docId, data),
+                ),
               ),
-              IconButton(
-                icon: Icon(
-                  Icons.delete,
-                  color: Colors.red,
-                  size: isCompact ? 18 : 24,
+              const SizedBox(width: 4),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red),
                 ),
-                onPressed: () => _deleteUser(docId, data),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.delete,
+                    color: Colors.red,
+                    size: isCompact ? 18 : 20,
+                  ),
+                  onPressed: () => _deleteUser(docId, data),
+                ),
               ),
             ],
           ),
@@ -691,7 +788,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
     bool loading = false;
     String? role;
-    bool _obscurePassword = true;
+    bool obscurePassword = true;
     String generatedPassword = _generatePassword();
     String? employmentType;
     String? area;
@@ -701,6 +798,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       builder: (dialogCtx) {
         return StatefulBuilder(
           builder: (context, setState) {
+            final roleColor = role != null ? _getRoleColor(role!) : Colors.grey;
+
             return AlertDialog(
               title: const Text('Create User'),
               content: SingleChildScrollView(
@@ -834,7 +933,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    _obscurePassword
+                                    obscurePassword
                                         ? '•' * generatedPassword.length
                                         : generatedPassword,
                                     style: const TextStyle(fontSize: 16),
@@ -842,14 +941,14 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                 ),
                                 IconButton(
                                   icon: Icon(
-                                    _obscurePassword
+                                    obscurePassword
                                         ? Icons.visibility_off
                                         : Icons.visibility,
                                     color: Colors.grey,
                                   ),
                                   onPressed: () {
                                     setState(() {
-                                      _obscurePassword = !_obscurePassword;
+                                      obscurePassword = !obscurePassword;
                                     });
                                   },
                                 ),
@@ -870,57 +969,90 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
                       const SizedBox(height: 12),
 
-                      DropdownButtonFormField<String>(
-                        value: role,
-                        decoration: const InputDecoration(
-                          labelText: 'Role *',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
+                      // Role selection with color indicator
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: role != null ? roleColor : Colors.grey,
+                            width: 1.5,
                           ),
-                          hintText: 'Select a role',
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                        hint: const Text('Select a role'),
-                        items: const [
-                          DropdownMenuItem(
-                            value: "legal_officer",
-                            child: Text("Legal Officer"),
+                        child: DropdownButtonFormField<String>(
+                          initialValue: role,
+                          decoration: const InputDecoration(
+                            labelText: 'Role *',
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            hintText: 'Select a role',
                           ),
-                          DropdownMenuItem(
-                            value: "driver",
-                            child: Text("Driver"),
-                          ),
-                          DropdownMenuItem(
-                            value: "conductor",
-                            child: Text("Conductor"),
-                          ),
-                          DropdownMenuItem(
-                            value: "inspector",
-                            child: Text("Inspector"),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            role = value;
-                            employmentType = null;
-                            area = null;
-                          });
-                        },
-                        validator: (value) {
-                          if (value == null) {
-                            return 'Please select a role';
-                          }
-                          return null;
-                        },
+                          hint: const Text('Select a role'),
+                          items: [
+                            _buildRoleDropdownItem(
+                              "legal_officer",
+                              "Legal Officer",
+                            ),
+                            _buildRoleDropdownItem("driver", "Driver"),
+                            _buildRoleDropdownItem("conductor", "Conductor"),
+                            _buildRoleDropdownItem("inspector", "Inspector"),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              role = value;
+                              employmentType = null;
+                              area = null;
+                            });
+                          },
+                          validator: (value) {
+                            if (value == null) {
+                              return 'Please select a role';
+                            }
+                            return null;
+                          },
+                        ),
                       ),
+
+                      if (role != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: roleColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: roleColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _capitalizeRole(role!),
+                                style: TextStyle(
+                                  color: roleColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
 
                       if (role == "driver" ||
                           role == "conductor" ||
                           role == "inspector") ...[
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          value: employmentType,
+                          initialValue: employmentType,
                           items: const [
                             DropdownMenuItem(
                               value: "full_time",
@@ -946,7 +1078,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       if (role == "inspector") ...[
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          value: area,
+                          initialValue: area,
                           items: const [
                             DropdownMenuItem(
                               value: "Gaya Gaya",
@@ -1178,6 +1310,25 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     );
   }
 
+  /// Helper method to build role dropdown items with colors
+  DropdownMenuItem<String> _buildRoleDropdownItem(String value, String text) {
+    final roleColor = _getRoleColor(value);
+    return DropdownMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(color: roleColor, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 12),
+          Text(text),
+        ],
+      ),
+    );
+  }
+
   /// ---------------- UPDATE USER ----------------
   Future<void> _editUser(String docId, Map<String, dynamic> data) async {
     final nameCtrl = TextEditingController(text: data['name']);
@@ -1188,6 +1339,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
+          final roleColor = _getRoleColor(role ?? '');
+
           return AlertDialog(
             title: const Text("Update User"),
             content: SingleChildScrollView(
@@ -1199,46 +1352,85 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     decoration: const InputDecoration(labelText: "Name"),
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: role,
-                    decoration: const InputDecoration(
-                      labelText: 'Role *',
-                      border: OutlineInputBorder(),
+
+                  // Role selection with color
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: role != null ? roleColor : Colors.grey,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: "legal_officer",
-                        child: Text("Legal Officer"),
+                    child: DropdownButtonFormField<String>(
+                      initialValue: role,
+                      decoration: const InputDecoration(
+                        labelText: 'Role *',
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12),
                       ),
-                      DropdownMenuItem(value: "driver", child: Text("Driver")),
-                      DropdownMenuItem(
-                        value: "conductor",
-                        child: Text("Conductor"),
-                      ),
-                      DropdownMenuItem(
-                        value: "inspector",
-                        child: Text("Inspector"),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        role = value;
-                        // Reset employment type when role changes
-                        if (value != "driver" &&
-                            value != "conductor" &&
-                            value != "inspector") {
-                          employmentType = null;
-                        }
-                      });
-                    },
+                      items: [
+                        _buildRoleDropdownItem(
+                          "legal_officer",
+                          "Legal Officer",
+                        ),
+                        _buildRoleDropdownItem("driver", "Driver"),
+                        _buildRoleDropdownItem("conductor", "Conductor"),
+                        _buildRoleDropdownItem("inspector", "Inspector"),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          role = value;
+                          // Reset employment type when role changes
+                          if (value != "driver" &&
+                              value != "conductor" &&
+                              value != "inspector") {
+                            employmentType = null;
+                          }
+                        });
+                      },
+                    ),
                   ),
+
+                  if (role != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: roleColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: roleColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _capitalizeRole(role!),
+                            style: TextStyle(
+                              color: roleColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   if (role == 'driver' ||
                       role == 'conductor' ||
                       role == 'inspector')
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
                       child: DropdownButtonFormField<String>(
-                        value: employmentType,
+                        initialValue: employmentType,
                         items: const [
                           DropdownMenuItem(
                             value: "full_time",

@@ -150,7 +150,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("${req['name']}'s leave approved"),
+          content: Text("${req['name']}'s leave request has been approved"),
           backgroundColor: Colors.green,
         ),
       );
@@ -165,12 +165,13 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Decline Leave'),
+          title: const Text('Decline Leave Request'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
                 'Please provide a reason for declining this leave request:',
+                style: TextStyle(fontSize: 14),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -178,6 +179,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Reason for decline',
                   border: OutlineInputBorder(),
+                  hintText: 'Enter the reason for declining this request...',
                 ),
                 maxLines: 3,
               ),
@@ -192,7 +194,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () =>
                   Navigator.pop(context, reasonController.text.trim()),
-              child: const Text('Decline'),
+              child: const Text('Decline Request'),
             ),
           ],
         );
@@ -220,12 +222,55 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${req['name']}'s leave declined"),
+            content: Text("${req['name']}'s leave request has been declined"),
             backgroundColor: Colors.red,
           ),
         );
       }
     }
+  }
+
+  /// Show action menu (3 dots)
+  void _showActionMenu(BuildContext context, int index) {
+    final request = _paginatedRequests[index];
+    final status = request['status'] ?? 'Pending';
+
+    if (status != 'Pending') return;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.check_circle, color: Colors.green),
+                title: const Text('Approve Leave Request'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _approveRequest(index);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.cancel, color: Colors.red),
+                title: const Text('Decline Leave Request'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _rejectRequest(index);
+                },
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -414,7 +459,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         crossAxisCount: columns,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
-        childAspectRatio: 0.85,
+        childAspectRatio: 1.3, // Increased aspect ratio to prevent overflow
       ),
       itemCount: _paginatedRequests.length,
       itemBuilder: (context, index) =>
@@ -430,7 +475,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         crossAxisCount: 4,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
-        childAspectRatio: 0.85,
+        childAspectRatio: 1.3, // Increased aspect ratio to prevent overflow
       ),
       itemCount: _paginatedRequests.length,
       itemBuilder: (context, index) =>
@@ -461,8 +506,9 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min, // Important: prevents overflow
         children: [
-          // Header with status badge
+          // Header with status badge and menu button
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -486,13 +532,24 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                     ),
                   ),
                 ),
-                Text(
-                  '$days days',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      '$days days',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    if (status == 'Pending') ...[
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.more_vert, size: 20),
+                        onPressed: () => _showActionMenu(context, index),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -503,37 +560,38 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min, // Important: prevents overflow
               children: [
                 // Employee info with role and ID
-                RichText(
-                  text: TextSpan(
-                    style: const TextStyle(fontSize: 14, color: Colors.black87),
-                    children: [
-                      TextSpan(
-                        text: request['name'] ?? 'Unknown User',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      request['name'] ?? 'Unknown User',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
                       ),
-                      TextSpan(
-                        text: ' (${request['role'] ?? 'No role'})',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${request['role'] ?? 'No role'} • ID: ${request['employeeId'] ?? 'N/A'}',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Applied for $leaveType',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: _getLeaveTypeColor(leaveType),
                       ),
-                      const TextSpan(text: '\nID: '),
-                      TextSpan(
-                        text: request['employeeId'] ?? 'N/A',
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                      const TextSpan(text: ' applied for '),
-                      TextSpan(
-                        text: leaveType,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: _getLeaveTypeColor(leaveType),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
 
                 // Date range
                 Row(
@@ -544,15 +602,18 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                       color: Colors.grey[600],
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      '${_formatDate(request['startDate'])} - ${_formatDate(request['endDate'])}',
-                      style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                    Expanded(
+                      child: Text(
+                        '${_formatDate(request['startDate'])} - ${_formatDate(request['endDate'])}',
+                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
 
-                // Reason with bold styling
+                // Reason with proper overflow handling
                 if (reason.isNotEmpty) ...[
                   const Text(
                     'REASON:',
@@ -563,76 +624,44 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    reason,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500, // Bold reason
-                      color: Colors.black87,
+                  Container(
+                    width: double.infinity,
+                    constraints: const BoxConstraints(
+                      maxHeight: 60, // Reduced height to prevent overflow
                     ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 12),
-                ],
-
-                // Action buttons for pending requests
-                if (status == 'Pending') ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => _rejectRequest(index),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            side: const BorderSide(color: Colors.red),
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
-                          child: const Text(
-                            'DECLINE',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                    child: SingleChildScrollView(
+                      child: Text(
+                        reason,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () => _approveRequest(index),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
-                          child: const Text(
-                            'APPROVE',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
+                  const SizedBox(height: 8), // Reduced spacing
                 ],
 
                 // View details button for non-pending
                 if (status != 'Pending') ...[
-                  OutlinedButton(
-                    onPressed: () => _showDetailsDialog(request),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.blue,
-                      side: const BorderSide(color: Colors.blue),
-                      minimumSize: const Size(double.infinity, 40),
-                    ),
-                    child: const Text(
-                      'VIEW DETAILS',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () => _showDetailsDialog(request),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue,
+                        side: const BorderSide(color: Colors.blue),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8,
+                        ), // Reduced padding
+                      ),
+                      child: const Text(
+                        'VIEW DETAILS',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -645,14 +674,16 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  /// Original Tile for Tablet/Desktop
+  /// Original Tile for Tablet/Desktop - FIXED SIZE
   Widget _buildLeaveTile(Map<String, dynamic> request, int index) {
     final status = request['status'] ?? 'Pending';
     final leaveType = request['leaveType'] ?? '';
     final reason = request['reason'] ?? 'No reason provided';
 
     return Container(
-      height: 320,
+      constraints: const BoxConstraints(
+        maxHeight: 260, // Further reduced height to prevent overflow
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -666,11 +697,12 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         border: Border.all(color: _getStatusBorderColor(status), width: 1.5),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min, // Important: prevents overflow
         children: [
-          // Header with employee info
+          // Header with employee info - FIXED HEIGHT
           Container(
-            height: 80,
-            padding: const EdgeInsets.all(12),
+            height: 65, // Further reduced height
+            padding: const EdgeInsets.all(10), // Reduced padding
             decoration: BoxDecoration(
               color: _getStatusHeaderColor(status),
               borderRadius: const BorderRadius.only(
@@ -678,127 +710,142 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                 topRight: Radius.circular(12),
               ),
             ),
-            child: Column(
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: Colors.white,
-                      child: Text(
-                        request['name']?.toString().isNotEmpty == true
-                            ? request['name']
-                                  .toString()
-                                  .substring(0, 1)
-                                  .toUpperCase()
-                            : 'U',
+                CircleAvatar(
+                  radius: 14, // Smaller avatar
+                  backgroundColor: Colors.white,
+                  child: Text(
+                    request['name']?.toString().isNotEmpty == true
+                        ? request['name']
+                              .toString()
+                              .substring(0, 1)
+                              .toUpperCase()
+                        : 'U',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11, // Smaller font
+                      color: _getStatusTextColor(status),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6), // Reduced spacing
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        request['name'] ?? 'Unknown User',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          fontSize: 12, // Smaller font
                           color: _getStatusTextColor(status),
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            request['name'] ?? 'Unknown User',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: _getStatusTextColor(status),
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            '${request['role'] ?? 'No role'} • ID: ${request['employeeId'] ?? 'N/A'}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: _getStatusTextColor(
-                                status,
-                              ).withOpacity(0.8),
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                      Text(
+                        '${request['role'] ?? 'No role'} • ID: ${request['employeeId'] ?? 'N/A'}',
+                        style: TextStyle(
+                          fontSize: 9, // Smaller font
+                          color: _getStatusTextColor(status).withOpacity(0.8),
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
+                    ],
+                  ),
+                ),
+                Row(
+                  children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
+                        horizontal: 6, // Reduced padding
+                        vertical: 3, // Reduced padding
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         status,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 11,
+                          fontSize: 9, // Smaller font
                           color: _getStatusColor(status),
                         ),
                       ),
                     ),
+                    if (status == 'Pending') ...[
+                      const SizedBox(width: 2), // Reduced spacing
+                      IconButton(
+                        icon: const Icon(
+                          Icons.more_vert,
+                          size: 14,
+                        ), // Smaller icon
+                        padding: const EdgeInsets.all(2), // Reduced padding
+                        onPressed: () => _showActionMenu(context, index),
+                      ),
+                    ],
                   ],
                 ),
               ],
             ),
           ),
 
-          // Content
+          // Content - FIXED HEIGHT WITH SCROLL
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10), // Reduced padding
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min, // Important: prevents overflow
                 children: [
                   // Leave info
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today,
-                            size: 14,
-                            color: Colors.grey[600],
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            leaveType,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 13,
-                              color: _getLeaveTypeColor(leaveType),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.calendar_today,
+                              size: 11, // Smaller icon
+                              color: Colors.grey[600],
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 3), // Reduced spacing
+                            Expanded(
+                              child: Text(
+                                leaveType,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 11, // Smaller font
+                                  color: _getLeaveTypeColor(leaveType),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       Text(
                         '${_calculateDays(request['startDate'], request['endDate'])} days',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 10, // Smaller font
                           color: Colors.grey[600],
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-
+                  const SizedBox(height: 6), // Reduced spacing
                   // Date range
                   Container(
-                    height: 50,
+                    height: 35, // Reduced height
                     width: double.infinity,
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(5), // Reduced padding
                     decoration: BoxDecoration(
                       color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(5),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -809,7 +856,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                             Text(
                               'FROM',
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 8, // Smaller font
                                 color: Colors.grey[600],
                                 fontWeight: FontWeight.bold,
                               ),
@@ -818,14 +865,14 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                               _formatDate(request['startDate']),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 12,
+                                fontSize: 10, // Smaller font
                               ),
                             ),
                           ],
                         ),
                         Icon(
                           Icons.arrow_forward,
-                          size: 16,
+                          size: 12, // Smaller icon
                           color: Colors.grey[400],
                         ),
                         Column(
@@ -834,7 +881,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                             Text(
                               'TO',
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 8, // Smaller font
                                 color: Colors.grey[600],
                                 fontWeight: FontWeight.bold,
                               ),
@@ -843,7 +890,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                               _formatDate(request['endDate']),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 12,
+                                fontSize: 10, // Smaller font
                               ),
                             ),
                           ],
@@ -851,87 +898,36 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-
-                  // Reason with bold styling
+                  const SizedBox(height: 6), // Reduced spacing
+                  // Reason with scrollable container
                   const Text(
                     'REASON',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 9, // Smaller font
                       fontWeight: FontWeight.bold,
                       color: Colors.grey,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Container(
-                    width: double.infinity,
-                    height: 60,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: SingleChildScrollView(
-                      child: Text(
-                        reason,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500, // Bold reason
+                  const SizedBox(height: 2), // Reduced spacing
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(5), // Reduced padding
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: SingleChildScrollView(
+                        child: Text(
+                          reason,
+                          style: const TextStyle(
+                            fontSize: 10, // Smaller font
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),
                   ),
-
-                  // Actions
-                  if (status == 'Pending') ...[
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 35,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => _rejectRequest(index),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.red,
-                                side: const BorderSide(color: Colors.red),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 4,
-                                ),
-                              ),
-                              child: const Text(
-                                'DECLINE',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () => _approveRequest(index),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 4,
-                                ),
-                              ),
-                              child: const Text(
-                                'APPROVE',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),

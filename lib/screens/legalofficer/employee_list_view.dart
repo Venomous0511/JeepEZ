@@ -16,6 +16,24 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
   int _rowsPerPage = 10;
   int _currentPage = 0;
 
+  /// ----------- ROLE COLOR FUNCTION -----------
+  Color _getRoleColor(String role) {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return Colors.red;
+      case 'legal_officer':
+        return Colors.orange;
+      case 'driver':
+        return Colors.green;
+      case 'conductor':
+        return Colors.blue;
+      case 'inspector':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -142,6 +160,9 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
       itemCount: employees.length,
       itemBuilder: (context, index) {
         final emp = employees[index];
+        final role = emp['role']?.toString() ?? '';
+        final roleColor = _getRoleColor(role);
+
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           elevation: 2,
@@ -185,7 +206,12 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
                 const SizedBox(height: 12),
                 _buildCardInfoRow(Icons.email, 'Email', emp['email']!),
                 const SizedBox(height: 8),
-                _buildCardInfoRow(Icons.person, 'Role', emp['role']!),
+                _buildCardInfoRow(
+                  Icons.person,
+                  'Role',
+                  emp['role']!,
+                  valueColor: roleColor,
+                ),
                 const SizedBox(height: 8),
                 _buildCardInfoRow(
                   Icons.cases_outlined,
@@ -200,7 +226,12 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
     );
   }
 
-  Widget _buildCardInfoRow(IconData icon, String label, String value) {
+  Widget _buildCardInfoRow(
+    IconData icon,
+    String label,
+    String value, {
+    Color? valueColor,
+  }) {
     return Row(
       children: [
         Icon(icon, size: 16, color: Colors.grey[600]),
@@ -218,14 +249,26 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
                 ),
               ),
               const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.black87,
-                  fontWeight: FontWeight.w600,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: valueColor != null
+                    ? BoxDecoration(
+                        color: valueColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: valueColor.withOpacity(0.3)),
+                      )
+                    : null,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: valueColor ?? Colors.black87,
+                    fontWeight: valueColor != null
+                        ? FontWeight.w600
+                        : FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -272,6 +315,9 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
                 itemCount: employees.length,
                 itemBuilder: (context, index) {
                   final emp = employees[index];
+                  final role = emp['role']?.toString() ?? '';
+                  final roleColor = _getRoleColor(role);
+
                   return Container(
                     height: 50,
                     decoration: BoxDecoration(
@@ -308,8 +354,31 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
                         ),
                         Expanded(
                           flex: 2,
-                          child: _TableCell(
-                            content: emp['role']?.toString() ?? 'N/A',
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: roleColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: roleColor.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Text(
+                                  emp['role']?.toString() ?? 'N/A',
+                                  style: TextStyle(
+                                    color: roleColor,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                         Expanded(

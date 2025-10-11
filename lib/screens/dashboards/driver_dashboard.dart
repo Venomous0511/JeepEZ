@@ -342,21 +342,27 @@ class _DriverDashboardState extends State<DriverDashboard>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Logo section at the top
+              // Logo section at the top - UPDATED WITH SMALLER PADDING
               Container(
                 width: double.infinity,
                 color: const Color(0xFF0D2364),
-                padding: EdgeInsets.symmetric(vertical: isMobile ? 20 : 30),
-                child: const Center(
-                  child: Icon(
-                    Icons.directions_bus,
-                    size: 60,
-                    color: Colors.white,
-                  ),
+                padding: EdgeInsets.symmetric(
+                  vertical: isMobile ? 12 : 20,
+                ), // REDUCED PADDING
+                child: Column(
+                  children: [
+                    // Updated with the correct filename
+                    Image.asset(
+                      'assets/images/a47c2721-58f7-4dc7-a395-082ab4b753e0.jpg',
+                      width: 100, // SLIGHTLY SMALLER
+                      height: 100, // SLIGHTLY SMALLER
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(height: 20), // REDUCED FROM 40 TO 20
+                  ],
                 ),
               ),
-              SizedBox(height: isMobile ? 20 : 30),
-
+              SizedBox(height: isMobile ? 16 : 24), // REDUCED SPACING
               // Profile Section with notification
               Padding(
                 padding: EdgeInsets.symmetric(
@@ -431,8 +437,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                   ],
                 ),
               ),
-              SizedBox(height: isMobile ? 24 : 32),
-
+              SizedBox(height: isMobile ? 20 : 28), // REDUCED SPACING
               // Tracking status
               Center(
                 child: Padding(
@@ -446,8 +451,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                 ),
               ),
 
-              const SizedBox(height: 32),
-
+              const SizedBox(height: 24), // REDUCED FROM 32
               // Time Logs Card - UPDATED WITH BLUE CONTAINER AND WHITE TEXT
               Padding(
                 padding: EdgeInsets.symmetric(
@@ -500,12 +504,94 @@ class _DriverDashboardState extends State<DriverDashboard>
                             letterSpacing: 1.0,
                           ),
                         ),
+                        const SizedBox(height: 16),
+
+                        // TIME LOGS SECTION - ADDED
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Time Logs Title
+                              Text(
+                                "Time Logs",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: isMobile ? 16 : 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Time entries
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "7:20am",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: isMobile ? 14 : 16,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        "9:00pm",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: isMobile ? 14 : 16,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        "Check-in",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: isMobile ? 14 : 16,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        "Check-out",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: isMobile ? 14 : 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
               ),
-              SizedBox(height: isMobile ? 24 : 32),
+              SizedBox(height: isMobile ? 20 : 28), // REDUCED SPACING
             ],
           ),
         ),

@@ -36,6 +36,16 @@ class _PersonalDetailsState extends State<PersonalDetails> {
   void initState() {
     super.initState();
     _loadDriverInfo();
+
+    // Add listeners to update the UI when text changes
+    _currentPasswordController.addListener(_updateUI);
+    _newPasswordController.addListener(_updateUI);
+  }
+
+  void _updateUI() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   /// ---------------- LOAD USER DETAILS ----------------
@@ -64,6 +74,25 @@ class _PersonalDetailsState extends State<PersonalDetails> {
     if (currentPassword.isEmpty || newPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please fill in all fields")),
+      );
+      return;
+    }
+
+    // Check password length limit for both fields
+    if (currentPassword.length > 36) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Current password must be 36 characters or less"),
+        ),
+      );
+      return;
+    }
+
+    if (newPassword.length > 36) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("New password must be 36 characters or less"),
+        ),
       );
       return;
     }
@@ -301,6 +330,26 @@ class _PersonalDetailsState extends State<PersonalDetails> {
                               });
                             },
                           ),
+                          // Current Password Character Counter
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  "${_currentPasswordController.text.length}/36",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color:
+                                        _currentPasswordController.text.length >
+                                            36
+                                        ? Colors.red
+                                        : Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                           const SizedBox(height: 16),
                           _buildPasswordField(
                             controller: _newPasswordController,
@@ -311,6 +360,25 @@ class _PersonalDetailsState extends State<PersonalDetails> {
                                 _showNewPassword = !_showNewPassword;
                               });
                             },
+                          ),
+                          // New Password Character Counter
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  "${_newPasswordController.text.length}/36",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color:
+                                        _newPasswordController.text.length > 36
+                                        ? Colors.red
+                                        : Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 20),
                           ElevatedButton(
@@ -405,7 +473,7 @@ class _PersonalDetailsState extends State<PersonalDetails> {
     );
   }
 
-  // Updated _buildPasswordField with show/hide functionality
+  // Updated _buildPasswordField with show/hide functionality and character limit for BOTH fields
   Widget _buildPasswordField({
     required TextEditingController controller,
     required String label,
@@ -415,6 +483,16 @@ class _PersonalDetailsState extends State<PersonalDetails> {
     return TextField(
       controller: controller,
       obscureText: !showPassword,
+      maxLength: 36, // 36 character limit for BOTH current and new password
+      buildCounter:
+          (
+            BuildContext context, {
+            required int currentLength,
+            required bool isFocused,
+            required int? maxLength,
+          }) {
+            return null; // Hide the default counter, we'll use our custom one
+          },
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -431,6 +509,8 @@ class _PersonalDetailsState extends State<PersonalDetails> {
 
   @override
   void dispose() {
+    _currentPasswordController.removeListener(_updateUI);
+    _newPasswordController.removeListener(_updateUI);
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _trackingService.stopTracking();

@@ -64,18 +64,13 @@ class _LoginScreenState extends State<LoginScreen> {
       if (user != null) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (_) => RoleBasedDashboard(user: user),
-          ),
+          MaterialPageRoute(builder: (_) => RoleBasedDashboard(user: user)),
         );
       } else {
         setState(() {
           error = "Invalid email or password.";
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(error),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(error), backgroundColor: Colors.red),
           );
         });
       }
@@ -84,10 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         error = "Login failed: ${e.toString()}";
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(error), backgroundColor: Colors.red),
         );
       });
     } finally {
@@ -107,20 +99,18 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 40),
+            padding: const EdgeInsets.symmetric(vertical: 30),
             color: Color(0xFF0D2364),
             child: Column(
-              children: const [
-                Icon(Icons.directions_bus, size: 60, color: Colors.white),
-                SizedBox(height: 10),
-                Text(
-                  "JeepEZ",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
+              children: [
+                // Updated with the correct filename
+                Image.asset(
+                  'assets/images/a47c2721-58f7-4dc7-a395-082ab4b753e0.jpg',
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.contain,
                 ),
+                const SizedBox(height: 10),
               ],
             ),
           ),

@@ -396,17 +396,43 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Logo section at the top
+              // Logo section at the top - UPDATED WITH YOUR SPECIFIC JPG FILE
               Container(
                 width: double.infinity,
                 color: const Color(0xFF0D2364),
                 padding: EdgeInsets.symmetric(vertical: isMobile ? 20 : 30),
-                child: const Center(
-                  child: Icon(
-                    Icons.directions_bus,
-                    size: 60,
-                    color: Colors.white,
-                  ),
+                child: Column(
+                  children: [
+                    // Your specific logo file
+                    Image.asset(
+                      'assets/images/a47c2721-58f7-4dc7-a395-082ab4b753e0.jpg',
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Fallback if image fails to load
+                        return Column(
+                          children: [
+                            Icon(
+                              Icons.directions_bus,
+                              size: 60,
+                              color: Colors.white,
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              'JeepEZ',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                 ),
               ),
               SizedBox(height: isMobile ? 20 : 30),

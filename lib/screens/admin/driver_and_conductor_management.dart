@@ -15,6 +15,40 @@ class _DriverConductorManagementScreenState
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String searchQuery = '';
 
+  /// ----------- ROLE COLOR FUNCTION -----------
+  Color _getRoleColor(String role) {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return Colors.red;
+      case 'legal_officer':
+        return Colors.orange;
+      case 'driver':
+        return Colors.green;
+      case 'conductor':
+        return Colors.blue;
+      case 'inspector':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  /// ----------- VEHICLE STATUS COLOR FUNCTION -----------
+  Color _getVehicleStatusColor(String? assignedVehicle) {
+    if (assignedVehicle == null || assignedVehicle.toString().isEmpty) {
+      return Colors.red; // Not assigned - Red
+    }
+    return Colors.blue; // Assigned - Blue
+  }
+
+  /// ----------- SCHEDULE STATUS COLOR FUNCTION -----------
+  Color _getScheduleStatusColor(String? schedule) {
+    if (schedule == null || schedule.isEmpty || schedule == 'Not set') {
+      return Colors.red; // Not set - Red
+    }
+    return Colors.blue; // Set - Blue
+  }
+
   // Stream for real-time updates from users collection
   Stream<QuerySnapshot> get employeesStream {
     return _firestore
@@ -562,7 +596,14 @@ class _DriverConductorManagementScreenState
   Widget _buildEmployeeCard(QueryDocumentSnapshot doc, int index) {
     final data = doc.data() as Map<String, dynamic>;
     final employeeId = data['employeeId']?.toString() ?? 'N/A';
-    final formattedEmployeeId = '${index + 1}. $employeeId';
+    final role = data['role']?.toString() ?? '';
+    final roleColor = _getRoleColor(role);
+    final vehicleStatusColor = _getVehicleStatusColor(
+      data['assignedVehicle']?.toString(),
+    );
+    final scheduleStatusColor = _getScheduleStatusColor(
+      data['schedule']?.toString(),
+    );
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -588,7 +629,7 @@ class _DriverConductorManagementScreenState
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'ID: $formattedEmployeeId',
+                        'No. ${index + 1}',
                         style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                     ],
@@ -605,10 +646,9 @@ class _DriverConductorManagementScreenState
             const SizedBox(height: 12),
 
             // Employee details in specified order
-            _buildInfoRow(
-              'Role',
-              _capitalizeRole(data['role']?.toString() ?? 'N/A'),
-            ),
+            _buildInfoRow('No.', (index + 1).toString()),
+            _buildInfoRow('Employee ID', employeeId),
+            _buildInfoRow('Role', _capitalizeRole(role), valueColor: roleColor),
             _buildInfoRow(
               'Employment Type',
               data['employmentType']?.toString() ?? 'N/A',
@@ -618,10 +658,12 @@ class _DriverConductorManagementScreenState
               data['assignedVehicle'] != null
                   ? 'UNIT ${data['assignedVehicle']}'
                   : 'Not assigned',
+              valueColor: vehicleStatusColor,
             ),
             _buildInfoRow(
               'Schedule',
               data['schedule']?.toString() ?? 'Not set',
+              valueColor: scheduleStatusColor,
             ),
           ],
         ),
@@ -629,7 +671,7 @@ class _DriverConductorManagementScreenState
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(String label, String value, {Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -649,7 +691,13 @@ class _DriverConductorManagementScreenState
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(fontSize: 14),
+              style: TextStyle(
+                fontSize: 14,
+                color: valueColor ?? Colors.black,
+                fontWeight: valueColor != null
+                    ? FontWeight.w600
+                    : FontWeight.normal,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -763,7 +811,13 @@ class _DriverConductorManagementScreenState
             columns: const [
               DataColumn(
                 label: Text(
-                  'EMP ID',
+                  'NO.',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'EMPLOYEE ID',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -781,7 +835,7 @@ class _DriverConductorManagementScreenState
               ),
               DataColumn(
                 label: Text(
-                  'EMPLO TYPE',
+                  'EMPLOYEE TYPE',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -793,7 +847,7 @@ class _DriverConductorManagementScreenState
               ),
               DataColumn(
                 label: Text(
-                  'SHCED',
+                  'SCHEDULE',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -834,7 +888,13 @@ class _DriverConductorManagementScreenState
             columns: const [
               DataColumn(
                 label: Text(
-                  'EMP ID',
+                  'NO.',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              DataColumn(
+                label: Text(
+                  'EMPLOYEE ID',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -852,7 +912,7 @@ class _DriverConductorManagementScreenState
               ),
               DataColumn(
                 label: Text(
-                  'EMP-TYPE',
+                  'EMPLOYEE TYPE',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -864,7 +924,7 @@ class _DriverConductorManagementScreenState
               ),
               DataColumn(
                 label: Text(
-                  'SHCEDULE',
+                  'SCHEDULE',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -895,16 +955,33 @@ class _DriverConductorManagementScreenState
     bool isCompact = false,
   }) {
     final employeeId = data['employeeId']?.toString() ?? 'N/A';
-    final formattedEmployeeId = '${index + 1}. $employeeId';
+    final role = data['role']?.toString() ?? '';
+    final roleColor = _getRoleColor(role);
+    final vehicleStatusColor = _getVehicleStatusColor(
+      data['assignedVehicle']?.toString(),
+    );
+    final scheduleStatusColor = _getScheduleStatusColor(
+      data['schedule']?.toString(),
+    );
 
     return DataRow(
       cells: [
-        // EMP ID (with number prefix)
+        // NO. (Number)
+        DataCell(
+          SizedBox(
+            width: isCompact ? 60 : 80,
+            child: Text(
+              (index + 1).toString(),
+              style: TextStyle(fontSize: isCompact ? 12 : 14),
+            ),
+          ),
+        ),
+        // EMP ID
         DataCell(
           SizedBox(
             width: isCompact ? 100 : 120,
             child: Text(
-              formattedEmployeeId,
+              employeeId,
               style: TextStyle(fontSize: isCompact ? 12 : 14),
             ),
           ),
@@ -922,15 +999,24 @@ class _DriverConductorManagementScreenState
         ),
         // ROLE
         DataCell(
-          SizedBox(
-            width: isCompact ? 80 : 100,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: roleColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: roleColor.withOpacity(0.3)),
+            ),
             child: Text(
-              _capitalizeRole(data['role']?.toString() ?? ''),
-              style: TextStyle(fontSize: isCompact ? 12 : 14),
+              _capitalizeRole(role),
+              style: TextStyle(
+                color: roleColor,
+                fontWeight: FontWeight.w600,
+                fontSize: isCompact ? 11 : 12,
+              ),
             ),
           ),
         ),
-        // EMPLO TYPE
+        // EMPLOYEE TYPE
         DataCell(
           SizedBox(
             width: isCompact ? 80 : 120,
@@ -943,25 +1029,41 @@ class _DriverConductorManagementScreenState
         ),
         // VEHICLE
         DataCell(
-          SizedBox(
-            width: isCompact ? 80 : 100,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: vehicleStatusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: vehicleStatusColor.withOpacity(0.3)),
+            ),
             child: Text(
               data['assignedVehicle'] != null
                   ? 'UNIT ${data['assignedVehicle']}'
                   : 'Not assigned',
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: isCompact ? 12 : 14),
+              style: TextStyle(
+                color: vehicleStatusColor,
+                fontWeight: FontWeight.w600,
+                fontSize: isCompact ? 11 : 12,
+              ),
             ),
           ),
         ),
-        // SHCED
+        // SCHEDULE
         DataCell(
-          SizedBox(
-            width: isCompact ? 120 : 150,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: scheduleStatusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: scheduleStatusColor.withOpacity(0.3)),
+            ),
             child: Text(
               data['schedule']?.toString() ?? 'Not set',
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: isCompact ? 12 : 14),
+              style: TextStyle(
+                color: scheduleStatusColor,
+                fontWeight: FontWeight.w600,
+                fontSize: isCompact ? 11 : 12,
+              ),
             ),
           ),
         ),

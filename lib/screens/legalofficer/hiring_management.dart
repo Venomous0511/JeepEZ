@@ -677,253 +677,271 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       margin: EdgeInsets.zero,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
+      child: SizedBox(
+        width: double.infinity,
+        height: double.infinity,
         child: SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          child: DataTable(
-            columnSpacing: 16,
-            dataRowMinHeight: 60,
-            dataRowMaxHeight: 80,
-            headingRowColor: WidgetStateProperty.all(
-              const Color(0xFF0D2364).withAlpha(1),
-            ),
-            columns: [
-              DataColumn(
-                label: SizedBox(
-                  width: 150,
-                  child: Text(
-                    'Candidate Name',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: isTablet ? 14 : 16,
+          scrollDirection: Axis.horizontal,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: DataTable(
+              columnSpacing: 16,
+              horizontalMargin: 16,
+              dataRowMinHeight: 60,
+              dataRowMaxHeight: 80,
+              headingRowColor: WidgetStateProperty.all(const Color(0xFF0D2364)),
+              columns: [
+                DataColumn(
+                  label: SizedBox(
+                    width: 300,
+                    child: Text(
+                      'Candidate Name',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: isTablet ? 14 : 16,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              DataColumn(
-                label: SizedBox(
-                  width: 120,
-                  child: Text(
-                    'Position',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: isTablet ? 14 : 16,
+                DataColumn(
+                  label: SizedBox(
+                    width: 220,
+                    child: Text(
+                      'Position',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: isTablet ? 14 : 16,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              DataColumn(
-                label: SizedBox(
-                  width: 120,
-                  child: Text(
-                    'Interview Date',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: isTablet ? 14 : 16,
+                DataColumn(
+                  label: SizedBox(
+                    width: 220,
+                    child: Text(
+                      'Interview Date',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: isTablet ? 14 : 16,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              DataColumn(
-                label: SizedBox(
-                  width: 130,
-                  child: Text(
-                    'Requirements',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: isTablet ? 14 : 16,
+                DataColumn(
+                  label: SizedBox(
+                    width: 220,
+                    child: Text(
+                      'Requirements',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: isTablet ? 14 : 16,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              DataColumn(
-                label: SizedBox(
-                  width: 180,
-                  child: Text(
-                    'Resume',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: isTablet ? 14 : 16,
+                DataColumn(
+                  label: SizedBox(
+                    width: 300,
+                    child: Text(
+                      'Resume',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: isTablet ? 14 : 16,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              DataColumn(
-                label: SizedBox(
-                  width: 120,
-                  child: Text(
-                    'Actions',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: isTablet ? 14 : 16,
+                DataColumn(
+                  label: SizedBox(
+                    width: 220,
+                    child: Text(
+                      'Actions',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: isTablet ? 14 : 16,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-            rows: candidates.map((candidate) {
-              return DataRow(
-                cells: [
-                  DataCell(
-                    SizedBox(
-                      width: 150,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 16),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              candidate.name,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: isTablet ? 13 : 15,
+              ],
+              rows: candidates.map((candidate) {
+                return DataRow(
+                  cells: [
+                    DataCell(
+                      SizedBox(
+                        width: 250,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.star,
+                              color: Colors.amber,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                candidate.name,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: isTablet ? 13 : 15,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  DataCell(
-                    SizedBox(
-                      width: 120,
-                      child: Text(
-                        candidate.position,
-                        style: TextStyle(fontSize: isTablet ? 13 : 15),
-                        overflow: TextOverflow.ellipsis,
+                    DataCell(
+                      SizedBox(
+                        width: 150,
+                        child: Text(
+                          candidate.position,
+                          style: TextStyle(fontSize: isTablet ? 13 : 15),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
-                  ),
-                  DataCell(
-                    SizedBox(
-                      width: 120,
-                      child: Text(
-                        candidate.interviewDate,
-                        style: TextStyle(fontSize: isTablet ? 13 : 15),
-                        overflow: TextOverflow.ellipsis,
+                    DataCell(
+                      SizedBox(
+                        width: 200,
+                        child: Text(
+                          candidate.interviewDate,
+                          style: TextStyle(fontSize: isTablet ? 13 : 15),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
-                  ),
-                  DataCell(
-                    SizedBox(
-                      width: 130,
-                      child: InkWell(
-                        onTap: () => _showRequirementsChecklist(candidate),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getCompletionColor(candidate).withAlpha(1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: _getCompletionColor(candidate),
+                    DataCell(
+                      SizedBox(
+                        width: 200,
+                        child: InkWell(
+                          onTap: () => _showRequirementsChecklist(candidate),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
                             ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.checklist,
-                                size: 14,
+                            decoration: BoxDecoration(
+                              color: _getCompletionColor(
+                                candidate,
+                              ).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
                                 color: _getCompletionColor(candidate),
                               ),
-                              const SizedBox(width: 6),
-                              Text(
-                                _getRequirementsStatus(candidate),
-                                style: TextStyle(
-                                  fontSize: isTablet ? 12 : 14,
-                                  fontWeight: FontWeight.bold,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.checklist,
+                                  size: 14,
                                   color: _getCompletionColor(candidate),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 6),
+                                Text(
+                                  _getRequirementsStatus(candidate),
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 12 : 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: _getCompletionColor(candidate),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  DataCell(
-                    SizedBox(
-                      width: 180,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.upload, size: 16),
-                              label: Text(
-                                candidate.resumeUrl == null
-                                    ? 'Upload'
-                                    : 'Reupload',
-                                style: TextStyle(fontSize: isTablet ? 12 : 14),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              onPressed: () => _uploadResume(candidate),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0D2364),
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 8 : 10,
-                                  vertical: isTablet ? 6 : 8,
+                    DataCell(
+                      SizedBox(
+                        width: 200,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.upload, size: 16),
+                                label: Text(
+                                  candidate.resumeUrl == null
+                                      ? 'Upload'
+                                      : 'Reupload',
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 12 : 14,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                onPressed: () => _uploadResume(candidate),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0D2364),
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isTablet ? 8 : 10,
+                                    vertical: isTablet ? 6 : 8,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          if (candidate.resumeUrl != null) ...[
-                            const SizedBox(width: 8),
+                            if (candidate.resumeUrl != null) ...[
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.visibility, size: 18),
+                                onPressed: () => _viewResume(candidate),
+                                tooltip: 'View Resume',
+                                style: IconButton.styleFrom(
+                                  backgroundColor: Colors.green[50],
+                                  foregroundColor: Colors.green,
+                                  padding: const EdgeInsets.all(6),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      SizedBox(
+                        width: 150,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                             IconButton(
-                              icon: const Icon(Icons.visibility, size: 18),
-                              onPressed: () => _viewResume(candidate),
-                              tooltip: 'View Resume',
+                              icon: const Icon(Icons.edit, size: 18),
+                              onPressed: () =>
+                                  _showCandidateDialog(candidate: candidate),
+                              tooltip: 'Edit',
                               style: IconButton.styleFrom(
-                                backgroundColor: Colors.green[50],
-                                foregroundColor: Colors.green,
-                                padding: const EdgeInsets.all(6),
+                                backgroundColor: Colors.blue[50],
+                                foregroundColor: Colors.blue,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.delete, size: 18),
+                              onPressed: () => _showDeleteDialog(candidate),
+                              tooltip: 'Delete',
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.red[50],
+                                foregroundColor: Colors.red,
                               ),
                             ),
                           ],
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                  DataCell(
-                    SizedBox(
-                      width: 120,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, size: 18),
-                            onPressed: () =>
-                                _showCandidateDialog(candidate: candidate),
-                            tooltip: 'Edit',
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.blue[50],
-                              foregroundColor: Colors.blue,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          IconButton(
-                            icon: const Icon(Icons.delete, size: 18),
-                            onPressed: () => _showDeleteDialog(candidate),
-                            tooltip: 'Delete',
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.red[50],
-                              foregroundColor: Colors.red,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
+                  ],
+                );
+              }).toList(),
+            ),
           ),
         ),
       ),
@@ -935,150 +953,156 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       margin: EdgeInsets.zero,
-      child: ListView.builder(
-        itemCount: candidates.length,
-        itemBuilder: (context, index) {
-          final candidate = candidates[index];
-          return Container(
-            margin: const EdgeInsets.all(12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.star, color: Colors.amber, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        candidate.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0D2364),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _getCompletionColor(candidate).withAlpha(1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: _getCompletionColor(candidate),
+      child: SizedBox(
+        width: double.infinity,
+        height: double.infinity,
+        child: ListView.builder(
+          itemCount: candidates.length,
+          itemBuilder: (context, index) {
+            final candidate = candidates[index];
+            return Container(
+              margin: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.star, color: Colors.amber, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          candidate.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0D2364),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      child: Text(
-                        'REQs: ${_getRequirementsStatus(candidate)}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: _getCompletionColor(candidate),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getCompletionColor(
+                            candidate,
+                          ).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _getCompletionColor(candidate),
+                          ),
+                        ),
+                        child: Text(
+                          'REQs: ${_getRequirementsStatus(candidate)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _getCompletionColor(candidate),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _buildCardInfoRow(Icons.work, 'Position', candidate.position),
-                _buildCardInfoRow(
-                  Icons.calendar_today,
-                  'Interview Date',
-                  candidate.interviewDate,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.upload, size: 16),
-                        label: Text(
-                          candidate.resumeUrl == null
-                              ? 'Upload Resume'
-                              : 'Reupload',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        onPressed: () => _uploadResume(candidate),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0D2364),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (candidate.resumeUrl != null)
-                      IconButton(
-                        icon: const Icon(Icons.visibility, size: 20),
-                        onPressed: () => _viewResume(candidate),
-                        tooltip: 'View Resume',
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.green[50],
-                          foregroundColor: Colors.green,
-                          padding: const EdgeInsets.all(12),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildCardInfoRow(Icons.work, 'Position', candidate.position),
+                  _buildCardInfoRow(
+                    Icons.calendar_today,
+                    'Interview Date',
+                    candidate.interviewDate,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.upload, size: 16),
+                          label: Text(
+                            candidate.resumeUrl == null
+                                ? 'Upload Resume'
+                                : 'Reupload',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          onPressed: () => _uploadResume(candidate),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0D2364),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
                         ),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.checklist, size: 16),
-                    label: const Text(
-                      'Requirements',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                    onPressed: () => _showRequirementsChecklist(candidate),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF0D2364),
-                      side: const BorderSide(color: Color(0xFF0D2364)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      const SizedBox(width: 8),
+                      if (candidate.resumeUrl != null)
+                        IconButton(
+                          icon: const Icon(Icons.visibility, size: 20),
+                          onPressed: () => _viewResume(candidate),
+                          tooltip: 'View Resume',
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.green[50],
+                            foregroundColor: Colors.green,
+                            padding: const EdgeInsets.all(12),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.checklist, size: 16),
+                      label: const Text(
+                        'Requirements',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      onPressed: () => _showRequirementsChecklist(candidate),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF0D2364),
+                        side: const BorderSide(color: Color(0xFF0D2364)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.edit, size: 16),
-                        label: const Text('Edit'),
-                        onPressed: () =>
-                            _showCandidateDialog(candidate: candidate),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.blue,
-                          side: const BorderSide(color: Colors.blue),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.edit, size: 16),
+                          label: const Text('Edit'),
+                          onPressed: () =>
+                              _showCandidateDialog(candidate: candidate),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.blue,
+                            side: const BorderSide(color: Colors.blue),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.delete, size: 16),
-                        label: const Text('Delete'),
-                        onPressed: () => _showDeleteDialog(candidate),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: const BorderSide(color: Colors.red),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.delete, size: 16),
+                          label: const Text('Delete'),
+                          onPressed: () => _showDeleteDialog(candidate),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -1087,7 +1111,8 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
     return Card(
       elevation: 2,
       margin: EdgeInsets.zero,
-      child: Padding(
+      child: Container(
+        width: double.infinity,
         padding: const EdgeInsets.all(12.0),
         child: isMobile
             ? Column(
@@ -1113,7 +1138,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _selectedFilter,
+                    initialValue: _selectedFilter,
                     onChanged: (value) {
                       setState(() {
                         _selectedFilter = value!;
@@ -1181,7 +1206,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                   Expanded(
                     flex: 1,
                     child: DropdownButtonFormField<String>(
-                      value: _selectedFilter,
+                      initialValue: _selectedFilter,
                       onChanged: (value) {
                         setState(() {
                           _selectedFilter = value!;
@@ -1228,7 +1253,8 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(top: 16),
-      child: Padding(
+      child: Container(
+        width: double.infinity,
         padding: const EdgeInsets.all(12.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1336,88 +1362,99 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
     final isTablet = screenWidth >= 600 && screenWidth < 1024;
 
     return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSearchAndFilter(isMobile),
-                const SizedBox(height: 16),
-                StreamBuilder<List<Candidate>>(
-                  stream: _getCandidatesStream(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.error_outline,
-                              size: 48,
-                              color: Colors.red,
-                            ),
-                            const SizedBox(height: 16),
-                            Text('Error: ${snapshot.error}'),
-                          ],
-                        ),
-                      );
-                    }
-
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Expanded(
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-
-                    final allCandidates = snapshot.data ?? [];
-                    final filteredCandidates = _filterCandidates(allCandidates);
-                    final paginatedCandidates = _paginateCandidates(
-                      filteredCandidates,
-                    );
-                    final totalPages =
-                        (filteredCandidates.length / _rowsPerPage).ceil();
-
-                    return Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Candidates (${filteredCandidates.length})',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0D2364),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Expanded(
-                            child: isMobile
-                                ? _buildMobileCards(paginatedCandidates)
-                                : _buildDesktopTable(
-                                    paginatedCandidates,
-                                    isTablet,
-                                  ),
-                          ),
-                          if (filteredCandidates.length > _rowsPerPage)
-                            _buildPaginationControls(isMobile, totalPages),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          if (_isLoading)
+      body: SizedBox(
+        width: double.infinity,
+        height: double.infinity,
+        child: Stack(
+          children: [
             Container(
-              color: Colors.black26,
-              child: const Center(child: CircularProgressIndicator()),
+              width: double.infinity,
+              height: double.infinity,
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSearchAndFilter(isMobile),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: StreamBuilder<List<Candidate>>(
+                      stream: _getCandidatesStream(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.error_outline,
+                                  size: 48,
+                                  color: Colors.red,
+                                ),
+                                const SizedBox(height: 16),
+                                Text('Error: ${snapshot.error}'),
+                              ],
+                            ),
+                          );
+                        }
+
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+
+                        final allCandidates = snapshot.data ?? [];
+                        final filteredCandidates = _filterCandidates(
+                          allCandidates,
+                        );
+                        final paginatedCandidates = _paginateCandidates(
+                          filteredCandidates,
+                        );
+                        final totalPages =
+                            (filteredCandidates.length / _rowsPerPage).ceil();
+
+                        return SizedBox(
+                          width: double.infinity,
+                          height: double.infinity,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Candidates (${filteredCandidates.length})',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0D2364),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Expanded(
+                                child: isMobile
+                                    ? _buildMobileCards(paginatedCandidates)
+                                    : _buildDesktopTable(
+                                        paginatedCandidates,
+                                        isTablet,
+                                      ),
+                              ),
+                              if (filteredCandidates.length > _rowsPerPage)
+                                _buildPaginationControls(isMobile, totalPages),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
-        ],
+            if (_isLoading)
+              Container(
+                color: Colors.black26,
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -76,7 +76,11 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
           children: const [
             Text(
               'Password Change Required',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 16,
+              ),
             ),
             SizedBox(height: 4),
             Text(
@@ -123,8 +127,14 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('inspector_trip')
-          .where('unitNumber', isEqualTo: vehicleNumber.toString()) // <- convert to string
-          .where('conductorName', isEqualTo: widget.user.name?.trim()) // keep as lowercase as in Firestore
+          .where(
+            'unitNumber',
+            isEqualTo: vehicleNumber.toString(),
+          ) // <- convert to string
+          .where(
+            'conductorName',
+            isEqualTo: widget.user.name?.trim(),
+          ) // keep as lowercase as in Firestore
           .orderBy('timestamp', descending: true)
           .limit(1)
           .get();
@@ -134,7 +144,8 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
         final timestamp = data['timestamp'] as Timestamp?;
 
         setState(() {
-          latestPassengerCount = int.tryParse(data['noOfPass']?.toString() ?? '0') ?? 0;
+          latestPassengerCount =
+              int.tryParse(data['noOfPass']?.toString() ?? '0') ?? 0;
           latestTripTime = timestamp != null
               ? "${timestamp.toDate().hour % 12 == 0 ? 12 : timestamp.toDate().hour % 12}:${timestamp.toDate().minute.toString().padLeft(2, '0')} ${timestamp.toDate().hour >= 12 ? 'PM' : 'AM'}"
               : '';
@@ -165,14 +176,21 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
         .orderBy('timestamp', descending: true)
         .limit(1)
         .snapshots()
-        .map((snapshot) => snapshot.docs.isNotEmpty ? snapshot.docs.first : null);
+        .map(
+          (snapshot) => snapshot.docs.isNotEmpty ? snapshot.docs.first : null,
+        );
   }
 
   // ----------------- NOTIFICATIONS -----------------
-  Stream<QuerySnapshot<Map<String, dynamic>>> getNotificationsStream(String role) {
+  Stream<QuerySnapshot<Map<String, dynamic>>> getNotificationsStream(
+    String role,
+  ) {
     final collection = FirebaseFirestore.instance.collection('notifications');
     if (role == 'super_admin' || role == 'admin') {
-      return collection.where('dismissed', isEqualTo: false).orderBy('time', descending: true).snapshots();
+      return collection
+          .where('dismissed', isEqualTo: false)
+          .orderBy('time', descending: true)
+          .snapshots();
     }
     return collection
         .where('dismissed', isEqualTo: false)
@@ -224,13 +242,43 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Logo
+              // Logo - UPDATED WITH YOUR SPECIFIC JPG FILE
               Container(
                 width: double.infinity,
                 color: const Color(0xFF0D2364),
                 padding: EdgeInsets.symmetric(vertical: isMobile ? 20 : 30),
-                child: const Center(
-                  child: Icon(Icons.directions_bus, size: 60, color: Colors.white),
+                child: Column(
+                  children: [
+                    // Your specific logo file
+                    Image.asset(
+                      'assets/images/a47c2721-58f7-4dc7-a395-082ab4b753e0.jpg',
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Fallback if image fails to load
+                        return Column(
+                          children: [
+                            Icon(
+                              Icons.directions_bus,
+                              size: 60,
+                              color: Colors.white,
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              'JeepEZ',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                 ),
               ),
               SizedBox(height: isMobile ? 20 : 30),
@@ -243,7 +291,10 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
                     GestureDetector(
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => PersonalDetails(user: widget.user)),
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              PersonalDetails(user: widget.user),
+                        ),
                       ),
                       child: Container(
                         padding: const EdgeInsets.all(12),
@@ -251,7 +302,11 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
                           color: const Color(0xFF0D2364).withAlpha(1),
                           borderRadius: BorderRadius.circular(50),
                         ),
-                        child: Icon(Icons.person, color: const Color(0xFF0D2364), size: isMobile ? 40 : 50),
+                        child: Icon(
+                          Icons.person,
+                          color: const Color(0xFF0D2364),
+                          size: isMobile ? 40 : 50,
+                        ),
                       ),
                     ),
                     SizedBox(width: isMobile ? 12 : 16),
@@ -259,18 +314,33 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(widget.user.name ?? "Conductor",
-                              style: TextStyle(fontSize: isMobile ? 18 : 22, fontWeight: FontWeight.bold, color: Colors.black87),
-                              overflow: TextOverflow.ellipsis),
+                          Text(
+                            widget.user.name ?? "Conductor",
+                            style: TextStyle(
+                              fontSize: isMobile ? 18 : 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           const SizedBox(height: 4),
-                          Text("Employee ID: ${widget.user.employeeId}",
-                              style: TextStyle(fontSize: isMobile ? 13 : 15, color: Colors.grey[600]),
-                              overflow: TextOverflow.ellipsis),
+                          Text(
+                            "Employee ID: ${widget.user.employeeId}",
+                            style: TextStyle(
+                              fontSize: isMobile ? 13 : 15,
+                              color: Colors.grey[600],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.notifications_outlined, color: const Color(0xFF0D2364), size: isMobile ? 28 : 32),
+                      icon: Icon(
+                        Icons.notifications_outlined,
+                        color: const Color(0xFF0D2364),
+                        size: isMobile ? 28 : 32,
+                      ),
                       onPressed: _showNotifications,
                     ),
                   ],
@@ -282,8 +352,10 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
               Center(
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24),
-                  child: Text('👋 Welcome, ${widget.user.name ?? "Conductor"}!',
-                      style: const TextStyle(fontSize: 16, color: Colors.green)),
+                  child: Text(
+                    '👋 Welcome, ${widget.user.name ?? "Conductor"}!',
+                    style: const TextStyle(fontSize: 16, color: Colors.green),
+                  ),
                 ),
               ),
               const SizedBox(height: 32),
@@ -299,23 +371,53 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
                     decoration: BoxDecoration(
                       color: const Color(0xFF0D2364),
                       borderRadius: BorderRadius.circular(8),
-                      boxShadow: [BoxShadow(color: Colors.black.withAlpha(1), blurRadius: 4, offset: const Offset(0, 2))],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Header
-                        Text(todayString,
-                            style: TextStyle(color: Colors.white, fontSize: isMobile ? 14 : 16, fontWeight: FontWeight.bold)),
+                        Text(
+                          todayString,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isMobile ? 14 : 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 12),
-                        Text('UNIT ${widget.user.assignedVehicle}',
-                            style: TextStyle(color: Colors.white, fontSize: isMobile ? 20 : 24, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+                        Text(
+                          'UNIT ${widget.user.assignedVehicle}',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isMobile ? 20 : 24,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
                         const SizedBox(height: 16),
-                        Text("Passenger Count",
-                            style: TextStyle(color: Colors.white, fontSize: isMobile ? 16 : 18, fontWeight: FontWeight.bold)),
+                        Text(
+                          "Passenger Count",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isMobile ? 16 : 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 8),
-                        Text("Total passenger from latest ticket inspection:",
-                            style: TextStyle(fontSize: isMobile ? 14 : 16, color: Colors.white)),
+                        Text(
+                          "Total passenger from latest ticket inspection:",
+                          style: TextStyle(
+                            fontSize: isMobile ? 14 : 16,
+                            color: Colors.white,
+                          ),
+                        ),
                         const SizedBox(height: 12),
 
                         // StreamBuilder for live count
@@ -325,28 +427,38 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
                             int passengerCount = latestPassengerCount;
                             String tripTime = latestTripTime;
 
-                            if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
+                            if (snapshot.hasData &&
+                                snapshot.data != null &&
+                                snapshot.data!.exists) {
                               final data = snapshot.data!.data()!;
-                              passengerCount = int.tryParse(data['noOfPass'] ?? '0') ?? 0;
+                              passengerCount =
+                                  int.tryParse(data['noOfPass'] ?? '0') ?? 0;
                               final timestamp = data['timestamp'] as Timestamp?;
                               if (timestamp != null) {
                                 final time = timestamp.toDate();
                                 tripTime =
-                                "${time.hour % 12 == 0 ? 12 : time.hour % 12}:${time.minute.toString().padLeft(2, '0')} ${time.hour >= 12 ? 'PM' : 'AM'}";
+                                    "${time.hour % 12 == 0 ? 12 : time.hour % 12}:${time.minute.toString().padLeft(2, '0')} ${time.hour >= 12 ? 'PM' : 'AM'}";
                               }
-                            } else if (snapshot.connectionState == ConnectionState.waiting) {
-                              return const Center(child: CircularProgressIndicator());
+                            } else if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
                             }
 
                             return Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.white.withAlpha(1)),
-                                  borderRadius: BorderRadius.circular(8),
-                                  color: Colors.white),
+                                border: Border.all(
+                                  color: Colors.white.withAlpha(1),
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.white,
+                              ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   _buildCountBox(passengerCount, isMobile),
                                   _buildCountBox(tripTime, isMobile),
@@ -378,7 +490,11 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
       ),
       child: Text(
         value is int ? '$value Passengers' : value,
-        style: TextStyle(fontSize: isMobile ? 14 : 16, fontWeight: FontWeight.w600, color: Colors.white),
+        style: TextStyle(
+          fontSize: isMobile ? 14 : 16,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
       ),
     );
   }
@@ -396,7 +512,10 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
             children: [
               const Icon(Icons.notifications, color: Color(0xFF0D2364)),
               const SizedBox(width: 8),
-              Text('Notifications', style: TextStyle(fontSize: isMobile ? 16 : 18)),
+              Text(
+                'Notifications',
+                style: TextStyle(fontSize: isMobile ? 16 : 18),
+              ),
             ],
           ),
           content: SizedBox(
@@ -425,7 +544,10 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
                     final type = data['type'] ?? 'system';
 
                     return ListTile(
-                      leading: Icon(_getIconForType(type), color: _getColorForType(type)),
+                      leading: Icon(
+                        _getIconForType(type),
+                        color: _getColorForType(type),
+                      ),
                       title: Text(title),
                       subtitle: Text(message),
                     );
@@ -435,7 +557,10 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
           ],
         );
       },
@@ -444,7 +569,8 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    if (_screens.isEmpty) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_screens.isEmpty)
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
     return Scaffold(
       body: _screens[_currentIndex],
@@ -458,10 +584,22 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
         unselectedFontSize: 11,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Schedule'),
-          BottomNavigationBarItem(icon: Icon(Icons.confirmation_number), label: 'Ticket Report'),
-          BottomNavigationBarItem(icon: Icon(Icons.report_problem), label: 'Incident'),
-          BottomNavigationBarItem(icon: Icon(Icons.beach_access), label: 'Leave'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: 'Schedule',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.confirmation_number),
+            label: 'Ticket Report',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.report_problem),
+            label: 'Incident',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.beach_access),
+            label: 'Leave',
+          ),
         ],
       ),
     );
@@ -474,6 +612,9 @@ class PlaceholderWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(appBar: AppBar(title: Text(title)), body: Center(child: Text('$title feature is coming soon!')));
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(child: Text('$title feature is coming soon!')),
+    );
   }
 }
