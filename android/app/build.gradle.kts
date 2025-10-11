@@ -33,7 +33,7 @@ android {
         minSdk = 23  // Good for Firebase (minimum is 21)
         targetSdk = 36
         versionCode = 6
-        versionName = "0.6.0"
+        versionName = "1.0.0"
         multiDexEnabled = true  // Correct for Firebase
     }
 
