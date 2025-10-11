@@ -48,18 +48,18 @@ class TrackingService {
     // Start position stream
     _positionSubscription =
         Geolocator.getPositionStream(locationSettings: locationSettings).listen(
-              (position) async {
+          (position) async {
             await _firestore
                 .collection('vehicles_locations')
                 .doc(employeeId)
                 .set({
-              'vehicleId': vehicleId,
-              'driverId': employeeId,
-              'lat': position.latitude,
-              'lng': position.longitude,
-              'speed': position.speed * 3.6,
-              'updatedAt': FieldValue.serverTimestamp(),
-            }, SetOptions(merge: true));
+                  'vehicleId': vehicleId,
+                  'driverId': employeeId,
+                  'lat': position.latitude,
+                  'lng': position.longitude,
+                  'speed': position.speed * 3.6,
+                  'updatedAt': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
           },
           onError: (error) {
             debugPrint('Tracking error: $error');
@@ -76,17 +76,13 @@ class TrackingService {
     debugPrint('Tracking stopped');
   }
 
-  /// Logout user + stop tracking + remove location marker
-  Future<void> logout() async {
+  /// Remove location marker only (no logout)
+  Future<void> removeLocationMarker() async {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    // Stop tracking FIRST before trying to fetch user data
-    await stopTracking();
-
     try {
-      final userDoc =
-      await _firestore.collection('users').doc(user.uid).get();
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
       final employeeId = userDoc.data()?['employeeId']?.toString();
 
       // Remove driver location from Firestore
@@ -96,23 +92,16 @@ class TrackingService {
             .doc(employeeId)
             .delete()
             .then((_) {
-          debugPrint('Location removed for $employeeId');
-        }).catchError((error) {
-          debugPrint('Error removing location: $error');
-        });
+              debugPrint('Location removed for $employeeId');
+            })
+            .catchError((error) {
+              debugPrint('Error removing location: $error');
+            });
       } else {
         debugPrint('Employee ID is null or empty');
       }
     } catch (e) {
-      debugPrint('Error during logout: $e');
-    }
-
-    // Sign out
-    try {
-      await _auth.signOut();
-      debugPrint('User logged out successfully');
-    } catch (e) {
-      debugPrint('Error signing out: $e');
+      debugPrint('Error removing location marker: $e');
     }
   }
 }
@@ -292,23 +281,10 @@ class _DriverDashboardState extends State<DriverDashboard>
     );
   }
 
-  /// LOGOUT FUNCTION - CALL THIS WHEN LOGGING OUT
-  Future<void> _handleLogout() async {
-    try {
-      await trackingService.logout();
-      if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-      }
-    } catch (e) {
-      debugPrint('Logout error: $e');
-      _showErrorSnackBar('Error during logout: $e');
-    }
-  }
-
   /// ---------------- FETCH NOTIFICATIONS ----------------
   Stream<QuerySnapshot<Map<String, dynamic>>> getNotificationsStream(
-      String role,
-      ) {
+    String role,
+  ) {
     final collection = FirebaseFirestore.instance.collection('notifications');
 
     if (role == 'super_admin' || role == 'admin') {
@@ -441,30 +417,16 @@ class _DriverDashboardState extends State<DriverDashboard>
                       ),
                     ),
 
-                    // Notification Icon + Logout
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.notifications_outlined,
-                            color: const Color(0xFF0D2364),
-                            size: isMobile ? 28 : 32,
-                          ),
-                          onPressed: () {
-                            _showNotifications();
-                          },
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.logout,
-                            color: Colors.red,
-                            size: isMobile ? 24 : 28,
-                          ),
-                          onPressed: () {
-                            _showLogoutConfirmation();
-                          },
-                        ),
-                      ],
+                    // Notification Icon only (logout removed)
+                    IconButton(
+                      icon: Icon(
+                        Icons.notifications_outlined,
+                        color: const Color(0xFF0D2364),
+                        size: isMobile ? 28 : 32,
+                      ),
+                      onPressed: () {
+                        _showNotifications();
+                      },
                     ),
                   ],
                 ),
@@ -548,37 +510,6 @@ class _DriverDashboardState extends State<DriverDashboard>
           ),
         ),
       ),
-    );
-  }
-
-  void _showLogoutConfirmation() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Confirm Logout'),
-          content: const Text(
-              'Are you sure you want to logout? Your tracking will be stopped and location marker will be removed.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _handleLogout();
-              },
-              child: const Text(
-                'Logout',
-                style: TextStyle(color: Colors.red),
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 

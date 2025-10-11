@@ -55,6 +55,51 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
     }
   }
 
+  // ADD THIS FUNCTION - Send notification ONLY to Legal Officer
+  Future<void> _sendLeaveNotificationToLegalOfficer() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Get user data to include in notification
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      final userData = userDoc.data();
+      final userName = userData?['name'] ?? 'Unknown User';
+      final userRole = userData?['role'] ?? 'Unknown Role';
+      final employeeId = userData?['employeeId'] ?? 'Unknown ID';
+
+      // Create notification ONLY for Legal Officer
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'title': 'New Leave Application',
+        'message':
+            '$userName ($employeeId - $userRole) has submitted a ${_selectedLeaveType?.toLowerCase() ?? 'leave'} application',
+        'type': 'leave_application', // Special type for leave
+        'category': 'leave',
+        'relatedUserId': user.uid,
+        'employeeId': employeeId,
+        'employeeName': userName,
+        'employeeRole': userRole,
+        'leaveType': _selectedLeaveType,
+        'startDate': _startDate,
+        'endDate': _endDate,
+        'reason': _reasonController.text.trim(),
+        'status': 'pending',
+        'time': FieldValue.serverTimestamp(),
+        'read': false,
+        'dismissed': false,
+        'targetRole': 'legal_officer', // ONLY Legal Officer can see this
+      });
+
+      debugPrint('Leave notification sent to Legal Officer only');
+    } catch (e) {
+      debugPrint('Error sending leave notification: $e');
+    }
+  }
+
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
       if (_startDate == null || _endDate == null) {
@@ -113,6 +158,9 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
             .doc(uid)
             .collection('leave_application')
             .add(leaveData);
+
+        // ADD THIS LINE - Send notification to Legal Officer
+        await _sendLeaveNotificationToLegalOfficer();
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -487,7 +535,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                           label: 'Type of Leave',
                           isMobile: isMobile,
                           child: DropdownButtonFormField<String>(
-                            value: _selectedLeaveType,
+                            initialValue: _selectedLeaveType,
                             decoration: InputDecoration(
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8.0),
