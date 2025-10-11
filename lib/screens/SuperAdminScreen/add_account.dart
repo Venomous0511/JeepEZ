@@ -520,13 +520,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       lastNameCtrl.clear();
 
       if (mounted) {
-        setState(() {
-          role = null;
-          employmentType = null;
-          area = null;
-          generatedPassword = _generatePassword();
-        });
-
         // Show success dialog
         _showAccountCreatedDialog(
           displayName: displayName,
@@ -535,6 +528,13 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
           tempPassword: password,
           role: role!,
         );
+
+        setState(() {
+          role = null;
+          employmentType = null;
+          area = null;
+          generatedPassword = _generatePassword();
+        });
       }
     } on FirebaseAuthException catch (e) {
       String errorMessage = 'Error creating user';
