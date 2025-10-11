@@ -71,6 +71,8 @@ android {
 dependencies {
     // IMPORTANT: Use AndroidX instead of old support library
     implementation("androidx.multidex:multidex:2.0.1")
+    implementation("androidx.preference:preference:1.2.0")
+    implementation("androidx.work:work-runtime:2.8.1")
 }
 
 flutter {

@@ -65,49 +65,52 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
   void _showPasswordChangeReminder() {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Password Change Required',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontSize: 16,
+    Future.microtask(() {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Password Change Required',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
               ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'For security reasons, please change your password in the Personal Details section.',
-              style: TextStyle(color: Colors.white, fontSize: 14),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.orange[800],
-        duration: Duration(seconds: 6),
-        action: SnackBarAction(
-          label: 'Change Now',
-          textColor: Colors.white,
-          onPressed: () {
-            // Navigate to Personal Details page
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PersonalDetails(user: widget.user),
+              SizedBox(height: 4),
+              Text(
+                'For security reasons, please change your password in the Personal Details section.',
+                style: TextStyle(color: Colors.white, fontSize: 14),
               ),
-            );
-          },
+            ],
+          ),
+          backgroundColor: Colors.orange[800],
+          duration: Duration(seconds: 6),
+          action: SnackBarAction(
+            label: 'Change Now',
+            textColor: Colors.white,
+            onPressed: () {
+              // Navigate to Personal Details page
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PersonalDetails(user: widget.user),
+                ),
+              );
+            },
+          ),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
+      );
 
-    setState(() {
-      _hasShownPasswordReminder = true;
+
+      setState(() {
+        _hasShownPasswordReminder = true;
+      });
     });
   }
 
@@ -621,15 +624,15 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
   String _getCurrentDate() {
     final now = DateTime.now();
     final days = [
-      'Sunday',
       'Monday',
       'Tuesday',
       'Wednesday',
       'Thursday',
       'Friday',
       'Saturday',
+      'Sunday',
     ];
-    final dayName = days[now.weekday];
+    final dayName = days[now.weekday - 1]; // Convert 1-7 to 0-6 index
     final formattedDate =
         '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
     return 'Today | $dayName | $formattedDate';

@@ -569,8 +569,9 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    if (_screens.isEmpty)
+    if (_screens.isEmpty) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return Scaffold(
       body: _screens[_currentIndex],

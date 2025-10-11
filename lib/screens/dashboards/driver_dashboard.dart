@@ -1,14 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:intl/intl.dart';
 import '../../models/app_user.dart';
 import '../Personaldetailed/driver.dart';
 import '../workSchedule/driver_workschedule.dart';
 import '../incidentreport/driver_incidentreport.dart';
 import '../vehiclechecklist/driver_vehicle_checklist.dart';
 import '../leaveapplication/driverleaveapp.dart';
+import 'package:http/http.dart' as http;
 
 class DriverDashboard extends StatefulWidget {
   final AppUser user;
@@ -331,9 +334,84 @@ class _DriverDashboardState extends State<DriverDashboard>
     }
   }
 
+  Future<List<Map<String, dynamic>>> _fetchTodayTimeLogs() async {
+    try {
+      final response = await http.get(
+        Uri.parse("https://jeepez-attendance.onrender.com/api/logs"),
+      );
+
+      if (response.statusCode == 200) {
+        final List data = json.decode(response.body);
+
+        // Get today's date
+        final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+        // Filter logs for current user and today
+        final userLogs = data.where((log) {
+          final logDate = DateFormat('yyyy-MM-dd')
+              .format(DateTime.parse(log['timestamp']).toLocal());
+          final logName = log['name']?.toString() ?? '';
+
+          return logDate == today && logName == widget.user.name;
+        }).toList();
+
+        // Sort by timestamp
+        userLogs.sort((a, b) => DateTime.parse(a['timestamp'])
+            .compareTo(DateTime.parse(b['timestamp'])));
+
+        // Group into pairs (tap-in, tap-out)
+        List<Map<String, dynamic>> timeLogs = [];
+        Map<String, dynamic>? currentIn;
+
+        for (var log in userLogs) {
+          if (log['type'] == 'tap-in') {
+            currentIn = log;
+          } else if (log['type'] == 'tap-out' && currentIn != null) {
+            timeLogs.add({
+              'timeIn': currentIn['timestamp'],
+              'timeOut': log['timestamp'],
+            });
+            currentIn = null;
+          }
+        }
+
+        // If there's an unpaired tap-in, add it with no tap-out
+        if (currentIn != null) {
+          timeLogs.add({
+            'timeIn': currentIn['timestamp'],
+            'timeOut': null,
+          });
+        }
+
+        return timeLogs;
+      } else {
+        throw Exception("Failed to load attendance");
+      }
+    } catch (e) {
+      debugPrint('Error fetching time logs: $e');
+      return [];
+    }
+  }
+
+
+  String _formatTime(String? timestamp) {
+    if (timestamp == null) return '--:--';
+    try {
+      final dateTime = DateTime.parse(timestamp).toLocal();
+      return DateFormat('h:mma').format(dateTime).toLowerCase();
+    } catch (e) {
+      return '--:--';
+    }
+  }
+
   Widget _buildHomeScreen() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
+    final now = DateTime.now();
+    final dayOfWeek = DateFormat('EEEE').format(now);
+    final formattedDate = DateFormat('MM/dd/yy').format(now);
+
+    final todayString = 'Today | $dayOfWeek | $formattedDate';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -354,8 +432,8 @@ class _DriverDashboardState extends State<DriverDashboard>
                     // Updated with the correct filename
                     Image.asset(
                       'assets/images/a47c2721-58f7-4dc7-a395-082ab4b753e0.jpg',
-                      width: 100, // SLIGHTLY SMALLER
-                      height: 100, // SLIGHTLY SMALLER
+                      width: 100,
+                      height: 100,
                       fit: BoxFit.contain,
                     ),
                     const SizedBox(height: 20), // REDUCED FROM 40 TO 20
@@ -483,7 +561,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              "Today | Monday | 06/06/06",
+                              todayString,
                               style: TextStyle(
                                 color: Colors.white, // WHITE TEXT
                                 fontSize: isMobile ? 14 : 16,
@@ -496,7 +574,7 @@ class _DriverDashboardState extends State<DriverDashboard>
 
                         // Unit number - UPDATED WITH WHITE TEXT
                         Text(
-                          "UNIT20",
+                          'UNIT ${widget.user.assignedVehicle}',
                           style: TextStyle(
                             color: Colors.white, // WHITE TEXT
                             fontSize: isMobile ? 20 : 24,
@@ -532,56 +610,97 @@ class _DriverDashboardState extends State<DriverDashboard>
                               ),
                               const SizedBox(height: 12),
 
-                              // Time entries
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "7:20am",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: isMobile ? 14 : 16,
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                              // Dynamic Time entries
+                              FutureBuilder<List<Map<String, dynamic>>>(
+                                future: _fetchTodayTimeLogs(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState == ConnectionState.waiting) {
+                                    return const Center(
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
                                       ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        "9:00pm",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: isMobile ? 14 : 16,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    );
+                                  }
 
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        "Check-in",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: isMobile ? 14 : 16,
-                                        ),
+                                  if (snapshot.hasError) {
+                                    return Text(
+                                      "Error loading logs",
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.7),
+                                        fontSize: isMobile ? 12 : 14,
                                       ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        "Check-out",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: isMobile ? 14 : 16,
-                                        ),
+                                    );
+                                  }
+
+                                  final timeLogs = snapshot.data ?? [];
+
+                                  if (timeLogs.isEmpty) {
+                                    return Text(
+                                      "No time logs for today",
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.7),
+                                        fontSize: isMobile ? 14 : 16,
                                       ),
-                                    ],
-                                  ),
-                                ],
+                                    );
+                                  }
+
+                                  // Display all time log entries
+                                  return Column(
+                                    children: timeLogs.map((log) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 12),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  _formatTime(log['timeIn']),
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: isMobile ? 14 : 16,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  _formatTime(log['timeOut']),
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: isMobile ? 14 : 16,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            Column(
+                                              crossAxisAlignment: CrossAxisAlignment.end,
+                                              children: [
+                                                Text(
+                                                  "Check-in",
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: isMobile ? 14 : 16,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  "Check-out",
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: isMobile ? 14 : 16,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  );
+                                },
                               ),
                             ],
                           ),

@@ -832,7 +832,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                             decoration: BoxDecoration(
                               color: _getCompletionColor(
                                 candidate,
-                              ).withOpacity(0.1),
+                              ).withAlpha(1),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: _getCompletionColor(candidate),
@@ -994,7 +994,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                         decoration: BoxDecoration(
                           color: _getCompletionColor(
                             candidate,
-                          ).withOpacity(0.1),
+                          ).withAlpha(1),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: _getCompletionColor(candidate),
@@ -1138,7 +1138,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: _selectedFilter,
+                    value: _selectedFilter,
                     onChanged: (value) {
                       setState(() {
                         _selectedFilter = value!;
@@ -1206,7 +1206,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                   Expanded(
                     flex: 1,
                     child: DropdownButtonFormField<String>(
-                      initialValue: _selectedFilter,
+                      value: _selectedFilter,
                       onChanged: (value) {
                         setState(() {
                           _selectedFilter = value!;

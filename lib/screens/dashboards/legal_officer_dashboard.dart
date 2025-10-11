@@ -39,35 +39,35 @@ class _LegalOfficerDashboardScreenState
   bool _showNewPassword = false;
   bool _showConfirmPassword = false;
 
-  // Stream to get inspectors with their inspection counts
+// Stream to get inspectors with their inspection counts
   Stream<List<Map<String, dynamic>>> getInspectorsStream() {
     return FirebaseFirestore.instance
         .collection('users')
         .where('role', isEqualTo: 'inspector')
         .snapshots()
         .asyncMap((snapshot) async {
-          final inspectors = <Map<String, dynamic>>[];
+      final inspectors = <Map<String, dynamic>>[];
 
-          for (var doc in snapshot.docs) {
-            final inspectorData = doc.data();
-            final inspectorId = doc.id;
+      for (var doc in snapshot.docs) {
+        final inspectorData = doc.data();
+        final inspectorId = doc.id;
 
-            // Get inspection count for this inspector
-            final inspectionSnapshot = await FirebaseFirestore.instance
-                .collection('inspector_reports')
-                .where('inspectorId', isEqualTo: inspectorId)
-                .get();
+        // Get inspection count for this inspector from inspector_trip collection
+        final inspectionSnapshot = await FirebaseFirestore.instance
+            .collection('inspector_trip')
+            .where('uid', isEqualTo: inspectorId)
+            .get();
 
-            final inspectionCount = inspectionSnapshot.docs.length;
+        final inspectionCount = inspectionSnapshot.docs.length;
 
-            inspectors.add({
-              ...inspectorData,
-              'inspectionCount': inspectionCount,
-            });
-          }
-
-          return inspectors;
+        inspectors.add({
+          ...inspectorData,
+          'inspectionCount': inspectionCount,
         });
+      }
+
+      return inspectors;
+    });
   }
 
   Stream<List<Map<String, dynamic>>> getIncidentReportsStream() async* {
