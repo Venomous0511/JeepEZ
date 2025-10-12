@@ -27,7 +27,6 @@ class _LegalOfficerDashboardScreenState
   int _selectedIndex = 0;
   Widget? _currentScreen;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  bool _hasShownPasswordReminder = false; // ADDED: Password reminder flag
 
   // Hiring Management dropdown state
   bool _isHiringExpanded = false;
@@ -47,68 +46,6 @@ class _LegalOfficerDashboardScreenState
   void initState() {
     super.initState();
     _currentScreen = null; // Start with main dashboard
-    _checkIfNewAccount(); // ADDED: Check if new account on init
-  }
-
-  // ADDED: Check if new account (created within 24 hours)
-  Future<void> _checkIfNewAccount() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final creationTime = user.metadata.creationTime;
-        if (creationTime != null &&
-            DateTime.now().difference(creationTime).inHours < 24 &&
-            !_hasShownPasswordReminder) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showPasswordChangeReminder();
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Error checking account status: $e');
-    }
-  }
-
-  // ADDED: Show password change reminder
-  void _showPasswordChangeReminder() {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              'Password Change Required',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontSize: 16,
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'For security reasons, please change your password in the Change Password section.',
-              style: TextStyle(color: Colors.white, fontSize: 14),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.orange,
-        duration: const Duration(seconds: 6),
-        action: SnackBarAction(
-          label: 'Change Now',
-          textColor: Colors.white,
-          onPressed: () {
-            _showChangePasswordDialog(); // Open password change dialog directly
-          },
-        ),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-
-    setState(() => _hasShownPasswordReminder = true);
   }
 
   // Stream to get inspectors with their inspection counts
@@ -259,9 +196,6 @@ class _LegalOfficerDashboardScreenState
       _currentPasswordController.clear();
       _newPasswordController.clear();
       _confirmPasswordController.clear();
-
-      // Update the flag to indicate password has been changed
-      setState(() => _hasShownPasswordReminder = true);
 
       Navigator.of(context).pop(); // Close the dialog
     } on FirebaseAuthException catch (e) {
@@ -465,15 +399,15 @@ class _LegalOfficerDashboardScreenState
     setState(() => _isLoggingOut = true);
 
     try {
-      // If you actually want to wait (e.g., show spinner), keep the delay. Otherwise remove.
-      await Future.delayed(const Duration(seconds: 1));
+      await Future.delayed(const Duration(milliseconds: 3000));
       await AuthService().logout();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to sign out: $e')));
-      setState(() => _isLoggingOut = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to sign out: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoggingOut = false);
     }
   }
 

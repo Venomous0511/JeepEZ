@@ -321,7 +321,7 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                                 width: 80,
                                                 child: Center(
                                                   child: Text(
-                                                    '₱$header',
+                                                    header,
                                                     style: TextStyle(
                                                       fontSize: 16,
                                                       fontWeight:

@@ -3,7 +3,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/app_user.dart';
 import '../Personaldetailed/driver.dart';
 import '../violationReport/inspector_violation_report.dart';
@@ -21,97 +20,16 @@ class InspectorDashboard extends StatefulWidget {
 class _InspectorDashboardState extends State<InspectorDashboard> {
   int _currentIndex = 0;
   late List<Widget> _screens;
-  bool _hasShownPasswordReminder = false;
 
   @override
   void initState() {
     super.initState();
     _screens = [];
-    _checkIfNewAccount();
 
     /// Location Stream
     _vehicleLocationsStream = _firestore
         .collection('vehicles_locations')
         .snapshots();
-  }
-
-  // Check if this is a new account that needs password change
-  Future<void> _checkIfNewAccount() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        // Check user creation time - if account was created within the last 24 hours, consider it new
-        final userCreationTime = user.metadata.creationTime;
-        final now = DateTime.now();
-
-        if (userCreationTime != null) {
-          final hoursSinceCreation = now.difference(userCreationTime).inHours;
-
-          // Consider account as "new" if created within last 24 hours AND hasn't shown reminder yet
-          final isNewAccount = hoursSinceCreation < 24;
-
-          if (isNewAccount && !_hasShownPasswordReminder) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _showPasswordChangeReminder();
-            });
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Error checking account status: $e');
-    }
-  }
-
-  void _showPasswordChangeReminder() {
-    if (!mounted) return;
-
-    Future.microtask(() {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Password Change Required',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                'For security reasons, please change your password in the Personal Details section.',
-                style: TextStyle(color: Colors.white, fontSize: 14),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.orange[800],
-          duration: Duration(seconds: 6),
-          action: SnackBarAction(
-            label: 'Change Now',
-            textColor: Colors.white,
-            onPressed: () {
-              // Navigate to Personal Details page
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => PersonalDetails(user: widget.user),
-                ),
-              );
-            },
-          ),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
-
-
-      setState(() {
-        _hasShownPasswordReminder = true;
-      });
-    });
   }
 
   @override
