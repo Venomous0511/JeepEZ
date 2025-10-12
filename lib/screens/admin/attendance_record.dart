@@ -36,7 +36,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   /// Refresh data
   void _refreshData() {
     setState(() {
-      // This will trigger a rebuild and refetch the data
     });
   }
 
