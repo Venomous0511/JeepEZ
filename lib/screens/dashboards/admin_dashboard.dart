@@ -28,6 +28,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   bool _isLoggingOut = false;
   int _currentScreenIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _hasShownPasswordReminder = false;
 
   // Password change variables
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -53,13 +54,74 @@ class _AdminDashboardState extends State<AdminDashboard> {
         attendanceFuture: fetchAttendance(DateTime.now()),
       ),
       EmployeeListScreen(user: widget.user),
-      AttendanceScreen(
-        onBackPressed: () => _navigateToScreen(0), // Go back to home
-      ),
+      AttendanceScreen(onBackPressed: () => _navigateToScreen(0)),
       const LeaveManagementScreen(),
       const DriverConductorManagementScreen(),
       const MaintenanceScreen(),
     ]);
+
+    _checkIfNewAccount();
+  }
+
+  // Check if new account (created within 24 hours)
+  Future<void> _checkIfNewAccount() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final creationTime = user.metadata.creationTime;
+        if (creationTime != null &&
+            DateTime.now().difference(creationTime).inHours < 24 &&
+            !_hasShownPasswordReminder) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showPasswordChangeReminder();
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking account status: $e');
+    }
+  }
+
+  // Show password change reminder
+  void _showPasswordChangeReminder() {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text(
+              'Password Change Required',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'For security reasons, please change your password in the Change Password section.',
+              style: TextStyle(color: Colors.white, fontSize: 14),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.orange,
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: 'Change Now',
+          textColor: Colors.white,
+          onPressed: () {
+            _showChangePasswordDialog();
+          },
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+
+    setState(() => _hasShownPasswordReminder = true);
   }
 
   void _navigateToScreen(int index) {
@@ -167,7 +229,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
       _newPasswordController.clear();
       _confirmPasswordController.clear();
 
-      Navigator.of(context).pop(); // Close the dialog
+      // Update the flag to indicate password has been changed
+      setState(() => _hasShownPasswordReminder = true);
+
+      Navigator.of(context).pop();
     } on FirebaseAuthException catch (e) {
       String message = "Password change failed";
       if (e.code == 'wrong-password') {
@@ -391,7 +456,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Header - WALANG X DITO
+                // Header - NO X BUTTON HERE
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: const BoxDecoration(
@@ -418,7 +483,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         ),
                       ),
                       const Spacer(),
-                      // ALISIN ANG X BUTTON DITO SA HEADER
                     ],
                   ),
                 ),
@@ -566,7 +630,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      // X button for individual notification - ITO LANG ANG MAY X
+                                      // X button for individual notification - ONLY THIS HAS X
                                       IconButton(
                                         icon: const Icon(Icons.close, size: 16),
                                         color: Colors.grey.shade500,
@@ -590,7 +654,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                 ),
 
-                // Footer - DITO LANG ULIT ANG CLOSE BUTTON
+                // Footer - CLOSE BUTTON HERE AGAIN
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(

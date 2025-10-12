@@ -135,23 +135,20 @@ class _InspectorReportHistoryScreenState
       String inspectorUid,
       ) async {
     try {
-      final tripDate = tripTimestamp.toDate();
-      final startOfDay = DateTime(tripDate.year, tripDate.month, tripDate.day);
-      final endOfDay = DateTime(tripDate.year, tripDate.month, tripDate.day, 23, 59, 59);
-
+      // Remove date filtering - just query by inspector
       final querySnapshot = await _firestore
           .collection('violation_report')
           .where('reporterUid', isEqualTo: inspectorUid)
-          .where('submittedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-          .where('submittedAt', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
           .get();
 
       int violations = 0;
       for (var doc in querySnapshot.docs) {
         final data = doc.data();
-        final name = data['reportedName']?.toString().toLowerCase() ?? '';
-        if (name.contains(driverName.toLowerCase()) ||
-            name.contains(conductorName.toLowerCase())) {
+        final reportedName = data['reportedName']?.toString().toLowerCase() ?? '';
+
+        // Check if the reported name matches driver or conductor
+        if (reportedName.contains(driverName.toLowerCase()) ||
+            reportedName.contains(conductorName.toLowerCase())) {
           violations++;
         }
       }
@@ -564,10 +561,6 @@ class _InspectorReportHistoryScreenState
   }
 
   void _showViolationDetails(BuildContext context, String driverName, String conductorName, Timestamp tripTimestamp, String inspectorUid) {
-    final tripDate = tripTimestamp.toDate();
-    final startOfDay = DateTime(tripDate.year, tripDate.month, tripDate.day);
-    final endOfDay = DateTime(tripDate.year, tripDate.month, tripDate.day, 23, 59, 59);
-
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -594,8 +587,6 @@ class _InspectorReportHistoryScreenState
                   stream: _firestore
                       .collection('violation_report')
                       .where('reporterUid', isEqualTo: inspectorUid)
-                      .where('submittedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-                      .where('submittedAt', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
                       .snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -606,10 +597,12 @@ class _InspectorReportHistoryScreenState
                       return const Center(child: Text('No violations found'));
                     }
 
+                    // Filter violations by driver or conductor name
                     final violations = snapshot.data!.docs.where((doc) {
                       final data = doc.data() as Map<String, dynamic>;
                       final name = data['reportedName']?.toString().toLowerCase() ?? '';
-                      return name == driverName.toLowerCase() || name == conductorName.toLowerCase();
+                      return name.contains(driverName.toLowerCase()) ||
+                          name.contains(conductorName.toLowerCase());
                     }).toList();
 
                     if (violations.isEmpty) {
@@ -621,6 +614,8 @@ class _InspectorReportHistoryScreenState
                       itemCount: violations.length,
                       itemBuilder: (context, index) {
                         final data = violations[index].data() as Map<String, dynamic>;
+                        final submittedAt = (data['submittedAt'] as Timestamp?)?.toDate();
+
                         return Card(
                           margin: const EdgeInsets.only(bottom: 8),
                           child: ListTile(
@@ -633,6 +628,14 @@ class _InspectorReportHistoryScreenState
                                 Text('Position: ${data['reportedPosition'] ?? 'N/A'}'),
                                 Text('Location: ${data['location'] ?? 'N/A'}'),
                                 Text('Time: ${data['time'] ?? 'N/A'}'),
+                                if (submittedAt != null)
+                                  Text(
+                                    'Submitted: ${submittedAt.year}-${submittedAt.month.toString().padLeft(2, '0')}-${submittedAt.day.toString().padLeft(2, '0')}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
                               ],
                             ),
                           ),

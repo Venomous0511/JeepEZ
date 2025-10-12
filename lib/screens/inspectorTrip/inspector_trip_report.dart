@@ -29,9 +29,9 @@ class InspectorTripScreen extends StatefulWidget {
 class InspectorTripScreenState extends State<InspectorTripScreen> {
   final TextEditingController unitNumberController = TextEditingController();
   final TextEditingController driverNameController = TextEditingController();
-  final TextEditingController driverEmployeeIdController = TextEditingController();
   final TextEditingController conductorNameController = TextEditingController();
-  final TextEditingController inspectionTimeController = TextEditingController();
+  final TextEditingController inspectionTimeController =
+      TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController noOfPassController = TextEditingController();
   final TextEditingController noOfTripsController = TextEditingController();
@@ -41,9 +41,6 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
 
   // Ticket denominations (header)
   final List<String> ticketHeaders = ['20', '15', '10', '5', '2', '1'];
-
-  // Variables to store violations
-  List<Map<String, dynamic>> driverViolations = [];
 
   @override
   void initState() {
@@ -86,36 +83,6 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
     }
   }
 
-  // Fetch violations for the driver based on employeeId
-  Future<void> _fetchDriverViolations(String employeeId) async {
-    if (employeeId.isEmpty) {
-      setState(() {
-        driverViolations = [];
-      });
-      return;
-    }
-
-    try {
-      QuerySnapshot violationSnapshot = await FirebaseFirestore.instance
-          .collection('violation_report')
-          .where('reportedEmployeeId', isEqualTo: employeeId)
-          .where('status', isEqualTo: 'Open')
-          .orderBy('submittedAt', descending: true)
-          .get();
-
-      setState(() {
-        driverViolations = violationSnapshot.docs
-            .map((doc) => doc.data() as Map<String, dynamic>)
-            .toList();
-      });
-    } catch (e) {
-      print('Error fetching violations: $e');
-      setState(() {
-        driverViolations = [];
-      });
-    }
-  }
-
   @override
   void dispose() {
     for (var row in ticketRows) {
@@ -125,7 +92,6 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
     }
     unitNumberController.dispose();
     driverNameController.dispose();
-    driverEmployeeIdController.dispose();
     conductorNameController.dispose();
     inspectionTimeController.dispose();
     locationController.dispose();
@@ -231,18 +197,6 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                         ),
                         const SizedBox(height: 15),
 
-                        // Driver Employee ID (to fetch violations)
-                        _buildFormField(
-                          'Driver Employee ID',
-                          driverEmployeeIdController,
-                          'Enter driver employee ID',
-                          textColor: const Color(0xFF0D2364),
-                          onChanged: (value) {
-                            _fetchDriverViolations(value);
-                          },
-                        ),
-                        const SizedBox(height: 15),
-
                         _buildFormField(
                           'Name of Conductor',
                           conductorNameController,
@@ -283,88 +237,7 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
 
                         const SizedBox(height: 20),
 
-                        // VIOLATIONS SECTION (fetched from database)
-                        if (driverViolations.isNotEmpty)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.red[400]!),
-                              borderRadius: BorderRadius.circular(8),
-                              color: Colors.red[50],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'VIOLATIONS (${driverViolations.length})',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.red[700],
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                ...driverViolations.map((violation) {
-                                  final submittedAt = violation['submittedAt'] as Timestamp?;
-                                  final formattedDate = submittedAt != null
-                                      ? _formatTimestamp(submittedAt)
-                                      : 'N/A';
-
-                                  return Container(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      border: Border.all(color: Colors.red[300]!),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Violation: ${violation['violation'] ?? 'N/A'}',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Location: ${violation['location'] ?? 'N/A'}',
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                        Text(
-                                          'Reporter ID: ${violation['reporterEmployeeId'] ?? 'N/A'}',
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                        Text(
-                                          'Status: ${violation['status'] ?? 'N/A'}',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.red,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        Text(
-                                          'Reported: $formattedDate',
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                              ],
-                            ),
-                          ),
-
-                        const SizedBox(height: 20),
-
-                        // TICKET SALES SECTION
+                        // TICKET INSPECTION REPORT SECTION
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(14),
@@ -377,11 +250,12 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      'TICKET SALES (Max 4 inspections)',
+                                      'Ticket Inspection Report (Max 4 inspections)',
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
@@ -392,7 +266,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                   ),
                                   IconButton(
                                     onPressed: _addTicketRow,
-                                    icon: const Icon(Icons.add_circle, color: Color(0xFF0D2364)),
+                                    icon: const Icon(
+                                      Icons.add_circle,
+                                      color: Color(0xFF0D2364),
+                                    ),
                                     tooltip: 'Add Row',
                                   ),
                                 ],
@@ -404,18 +281,24 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                 scrollDirection: Axis.horizontal,
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey[400]!),
+                                    border: Border.all(
+                                      color: Colors.grey[400]!,
+                                    ),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Column(
                                     children: [
                                       // Header Row (20, 15, 10, 5, 2, 1)
                                       Container(
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFF0D2364),
                                           border: Border(
-                                            bottom: BorderSide(color: Colors.grey[400]!),
+                                            bottom: BorderSide(
+                                              color: Colors.grey[400]!,
+                                            ),
                                           ),
                                         ),
                                         child: Row(
@@ -441,7 +324,8 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                                     '₱$header',
                                                     style: TextStyle(
                                                       fontSize: 16,
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                       color: Colors.white,
                                                     ),
                                                   ),
@@ -450,7 +334,11 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                             SizedBox(
                                               width: 60,
                                               child: Center(
-                                                child: Icon(Icons.delete, color: Colors.white, size: 20),
+                                                child: Icon(
+                                                  Icons.delete,
+                                                  color: Colors.white,
+                                                  size: 20,
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -458,13 +346,21 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                       ),
 
                                       // Data Rows
-                                      for (int rowIndex = 0; rowIndex < ticketRows.length; rowIndex++)
+                                      for (
+                                        int rowIndex = 0;
+                                        rowIndex < ticketRows.length;
+                                        rowIndex++
+                                      )
                                         Container(
                                           decoration: BoxDecoration(
                                             border: Border(
-                                              bottom: rowIndex == ticketRows.length - 1
+                                              bottom:
+                                                  rowIndex ==
+                                                      ticketRows.length - 1
                                                   ? BorderSide.none
-                                                  : BorderSide(color: Colors.grey[400]!),
+                                                  : BorderSide(
+                                                      color: Colors.grey[400]!,
+                                                    ),
                                             ),
                                           ),
                                           child: Row(
@@ -477,49 +373,78 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                                     '${rowIndex + 1}',
                                                     style: TextStyle(
                                                       fontSize: 14,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: const Color(0xFF0D2364),
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: const Color(
+                                                        0xFF0D2364,
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
                                               ),
                                               // Input fields for each denomination
-                                              for (int colIndex = 0; colIndex < 6; colIndex++)
+                                              for (
+                                                int colIndex = 0;
+                                                colIndex < 6;
+                                                colIndex++
+                                              )
                                                 Container(
                                                   width: 80,
                                                   decoration: BoxDecoration(
                                                     border: Border(
-                                                      right: BorderSide(color: Colors.grey[400]!),
+                                                      right: BorderSide(
+                                                        color:
+                                                            Colors.grey[400]!,
+                                                      ),
                                                     ),
                                                   ),
                                                   child: Padding(
-                                                    padding: const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 12,
-                                                    ),
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 12,
+                                                        ),
                                                     child: TextField(
-                                                      controller: ticketRows[rowIndex][colIndex],
-                                                      textAlign: TextAlign.center,
-                                                      keyboardType: TextInputType.number,
-                                                      decoration: const InputDecoration(
-                                                        border: InputBorder.none,
-                                                        contentPadding: EdgeInsets.zero,
-                                                        isDense: true,
-                                                        hintText: '0',
-                                                      ),
+                                                      controller:
+                                                          ticketRows[rowIndex][colIndex],
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      keyboardType:
+                                                          TextInputType.number,
+                                                      decoration:
+                                                          const InputDecoration(
+                                                            border: InputBorder
+                                                                .none,
+                                                            contentPadding:
+                                                                EdgeInsets.zero,
+                                                            isDense: true,
+                                                            hintText: '0',
+                                                          ),
                                                       style: const TextStyle(
                                                         fontSize: 14,
                                                         color: Colors.black,
                                                       ),
                                                       onChanged: (value) {
                                                         if (value.isNotEmpty &&
-                                                            !RegExp(r'^[0-9]*$').hasMatch(value)) {
-                                                          ticketRows[rowIndex][colIndex].text =
-                                                              value.replaceAll(RegExp(r'[^0-9]'), '');
-                                                          ticketRows[rowIndex][colIndex].selection =
+                                                            !RegExp(
+                                                              r'^[0-9]*$',
+                                                            ).hasMatch(value)) {
+                                                          ticketRows[rowIndex][colIndex]
+                                                              .text = value
+                                                              .replaceAll(
+                                                                RegExp(
+                                                                  r'[^0-9]',
+                                                                ),
+                                                                '',
+                                                              );
+                                                          ticketRows[rowIndex][colIndex]
+                                                                  .selection =
                                                               TextSelection.fromPosition(
                                                                 TextPosition(
-                                                                  offset: ticketRows[rowIndex][colIndex].text.length,
+                                                                  offset:
+                                                                      ticketRows[rowIndex][colIndex]
+                                                                          .text
+                                                                          .length,
                                                                 ),
                                                               );
                                                         }
@@ -531,8 +456,14 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                               SizedBox(
                                                 width: 60,
                                                 child: IconButton(
-                                                  onPressed: () => _removeTicketRow(rowIndex),
-                                                  icon: Icon(Icons.delete_outline, color: Colors.red[700]),
+                                                  onPressed: () =>
+                                                      _removeTicketRow(
+                                                        rowIndex,
+                                                      ),
+                                                  icon: Icon(
+                                                    Icons.delete_outline,
+                                                    color: Colors.red[700],
+                                                  ),
                                                   tooltip: 'Remove Row',
                                                 ),
                                               ),
@@ -563,9 +494,14 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    padding: const EdgeInsets.symmetric(vertical: 15),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 15,
+                                    ),
                                   ),
-                                  child: const Text('History', style: TextStyle(fontSize: 16)),
+                                  child: const Text(
+                                    'History',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
                                 ),
                               ),
                             ),
@@ -580,9 +516,14 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    padding: const EdgeInsets.symmetric(vertical: 15),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 15,
+                                    ),
                                   ),
-                                  child: const Text('Save & Submit', style: TextStyle(fontSize: 16)),
+                                  child: const Text(
+                                    'Save & Submit',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
                                 ),
                               ),
                             ),
@@ -601,10 +542,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
   }
 
   Widget _buildTimePickerField(
-      String label,
-      TextEditingController controller, {
-        Color textColor = Colors.black,
-      }) {
+    String label,
+    TextEditingController controller, {
+    Color textColor = Colors.black,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -642,7 +583,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                   borderRadius: BorderRadius.circular(8),
                   borderSide: const BorderSide(color: Color(0xFF0D2364)),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 15,
+                  vertical: 15,
+                ),
               ),
             ),
           ),
@@ -652,12 +596,12 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
   }
 
   Widget _buildFormField(
-      String label,
-      TextEditingController controller,
-      String hintText, {
-        Color textColor = Colors.black,
-        ValueChanged<String>? onChanged,
-      }) {
+    String label,
+    TextEditingController controller,
+    String hintText, {
+    Color textColor = Colors.black,
+    ValueChanged<String>? onChanged,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -685,7 +629,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: Color(0xFF0D2364)),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 15,
+              vertical: 15,
+            ),
           ),
         ),
       ],
@@ -698,7 +645,9 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
       builder: (BuildContext context) {
         return Dialog(
           backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Container(
             padding: const EdgeInsets.all(20),
             constraints: BoxConstraints(
@@ -721,7 +670,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                   child: StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('inspector_trip')
-                        .where('uid', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                        .where(
+                          'uid',
+                          isEqualTo: FirebaseAuth.instance.currentUser?.uid,
+                        )
                         .orderBy('timestamp', descending: true)
                         .snapshots(),
                     builder: (context, snapshot) {
@@ -730,7 +682,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                       }
                       if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                         return const Center(
-                          child: Text('No submission history found', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                          child: Text(
+                            'No submission history found',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
                         );
                       }
                       final docs = snapshot.data!.docs;
@@ -738,7 +693,8 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                         shrinkWrap: true,
                         itemCount: docs.length,
                         itemBuilder: (context, index) {
-                          final data = docs[index].data() as Map<String, dynamic>;
+                          final data =
+                              docs[index].data() as Map<String, dynamic>;
                           final timestamp = data['timestamp'] as Timestamp?;
                           return Container(
                             margin: const EdgeInsets.only(bottom: 8),
@@ -751,13 +707,29 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Unit: ${data['unitNumber'] ?? 'N/A'}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                Text(
+                                  'Unit: ${data['unitNumber'] ?? 'N/A'}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
                                 const SizedBox(height: 4),
                                 Text('Driver: ${data['driverName'] ?? 'N/A'}'),
-                                Text('Conductor: ${data['conductorName'] ?? 'N/A'}'),
-                                Text('Time: ${data['inspectionTime'] ?? 'N/A'}'),
+                                Text(
+                                  'Conductor: ${data['conductorName'] ?? 'N/A'}',
+                                ),
+                                Text(
+                                  'Time: ${data['inspectionTime'] ?? 'N/A'}',
+                                ),
                                 if (timestamp != null)
-                                  Text('Submitted: ${_formatTimestamp(timestamp)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                  Text(
+                                    'Submitted: ${_formatTimestamp(timestamp)}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
                               ],
                             ),
                           );
@@ -778,7 +750,9 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0D2364),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                       child: const Text('Close'),
                     ),
@@ -802,7 +776,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
 
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User not logged in'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('User not logged in'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -811,7 +788,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
         driverNameController.text.isEmpty ||
         conductorNameController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all required fields'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Please fill in all required fields'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -831,35 +811,27 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
       ticketSalesData.add(rowData);
     }
 
-    // Extract violations IDs from fetched violations
-    List<String> violationIds = [];
-    for (var violation in driverViolations) {
-      // Get the document ID from the violation
-      violationIds.add(violation.toString());
-    }
-
     Map<String, dynamic> formData = {
       'unitNumber': unitNumberController.text,
       'driverName': driverNameController.text,
-      'driverEmployeeId': driverEmployeeIdController.text,
       'conductorName': conductorNameController.text,
       'inspectionTime': inspectionTimeController.text,
       'noOfPass': noOfPassController.text,
       'location': locationController.text,
       'noOfTrips': noOfTripsController.text,
       'ticketSalesData': ticketSalesData,
-      'violations': driverViolations,
       'uid': user.uid,
       'timestamp': FieldValue.serverTimestamp(),
     };
 
     try {
-      await FirebaseFirestore.instance.collection('inspector_trip').add(formData);
+      await FirebaseFirestore.instance
+          .collection('inspector_trip')
+          .add(formData);
 
       // Clear form
       unitNumberController.clear();
       driverNameController.clear();
-      driverEmployeeIdController.clear();
       conductorNameController.clear();
       inspectionTimeController.clear();
       noOfPassController.clear();
@@ -874,19 +846,24 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
           }
         }
         ticketRows.clear();
-        driverViolations.clear();
         _addTicketRow();
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Form submitted successfully!'), backgroundColor: Color(0xFF0D2364)),
+          const SnackBar(
+            content: Text('Form submitted successfully!'),
+            backgroundColor: Color(0xFF0D2364),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving form: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error saving form: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }

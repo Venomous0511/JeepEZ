@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/app_user.dart';
+import '../../settings_service.dart';
+import 'github_release_service.dart';
 
 class SystemManagementScreen extends StatefulWidget {
   final AppUser user;
@@ -10,54 +12,114 @@ class SystemManagementScreen extends StatefulWidget {
 }
 
 class _SystemManagementScreenState extends State<SystemManagementScreen> {
-  // Sample system settings data
   bool _maintenanceMode = false;
-  String _selectedVersion = '1.0.1';
-  String? _selectedChangelog; // For changelog dropdown
-
-  // Changelog data - simplified commit-style messages
-  final Map<String, String> _changelogData = {
-    'v1.0.2 (2027-12-30)': '''
-© Developer authored on Dec 30, 2027
-Added real-time jeepney tracking feature
-
-© Developer authored on Dec 30, 2027
-Integrated digital payment system
-
-© Developer authored on Dec 30, 2027
-Fixed GPS accuracy issues in urban areas
-''',
-    'v1.0.1 (2026-12-30)': '''
-© Developer authored on Dec 30, 2026
-Initial release of JeepEZ system
-
-© Developer authored on Dec 30, 2026
-Added fare calculation based on distance
-
-© Developer authored on Dec 30, 2026
-Implemented driver-passenger matching
-''',
-    'v1.0.0 (2025-12-30)': '''
-© Developer authored on Dec 30, 2025
-Initial commit for JeepEZ system
-
-© Developer authored on Dec 30, 2025
-Setup core infrastructure
-
-© Developer authored on Dec 30, 2025
-Project initialization
-''',
-  };
+  String _selectedVersion = '';
+  String? _selectedChangelog;
+  bool _isLoading = true;
+  List<GitHubRelease> _releases = [];
+  String _errorMessage = '';
 
   @override
   void initState() {
     super.initState();
-    // Set the default selected changelog to the latest version
-    _selectedChangelog = _changelogData.keys.first;
+    _loadMaintenanceMode();
+    _loadGitHubReleases();
+  }
+
+  Future<void> _loadMaintenanceMode() async {
+    final mode = await SettingsService.getMaintenanceMode();
+    setState(() {
+      _maintenanceMode = mode;
+    });
+  }
+
+  Future<void> _loadGitHubReleases() async {
+    try {
+      final releases = await GitHubReleaseService.fetchReleases();
+      setState(() {
+        _releases = releases;
+        if (releases.isNotEmpty) {
+          _selectedChangelog = releases.first.tagName;
+          _selectedVersion = releases.first.version;
+        }
+        _isLoading = false;
+        _errorMessage = '';
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Failed to load releases: ${e.toString()}';
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleMaintenanceMode(bool value) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(value ? 'Enable Maintenance Mode' : 'Disable Maintenance Mode'),
+          content: Text(
+            value
+                ? 'This will prevent all users (except administrators) from accessing the app. Do you want to continue?'
+                : 'This will allow all users to access the app normally. Do you want to continue?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: value ? Colors.red : const Color(0xFF0D2364),
+              ),
+              child: Text(
+                'Confirm',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      await SettingsService.setMaintenanceMode(value);
+      setState(() {
+        _maintenanceMode = value;
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            value
+                ? 'Maintenance mode enabled'
+                : 'Maintenance mode disabled',
+          ),
+          backgroundColor: value ? Colors.orange : Colors.green,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -68,38 +130,72 @@ Project initialization
               'Maintenance Mode',
               'Restrict access to administrators only',
               _maintenanceMode,
-              (value) => setState(() => _maintenanceMode = value),
+              _toggleMaintenanceMode,
             ),
-
-            const SizedBox(height: 16),
-            _buildSectionHeader('Update'),
-            _buildDropdownSetting(
-              'App Version',
-              _selectedVersion,
-              ['1.0.1', '1.0.2'],
-              (value) => setState(() => _selectedVersion = value!),
-            ),
-
-            const SizedBox(height: 16),
-            _buildSectionHeader('Changelog'),
-            _buildChangelogDropdown(),
-
-            const SizedBox(height: 16),
-            _buildActionButton('View Changelog', Icons.description, () {
-              _showChangelog();
-            }),
 
             const SizedBox(height: 24),
-            _buildActionButton('Update', Icons.update, () {
-              _updateApp();
-            }),
+            _buildSectionHeader('Update'),
+            if (_releases.isEmpty)
+              _buildErrorWidget()
+            else ...[
+              _buildDropdownSetting(
+                'Select Version',
+                _selectedVersion,
+                _releases.map((r) => r.version).toList(),
+                    (value) {
+                  setState(() {
+                    _selectedVersion = value!;
+                    final release = _releases.firstWhere(
+                          (r) => r.version == value,
+                      orElse: () => _releases.first,
+                    );
+                    _selectedChangelog = release.tagName;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 16),
+              _buildActionButton('View Changelog', Icons.description, () {
+                _showChangelog();
+              }),
+
+              const SizedBox(height: 16),
+              _buildActionButton('Update', Icons.update, () {
+                _updateApp();
+              }),
+            ],
 
             const SizedBox(height: 16),
-            _buildActionButton('Clear Cache', Icons.delete, () {
-              _clearSystemCache();
-            }, isDestructive: true),
+            _buildActionButton('Reload Releases', Icons.cloud_download, () {
+              setState(() {
+                _isLoading = true;
+              });
+              _loadGitHubReleases();
+            }),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildErrorWidget() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        border: Border.all(color: Colors.red),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.error, color: Colors.red, size: 32),
+          const SizedBox(height: 8),
+          Text(
+            _errorMessage,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.red),
+          ),
+        ],
       ),
     );
   }
@@ -119,11 +215,11 @@ Project initialization
   }
 
   Widget _buildSwitchSetting(
-    String title,
-    String subtitle,
-    bool value,
-    Function(bool) onChanged,
-  ) {
+      String title,
+      String subtitle,
+      bool value,
+      Function(bool) onChanged,
+      ) {
     return SwitchListTile(
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
       subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
@@ -134,17 +230,17 @@ Project initialization
   }
 
   Widget _buildDropdownSetting(
-    String title,
-    String value,
-    List<String> options,
-    Function(String?) onChanged,
-  ) {
+      String title,
+      String value,
+      List<String> options,
+      Function(String?) onChanged,
+      ) {
     return DropdownButtonFormField(
       decoration: InputDecoration(
         labelText: title,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
       ),
-      value: value,
+      value: options.contains(value) ? value : options.first,
       items: options.map((String option) {
         return DropdownMenuItem(value: option, child: Text(option));
       }).toList(),
@@ -152,26 +248,12 @@ Project initialization
     );
   }
 
-  Widget _buildChangelogDropdown() {
-    return DropdownButtonFormField(
-      decoration: InputDecoration(
-        labelText: 'Select Version',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
-      ),
-      value: _selectedChangelog,
-      items: _changelogData.keys.map((String version) {
-        return DropdownMenuItem(value: version, child: Text(version));
-      }).toList(),
-      onChanged: (value) => setState(() => _selectedChangelog = value),
-    );
-  }
-
   Widget _buildActionButton(
-    String text,
-    IconData icon,
-    Function() onPressed, {
-    bool isDestructive = false,
-  }) {
+      String text,
+      IconData icon,
+      Function() onPressed, {
+        bool isDestructive = false,
+      }) {
     return ElevatedButton.icon(
       icon: Icon(
         icon,
@@ -198,26 +280,53 @@ Project initialization
   }
 
   void _showChangelog() {
-    if (_selectedChangelog == null ||
-        !_changelogData.containsKey(_selectedChangelog)) {
+    if (_selectedChangelog == null || _releases.isEmpty) {
       return;
     }
+
+    final release = _releases.firstWhere(
+          (r) => r.tagName == _selectedChangelog,
+      orElse: () => _releases.first,
+    );
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Changelog - $_selectedChangelog'),
+          title: Text('Changelog - ${release.version}'),
           content: SingleChildScrollView(
-            child: Text(
-              _changelogData[_selectedChangelog]!,
-              style: const TextStyle(fontSize: 14, height: 1.4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Released: ${GitHubReleaseService.formatDate(release.releaseDate)}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  release.changelog,
+                  style: const TextStyle(fontSize: 14, height: 1.5),
+                ),
+              ],
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Close'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Open release on GitHub
+                // You can use url_launcher package for this
+              },
+              child: const Text('View on GitHub'),
             ),
           ],
         );
@@ -226,12 +335,28 @@ Project initialization
   }
 
   void _updateApp() {
+    final release = _releases.firstWhere(
+          (r) => r.version == _selectedVersion,
+      orElse: () => _releases.first,
+    );
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Update App'),
-          content: Text('Update to version $_selectedVersion?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Update to version ${release.version}?'),
+              const SizedBox(height: 8),
+              Text(
+                'Released: ${GitHubReleaseService.formatDate(release.releaseDate)}',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -242,7 +367,7 @@ Project initialization
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Updating to version $_selectedVersion...'),
+                    content: Text('Updating to version ${release.version}...'),
                   ),
                 );
               },
@@ -253,38 +378,6 @@ Project initialization
                 'Update',
                 style: TextStyle(color: Colors.white),
               ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _clearSystemCache() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Clear Cache'),
-          content: const Text(
-            'This will remove all temporary system files. This action cannot be undone.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('System cache cleared successfully'),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('Clear', style: TextStyle(color: Colors.white)),
             ),
           ],
         );

@@ -1002,9 +1002,9 @@ class _DriverConductorManagementScreenState
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: roleColor.withOpacity(0.1),
+              color: roleColor.withAlpha(1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: roleColor.withOpacity(0.3)),
+              border: Border.all(color: roleColor.withAlpha(3)),
             ),
             child: Text(
               _capitalizeRole(role),
@@ -1032,9 +1032,9 @@ class _DriverConductorManagementScreenState
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: vehicleStatusColor.withOpacity(0.1),
+              color: vehicleStatusColor.withAlpha(1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: vehicleStatusColor.withOpacity(0.3)),
+              border: Border.all(color: vehicleStatusColor.withAlpha(3)),
             ),
             child: Text(
               data['assignedVehicle'] != null
@@ -1053,9 +1053,9 @@ class _DriverConductorManagementScreenState
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: scheduleStatusColor.withOpacity(0.1),
+              color: scheduleStatusColor.withAlpha(1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: scheduleStatusColor.withOpacity(0.3)),
+              border: Border.all(color: scheduleStatusColor.withAlpha(3)),
             ),
             child: Text(
               data['schedule']?.toString() ?? 'Not set',

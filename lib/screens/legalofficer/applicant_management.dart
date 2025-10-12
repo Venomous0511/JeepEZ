@@ -65,14 +65,15 @@ class Candidate {
   }
 }
 
-class HiringManagementScreen extends StatefulWidget {
-  const HiringManagementScreen({super.key});
+class ApplicantManagementScreen extends StatefulWidget {
+  const ApplicantManagementScreen({super.key});
 
   @override
-  State<HiringManagementScreen> createState() => _HiringManagementScreenState();
+  State<ApplicantManagementScreen> createState() =>
+      _ApplicantManagementScreenState();
 }
 
-class _HiringManagementScreenState extends State<HiringManagementScreen> {
+class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
@@ -832,7 +833,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                             decoration: BoxDecoration(
                               color: _getCompletionColor(
                                 candidate,
-                              ).withOpacity(0.1),
+                              ).withAlpha(1),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: _getCompletionColor(candidate),
@@ -992,9 +993,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: _getCompletionColor(
-                            candidate,
-                          ).withOpacity(0.1),
+                          color: _getCompletionColor(candidate).withAlpha(1),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: _getCompletionColor(candidate),
@@ -1138,7 +1137,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: _selectedFilter,
+                    value: _selectedFilter,
                     onChanged: (value) {
                       setState(() {
                         _selectedFilter = value!;
@@ -1206,7 +1205,7 @@ class _HiringManagementScreenState extends State<HiringManagementScreen> {
                   Expanded(
                     flex: 1,
                     child: DropdownButtonFormField<String>(
-                      initialValue: _selectedFilter,
+                      value: _selectedFilter,
                       onChanged: (value) {
                         setState(() {
                           _selectedFilter = value!;

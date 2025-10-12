@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -21,6 +23,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   bool _isLoggingOut = false;
   bool showUserManagementOptions = false;
   int _deactivationNotificationCount = 0;
+  StreamSubscription? _notificationsSubscription;
+  List<QueryDocumentSnapshot> _firstPageNotifications = [];
+  bool _isFirstPageLoading = true;
 
   // Pagination variables
   final int _notificationsPerPage = 10;
@@ -37,16 +42,75 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     super.initState();
     _initializeScreens();
     _startListeningToDeactivationNotifications();
+    _loadInitialNotifications(); // Load once immediately
+    _startRealtimeNotificationsListener(); // Then start listening for real-time updates
+  }
+
+  // Load initial notifications once (immediately shows data)
+  Future<void> _loadInitialNotifications() async {
+    try {
+      final query = getNotificationsQuery(widget.user.role);
+      final snapshot = await query.limit(_notificationsPerPage).get();
+
+      if (mounted) {
+        setState(() {
+          _firstPageNotifications = snapshot.docs;
+          _allNotifications = snapshot.docs;
+          _isFirstPageLoading = false;
+          _lastDocument = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
+          _hasMoreNotifications = snapshot.docs.length == _notificationsPerPage;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isFirstPageLoading = false);
+      }
+    }
   }
 
   void _initializeScreens() {
     _screens.addAll([
-      _buildHomeScreen(),
-      AddAccountScreen(user: widget.user),
-      EmployeeListScreen(user: widget.user),
-      DeactivatedAccountScreen(user: widget.user),
-      SystemManagementScreen(user: widget.user),
+      _buildHomeScreen(), // Home screen (index 0)
+      AddAccountScreen(user: widget.user), // Index 1
+      EmployeeListScreen(user: widget.user), // Index 2
+      DeactivatedAccountScreen(user: widget.user), // Index 3
+      SystemManagementScreen(user: widget.user), // Index 4
     ]);
+  }
+
+  void _startRealtimeNotificationsListener() {
+    _notificationsSubscription = getNotificationsQuery(widget.user.role)
+        .limit(_notificationsPerPage)
+        .snapshots()
+        .listen(
+          (snapshot) {
+        if (mounted) {
+          setState(() {
+            _firstPageNotifications = snapshot.docs;
+            _isFirstPageLoading = false; // Mark loading as complete
+
+            // Merge first page with any additional loaded pages
+            _allNotifications = [
+              ..._firstPageNotifications,
+              ..._allNotifications.skip(_notificationsPerPage),
+            ];
+            _lastDocument = _firstPageNotifications.isNotEmpty
+                ? _firstPageNotifications.last
+                : null;
+            _hasMoreNotifications =
+                _firstPageNotifications.length == _notificationsPerPage;
+          });
+        }
+      },
+      onError: (error) {
+        if (mounted) {
+          setState(() => _isFirstPageLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to load notifications: $error')),
+          );
+        }
+      },
+    );
   }
 
   void _startListeningToDeactivationNotifications() {
@@ -56,12 +120,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
         .where('type', isEqualTo: 'deactivate')
         .snapshots()
         .listen((snapshot) {
-          if (mounted) {
-            setState(() {
-              _deactivationNotificationCount = snapshot.docs.length;
-            });
-          }
+      if (mounted) {
+        setState(() {
+          _deactivationNotificationCount = snapshot.docs.length;
         });
+      }
+    });
   }
 
   void _navigateToScreen(int index) {
@@ -165,13 +229,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                       await FirebaseFirestore.instance
                           .collection('notifications')
                           .add({
-                            'title': title,
-                            'message': message,
-                            'time': FieldValue.serverTimestamp(),
-                            'dismissed': false,
-                            'type': selectedType,
-                            'createdBy': widget.user.role,
-                          });
+                        'title': title,
+                        'message': message,
+                        'time': FieldValue.serverTimestamp(),
+                        'dismissed': false,
+                        'type': selectedType,
+                        'createdBy': widget.user.role,
+                      });
 
                       if (context.mounted) {
                         Navigator.pop(context);
@@ -252,33 +316,11 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     }
   }
 
-  // Load initial notifications
-  Future<void> _loadInitialNotifications() async {
-    try {
-      final query = getNotificationsQuery(widget.user.role);
-      final snapshot = await query.limit(_notificationsPerPage).get();
-
-      setState(() {
-        _allNotifications = snapshot.docs;
-        _lastDocument = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
-        _hasMoreNotifications = snapshot.docs.length == _notificationsPerPage;
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load notifications: $e')),
-        );
-      }
-    }
-  }
-
-  // Load more notifications
+  // Load more notifications (manual pagination, NOT real-time)
   Future<void> _loadMoreNotifications() async {
     if (_isLoadingMore || !_hasMoreNotifications) return;
 
-    setState(() {
-      _isLoadingMore = true;
-    });
+    setState(() => _isLoadingMore = true);
 
     try {
       Query query = getNotificationsQuery(widget.user.role);
@@ -293,12 +335,11 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
         setState(() {
           _allNotifications.addAll(snapshot.docs);
           _lastDocument = snapshot.docs.last;
-          _hasMoreNotifications = snapshot.docs.length == _notificationsPerPage;
+          _hasMoreNotifications =
+              snapshot.docs.length == _notificationsPerPage;
         });
       } else {
-        setState(() {
-          _hasMoreNotifications = false;
-        });
+        setState(() => _hasMoreNotifications = false);
       }
     } catch (e) {
       if (mounted) {
@@ -308,9 +349,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoadingMore = false;
-        });
+        setState(() => _isLoadingMore = false);
       }
     }
   }
@@ -321,8 +360,16 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
       _lastDocument = null;
       _hasMoreNotifications = true;
       _allNotifications.clear();
+      _firstPageNotifications.clear();
+      _isFirstPageLoading = true;
     });
-    await _loadInitialNotifications();
+    // The listener will automatically reload the first page
+  }
+
+  @override
+  void dispose() {
+    _notificationsSubscription?.cancel();
+    super.dispose();
   }
 
   Query getNotificationsQuery(String role) {
@@ -333,9 +380,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
           .where('dismissed', isEqualTo: false)
           .orderBy('time', descending: true);
     } else {
+      // Other users see: system, deactivate, and add_account notifications
       return collection
           .where('dismissed', isEqualTo: false)
-          .where('type', isEqualTo: 'system')
+          .where('type', whereIn: ['system', 'deactivate', 'add_account'])
           .orderBy('time', descending: true);
     }
   }
@@ -408,12 +456,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                           child: CustomScrollView(
                             slivers: [
                               // Notifications List
-                              if (_allNotifications.isEmpty && !_isLoadingMore)
+                              if (_allNotifications.isEmpty && !_isLoadingMore && !_isFirstPageLoading)
                                 SliverFillRemaining(
                                   child: Center(
                                     child: Column(
                                       mainAxisAlignment:
-                                          MainAxisAlignment.center,
+                                      MainAxisAlignment.center,
                                       children: [
                                         Icon(
                                           Icons.notifications_off_outlined,
@@ -432,78 +480,84 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                                     ),
                                   ),
                                 )
-                              else if (isMobile)
-                                SliverList(
-                                  delegate: SliverChildBuilderDelegate((
-                                    context,
-                                    index,
-                                  ) {
-                                    if (index < _allNotifications.length) {
-                                      final data =
-                                          _allNotifications[index].data()
-                                              as Map<String, dynamic>;
-                                      return Container(
-                                        margin: const EdgeInsets.only(
-                                          bottom: 12,
-                                        ),
-                                        child: MobileNotificationTile(
-                                          data: data,
-                                          docReference: _allNotifications[index]
-                                              .reference,
-                                          getIconForType: _getIconForType,
-                                          getColorForType: _getColorForType,
-                                          getTypeLabel: _getTypeLabel,
-                                          onDismiss: _refreshNotifications,
-                                        ),
-                                      );
-                                    }
-                                    return null;
-                                  }, childCount: _allNotifications.length),
-                                )
-                              else
-                                SliverPadding(
-                                  padding: const EdgeInsets.only(bottom: 80),
-                                  sliver: SliverLayoutBuilder(
-                                    builder: (context, constraints) {
-                                      final double availableWidth =
-                                          constraints.crossAxisExtent;
-                                      final int crossAxisCount =
-                                          availableWidth > 1200
-                                          ? 4
-                                          : availableWidth > 800
-                                          ? 3
-                                          : 2;
-
-                                      return SliverGrid(
-                                        gridDelegate:
-                                            SliverGridDelegateWithFixedCrossAxisCount(
-                                              crossAxisCount: crossAxisCount,
-                                              childAspectRatio: 1.0,
-                                              crossAxisSpacing: 16,
-                                              mainAxisSpacing: 16,
-                                            ),
-                                        delegate: SliverChildBuilderDelegate(
-                                          (context, index) {
-                                            final data =
-                                                _allNotifications[index].data()
-                                                    as Map<String, dynamic>;
-                                            return DesktopNotificationTile(
-                                              data: data,
-                                              docReference:
-                                                  _allNotifications[index]
-                                                      .reference,
-                                              getIconForType: _getIconForType,
-                                              getColorForType: _getColorForType,
-                                              getTypeLabel: _getTypeLabel,
-                                              onDismiss: _refreshNotifications,
-                                            );
-                                          },
-                                          childCount: _allNotifications.length,
-                                        ),
-                                      );
-                                    },
+                              else if (_allNotifications.isEmpty && _isFirstPageLoading)
+                                const SliverFillRemaining(
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
                                   ),
-                                ),
+                                )
+                              else if (_allNotifications.isNotEmpty && isMobile)
+                                  SliverList(
+                                    delegate: SliverChildBuilderDelegate((
+                                        context,
+                                        index,
+                                        ) {
+                                      if (index < _allNotifications.length) {
+                                        final data =
+                                        _allNotifications[index].data()
+                                        as Map<String, dynamic>;
+                                        return Container(
+                                          margin: const EdgeInsets.only(
+                                            bottom: 12,
+                                          ),
+                                          child: MobileNotificationTile(
+                                            data: data,
+                                            docReference: _allNotifications[index]
+                                                .reference,
+                                            getIconForType: _getIconForType,
+                                            getColorForType: _getColorForType,
+                                            getTypeLabel: _getTypeLabel,
+                                            onDismiss: _refreshNotifications,
+                                          ),
+                                        );
+                                      }
+                                      return null;
+                                    }, childCount: _allNotifications.length),
+                                  )
+                                else
+                                  SliverPadding(
+                                    padding: const EdgeInsets.only(bottom: 80),
+                                    sliver: SliverLayoutBuilder(
+                                      builder: (context, constraints) {
+                                        final double availableWidth =
+                                            constraints.crossAxisExtent;
+                                        final int crossAxisCount =
+                                        availableWidth > 1200
+                                            ? 4
+                                            : availableWidth > 800
+                                            ? 3
+                                            : 2;
+
+                                        return SliverGrid(
+                                          gridDelegate:
+                                          SliverGridDelegateWithFixedCrossAxisCount(
+                                            crossAxisCount: crossAxisCount,
+                                            childAspectRatio: 1.0,
+                                            crossAxisSpacing: 16,
+                                            mainAxisSpacing: 16,
+                                          ),
+                                          delegate: SliverChildBuilderDelegate(
+                                                (context, index) {
+                                              final data =
+                                              _allNotifications[index].data()
+                                              as Map<String, dynamic>;
+                                              return DesktopNotificationTile(
+                                                data: data,
+                                                docReference:
+                                                _allNotifications[index]
+                                                    .reference,
+                                                getIconForType: _getIconForType,
+                                                getColorForType: _getColorForType,
+                                                getTypeLabel: _getTypeLabel,
+                                                onDismiss: _refreshNotifications,
+                                              );
+                                            },
+                                            childCount: _allNotifications.length,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
 
                               // Loading More Indicator
                               if (_isLoadingMore)
@@ -699,7 +753,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                                     _deactivationNotificationCount > 99
                                         ? '99+'
                                         : _deactivationNotificationCount
-                                              .toString(),
+                                        .toString(),
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 10,
@@ -774,10 +828,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
             ),
             trailing: _isLoggingOut
                 ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 3),
-                  )
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 3),
+            )
                 : null,
             onTap: _isLoggingOut ? null : _signOut,
           ),
@@ -837,7 +891,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
         ],
       ),
       drawer: _buildDrawer(),
-      body: _screens[_selectedIndex],
+      body: _selectedIndex == 0 ? _buildHomeScreen() : _screens[_selectedIndex],
     );
   }
 
@@ -1018,14 +1072,14 @@ class MobileNotificationTile extends StatelessWidget {
   }
 
   void _showNotificationDialog(
-    BuildContext context,
-    String title,
-    String message,
-    IconData icon,
-    Color color,
-    Timestamp? timestamp,
-    String type,
-  ) {
+      BuildContext context,
+      String title,
+      String message,
+      IconData icon,
+      Color color,
+      Timestamp? timestamp,
+      String type,
+      ) {
     final bool isDeactivated = type == 'deactivate';
     final bool isAddAccount = type == 'add_account';
     final Color dialogColor = isDeactivated
@@ -1304,14 +1358,14 @@ class DesktopNotificationTile extends StatelessWidget {
   }
 
   void _showNotificationDialog(
-    BuildContext context,
-    String title,
-    String message,
-    IconData icon,
-    Color color,
-    Timestamp? timestamp,
-    String type,
-  ) {
+      BuildContext context,
+      String title,
+      String message,
+      IconData icon,
+      Color color,
+      Timestamp? timestamp,
+      String type,
+      ) {
     final bool isDeactivated = type == 'deactivate';
     final bool isAddAccount = type == 'add_account';
     final Color dialogColor = isDeactivated
@@ -1412,10 +1466,10 @@ class DesktopNotificationTile extends StatelessWidget {
 
 // Utility Functions
 Future<void> createSystemNotification(
-  String title,
-  String message,
-  String role,
-) async {
+    String title,
+    String message,
+    String role,
+    ) async {
   try {
     final userQuery = await FirebaseFirestore.instance
         .collection('users')

@@ -132,7 +132,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     }
   }
 
-  // Get paginated employee documents
+  /// Get paginated employee documents
   List<QueryDocumentSnapshot> _getPaginatedEmployees(
     List<QueryDocumentSnapshot> allEmployees,
   ) {
@@ -225,6 +225,683 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         ],
       ),
     );
+  }
+
+  /// Show Account Created Dialog
+  void _showAccountCreatedDialog({
+    required BuildContext context,
+    required String displayName,
+    required String email,
+    required String employeeId,
+    required String tempPassword,
+    required String role,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green[700], size: 28),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Account Created Successfully',
+                style: TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // User Info Section
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text('Role: ${_capitalizeRole(role)}'),
+                    Text('Employee ID: $employeeId'),
+                    Text('Email: $email'),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Verification Status
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.mark_email_unread, color: Colors.orange[700]),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Verification Email Sent',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text('Sent to: $email'),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'User must verify email before logging in',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Instructions
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Instructions for User:',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '1. Check email inbox (and spam folder)\n'
+                          '2. Click the verification link\n'
+                          '3. Return to login page\n'
+                          '4. Use credentials below to login\n'
+                          '5. Change password on first login',
+                      style: TextStyle(height: 1.6, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Credentials Section
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.vpn_key, color: Colors.red[700]),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Temporary Credentials',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SelectableText(
+                      'Email: $email',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 4),
+                    SelectableText(
+                      'Employee ID: $employeeId',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 4),
+                    SelectableText(
+                      'Temporary Password: $tempPassword',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Keep these credentials secure and share only with the user!',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Important Note
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.yellow.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.yellow.shade700),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.lightbulb_outline, color: Colors.yellow[800], size: 20),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'If user doesn\'t receive the email, check the Employee List for a "Resend Email" button.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0D2364),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: const Text(
+              'Done',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Resend Verification Email
+  Future<void> _resendVerificationEmail(String docId, Map<String, dynamic> data) async {
+    // Check if email is already verified
+    if (data['emailVerified'] == true) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Email is already verified'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Confirm action
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.mail_outline, color: Colors.orange),
+            const SizedBox(width: 12),
+            const Expanded(child: Text('Resend Verification Email')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Resend verification email to:',
+              style: TextStyle(color: Colors.grey[700]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              data['email'] ?? 'Unknown email',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'This will send a new verification link to the user.',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.send, size: 18, color: Colors.white),
+            label: const Text('Resend', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0D2364),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    // Show loading
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ),
+              SizedBox(width: 16),
+              Text('Sending verification email...'),
+            ],
+          ),
+          duration: Duration(seconds: 10),
+        ),
+      );
+    }
+
+    try {
+      // Get user data
+      final userSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(docId)
+          .get();
+
+      if (!userSnapshot.exists) {
+        throw Exception('User not found');
+      }
+
+      final email = userSnapshot.data()!['email'] as String;
+      final tempPassword = userSnapshot.data()!['tempPassword'] as String?;
+
+      if (tempPassword == null) {
+        throw Exception('Cannot resend - temporary password not found. User may need to reset password.');
+      }
+
+      // Use secondary auth to avoid signing out current admin
+      final secondaryApp = await _getOrCreateSecondaryApp();
+      final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+
+      // Sign in temporarily
+      final userCred = await secondaryAuth.signInWithEmailAndPassword(
+        email: email,
+        password: tempPassword,
+      );
+
+      // Send verification email
+      await userCred.user!.sendEmailVerification();
+
+      // Update Firestore with timestamp
+      await FirebaseFirestore.instance.collection('users').doc(docId).update({
+        'verificationEmailSentAt': FieldValue.serverTimestamp(),
+        'verificationEmailCount': FieldValue.increment(1),
+        'lastVerificationEmailBy': widget.user.email,
+      });
+
+      // Create notification
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'title': 'Verification Email Resent',
+        'message': 'Verification email resent to ${data['name']} ($email)',
+        'time': FieldValue.serverTimestamp(),
+        'dismissed': false,
+        'type': 'updates',
+        'createdBy': widget.user.email,
+      });
+
+      // Sign out from secondary auth
+      await secondaryAuth.signOut();
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text('Verification email sent successfully to $email'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'Failed to send verification email';
+
+      switch (e.code) {
+        case 'wrong-password':
+          errorMessage = 'Cannot resend - password may have been changed. User should use "Forgot Password" instead.';
+          break;
+        case 'user-not-found':
+          errorMessage = 'User account not found';
+          break;
+        case 'too-many-requests':
+          errorMessage = 'Too many attempts. Please wait a few minutes before trying again.';
+          break;
+        default:
+          errorMessage = e.message ?? 'Failed to send verification email';
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Send Password Reset to User
+  Future<void> _sendPasswordResetToUser(String docId, Map<String, dynamic> data) async {
+    final email = data['email'] as String?;
+
+    if (email == null || email.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('User email not found'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Confirm action
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.lock_reset, color: Colors.orange),
+            const SizedBox(width: 12),
+            const Expanded(child: Text('Send Password Reset')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Send password reset email to:',
+              style: TextStyle(fontSize: 15),
+            ),
+            const SizedBox(height: 12),
+
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    data['name'] ?? 'Unknown',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(email),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Employee ID: ${data['employeeId'] ?? 'N/A'}',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'User will receive an email with instructions to reset their password',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.send, size: 18, color: Colors.white),
+            label: const Text('Send Reset Email', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0D2364),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    // Show loading
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ),
+              SizedBox(width: 16),
+              Text('Sending password reset email...'),
+            ],
+          ),
+          duration: Duration(seconds: 10),
+        ),
+      );
+    }
+
+    try {
+      // Send password reset email using Firebase Auth
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+
+      // Update Firestore to track this action
+      await FirebaseFirestore.instance.collection('users').doc(docId).update({
+        'passwordResetSentAt': FieldValue.serverTimestamp(),
+        'passwordResetSentBy': widget.user.email,
+      });
+
+      // Create notification
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'title': 'Password Reset Sent',
+        'message': 'Password reset email sent to ${data['name']} ($email)',
+        'time': FieldValue.serverTimestamp(),
+        'dismissed': false,
+        'type': 'updates',
+        'createdBy': widget.user.email,
+      });
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+
+        // Show success dialog
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green[700], size: 28),
+                const SizedBox(width: 12),
+                const Text('Email Sent'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Password reset email sent successfully to:'),
+                const SizedBox(height: 8),
+                Text(
+                  email,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: const Text(
+                    'The user will receive an email with instructions to reset their password. The link will expire in 1 hour.',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0D2364),
+                ),
+                child: const Text('OK', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'Failed to send password reset email';
+
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'User account not found';
+          break;
+        case 'invalid-email':
+          errorMessage = 'Invalid email address';
+          break;
+        case 'too-many-requests':
+          errorMessage = 'Too many requests. Please wait a few minutes.';
+          break;
+        default:
+          errorMessage = e.message ?? 'Failed to send password reset email';
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -397,6 +1074,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         final displayNumber = (_currentPage * _pageSize) + index + 1;
         final role = data['role'] ?? '';
         final roleColor = _getRoleColor(role);
+        final isEmailVerified = data['emailVerified'] ?? false;
 
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
@@ -411,10 +1089,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       backgroundColor: roleColor.withOpacity(0.2),
                       child: Text(
                         data['name']?.toString().isNotEmpty == true
-                            ? data['name']
-                                  .toString()
-                                  .substring(0, 1)
-                                  .toUpperCase()
+                            ? data['name'].toString().substring(0, 1).toUpperCase()
                             : 'U',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
@@ -427,15 +1102,21 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            data['name'] ?? 'No Name',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  data['name'] ?? 'No Name',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           Text(
-                            '$displayNumber. ${data['employeeId']?.toString() ?? 'N/A'}',
+                            data['employeeId']?.toString() ?? 'N/A',
                             style: TextStyle(
                               color: Colors.grey[600],
                               fontSize: 14,
@@ -455,17 +1136,13 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                             : Colors.red.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: data['status'] == true
-                              ? Colors.green
-                              : Colors.red,
+                          color: data['status'] == true ? Colors.green : Colors.red,
                         ),
                       ),
                       child: Text(
                         data['status'] == true ? "Active" : "Inactive",
                         style: TextStyle(
-                          color: data['status'] == true
-                              ? Colors.green
-                              : Colors.red,
+                          color: data['status'] == true ? Colors.green : Colors.red,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -483,6 +1160,57 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   data['employeeId'] ?? 'N/A',
                 ),
                 _buildMobileDetailRow("Email", data['email'] ?? 'N/A'),
+
+                // 🔥 NEW: Email verification status row
+                if (!isEmailVerified)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        const SizedBox(
+                          width: 120,
+                          child: Text(
+                            "Email Status:",
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.orange),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.mail_outline,
+                                  size: 16,
+                                  color: Colors.orange[700],
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Not Verified',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange[700],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 _buildMobileDetailRow(
                   "Role",
                   _capitalizeRole(role),
@@ -498,6 +1226,24 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
+                    // 🔥 NEW: Resend verification button
+                    if (!isEmailVerified) ...[
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.mark_email_unread, color: Colors.orange),
+                          tooltip: 'Resend verification email',
+                          onPressed: () => _resendVerificationEmail(doc.id, data),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+
+                    // Edit button
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.blue.withOpacity(0.1),
@@ -510,6 +1256,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
+
+                    // Delete button
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.red.withOpacity(0.1),
@@ -648,13 +1396,14 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
   /// Helper method to build DataRows for both tablet and desktop
   DataRow _buildDataRow(
-    String docId,
-    Map<String, dynamic> data,
-    int displayNumber, {
-    bool isCompact = false,
-  }) {
+      String docId,
+      Map<String, dynamic> data,
+      int displayNumber, {
+        bool isCompact = false,
+      }) {
     final role = data['role'] ?? '';
     final roleColor = _getRoleColor(role);
+    final isEmailVerified = data['emailVerified'] ?? false;
 
     return DataRow(
       cells: [
@@ -671,9 +1420,25 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           ),
         ),
         DataCell(
-          Text(
-            data['name'] ?? '',
-            style: isCompact ? const TextStyle(fontSize: 12) : null,
+          Row(
+            children: [
+              Text(
+                data['name'] ?? '',
+                style: isCompact ? const TextStyle(fontSize: 12) : null,
+              ),
+              // 🔥 NEW: Email verification indicator
+              if (!isEmailVerified) ...[
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Email not verified',
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange,
+                    size: isCompact ? 16 : 18,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
         DataCell(
@@ -699,9 +1464,26 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           ),
         ),
         DataCell(
-          Text(
-            data['email'] ?? '',
-            style: isCompact ? const TextStyle(fontSize: 12) : null,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                data['email'] ?? '',
+                style: isCompact ? const TextStyle(fontSize: 12) : null,
+              ),
+              // 🔥 NEW: Show verification status
+              if (!isEmailVerified)
+                Text(
+                  'Not verified',
+                  style: TextStyle(
+                    fontSize: isCompact ? 10 : 11,
+                    color: Colors.orange,
+                    fontWeight: FontWeight.w600,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+            ],
           ),
         ),
         DataCell(
@@ -725,6 +1507,53 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         DataCell(
           Row(
             children: [
+              // 🔥 NEW: Resend verification button (only if not verified)
+              if (!isEmailVerified) ...[
+                Tooltip(
+                  message: 'Resend verification email',
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.mark_email_unread,
+                        color: Colors.orange,
+                        size: isCompact ? 18 : 20,
+                      ),
+                      onPressed: () => _resendVerificationEmail(docId, data),
+                      padding: const EdgeInsets.all(8),
+                      constraints: const BoxConstraints(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
+
+              // 🔥 NEW: Verified checkmark (only if verified)
+              if (isEmailVerified) ...[
+                Tooltip(
+                  message: 'Email verified',
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.withOpacity(0.3)),
+                    ),
+                    child: Icon(
+                      Icons.verified,
+                      color: Colors.green,
+                      size: isCompact ? 18 : 20,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
+
+              // Edit button
               Container(
                 decoration: BoxDecoration(
                   color: Colors.blue.withOpacity(0.1),
@@ -738,9 +1567,13 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     size: isCompact ? 18 : 20,
                   ),
                   onPressed: () => _editUser(docId, data),
+                  padding: const EdgeInsets.all(8),
+                  constraints: const BoxConstraints(),
                 ),
               ),
               const SizedBox(width: 4),
+
+              // Delete button
               Container(
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.1),
@@ -754,6 +1587,121 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     size: isCompact ? 18 : 20,
                   ),
                   onPressed: () => _deleteUser(docId, data),
+                  padding: const EdgeInsets.all(8),
+                  constraints: const BoxConstraints(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        DataCell(
+          Row(
+            children: [
+              // Resend verification button (only if not verified)
+              if (!isEmailVerified) ...[
+                Tooltip(
+                  message: 'Resend verification email',
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.mark_email_unread,
+                        color: Colors.orange,
+                        size: isCompact ? 18 : 20,
+                      ),
+                      onPressed: () => _resendVerificationEmail(docId, data),
+                      padding: const EdgeInsets.all(8),
+                      constraints: const BoxConstraints(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
+
+              // 🔥 NEW: Password Reset button
+              Tooltip(
+                message: 'Send password reset email',
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.purple),
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.lock_reset,
+                      color: Colors.purple,
+                      size: isCompact ? 18 : 20,
+                    ),
+                    onPressed: () => _sendPasswordResetToUser(docId, data),
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+
+              // Verified checkmark (only if verified)
+              if (isEmailVerified) ...[
+                Tooltip(
+                  message: 'Email verified',
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.withOpacity(0.3)),
+                    ),
+                    child: Icon(
+                      Icons.verified,
+                      color: Colors.green,
+                      size: isCompact ? 18 : 20,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
+
+              // Edit button
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue),
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.edit,
+                    color: Colors.blue,
+                    size: isCompact ? 18 : 20,
+                  ),
+                  onPressed: () => _editUser(docId, data),
+                  padding: const EdgeInsets.all(8),
+                  constraints: const BoxConstraints(),
+                ),
+              ),
+              const SizedBox(width: 4),
+
+              // Delete button
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red),
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.delete,
+                    color: Colors.red,
+                    size: isCompact ? 18 : 20,
+                  ),
+                  onPressed: () => _deleteUser(docId, data),
+                  padding: const EdgeInsets.all(8),
+                  constraints: const BoxConstraints(),
                 ),
               ),
             ],
@@ -779,7 +1727,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         .join(' ');
   }
 
-  /// ---------------- ADD NEW USER (UPDATED TO MATCH SUPER-ADMIN) ----------------
+
+  /// Add User Dialog
   Future<void> _showAddUserDialog() async {
     final TextEditingController emailCtrl = TextEditingController();
     final TextEditingController firstNameCtrl = TextEditingController();
@@ -855,13 +1804,12 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                         onChanged: (value) {
                           final filteredValue = _filterNameInput(value);
                           if (filteredValue != value) {
-                            middleNameCtrl.value = middleNameCtrl.value
-                                .copyWith(
-                                  text: filteredValue,
-                                  selection: TextSelection.collapsed(
-                                    offset: filteredValue.length,
-                                  ),
-                                );
+                            middleNameCtrl.value = middleNameCtrl.value.copyWith(
+                              text: filteredValue,
+                              selection: TextSelection.collapsed(
+                                offset: filteredValue.length,
+                              ),
+                            );
                           }
                         },
                       ),
@@ -954,22 +1902,13 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'User will be required to change password on first login',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
                           ],
                         ),
                       ),
 
                       const SizedBox(height: 12),
 
-                      // Role selection with color indicator
+                      // Role selection
                       Container(
                         decoration: BoxDecoration(
                           border: Border.all(
@@ -979,7 +1918,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: DropdownButtonFormField<String>(
-                          initialValue: role,
+                          value: role,
                           decoration: const InputDecoration(
                             labelText: 'Role *',
                             border: InputBorder.none,
@@ -991,10 +1930,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           ),
                           hint: const Text('Select a role'),
                           items: [
-                            _buildRoleDropdownItem(
-                              "legal_officer",
-                              "Legal Officer",
-                            ),
+                            _buildRoleDropdownItem("legal_officer", "Legal Officer"),
                             _buildRoleDropdownItem("driver", "Driver"),
                             _buildRoleDropdownItem("conductor", "Conductor"),
                             _buildRoleDropdownItem("inspector", "Inspector"),
@@ -1005,12 +1941,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                               employmentType = null;
                               area = null;
                             });
-                          },
-                          validator: (value) {
-                            if (value == null) {
-                              return 'Please select a role';
-                            }
-                            return null;
                           },
                         ),
                       ),
@@ -1047,21 +1977,13 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                         ),
                       ],
 
-                      if (role == "driver" ||
-                          role == "conductor" ||
-                          role == "inspector") ...[
+                      if (role == "driver" || role == "conductor" || role == "inspector") ...[
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          initialValue: employmentType,
+                          value: employmentType,
                           items: const [
-                            DropdownMenuItem(
-                              value: "full_time",
-                              child: Text("Full-Time"),
-                            ),
-                            DropdownMenuItem(
-                              value: "part_time",
-                              child: Text("Part-Time"),
-                            ),
+                            DropdownMenuItem(value: "full_time", child: Text("Full-Time")),
+                            DropdownMenuItem(value: "part_time", child: Text("Part-Time")),
                           ],
                           onChanged: (value) {
                             setState(() {
@@ -1078,20 +2000,11 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       if (role == "inspector") ...[
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          initialValue: area,
+                          value: area,
                           items: const [
-                            DropdownMenuItem(
-                              value: "Gaya Gaya",
-                              child: Text("Gaya Gaya"),
-                            ),
-                            DropdownMenuItem(
-                              value: "SM Tungko",
-                              child: Text("SM Tungko"),
-                            ),
-                            DropdownMenuItem(
-                              value: "Road 2",
-                              child: Text("Road 2"),
-                            ),
+                            DropdownMenuItem(value: "Gaya Gaya", child: Text("Gaya Gaya")),
+                            DropdownMenuItem(value: "SM Tungko", child: Text("SM Tungko")),
+                            DropdownMenuItem(value: "Road 2", child: Text("Road 2")),
                           ],
                           onChanged: (value) {
                             setState(() {
@@ -1104,6 +2017,41 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           ),
                         ),
                       ],
+
+                      const SizedBox(height: 16),
+
+                      // 🔥 NEW: Email verification info box
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Text(
+                                    'Email Verification',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'A verification email will be sent automatically. '
+                                  'The user must verify their email before they can log in.',
+                              style: TextStyle(fontSize: 12, height: 1.4),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1117,189 +2065,188 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   onPressed: loading
                       ? null
                       : () async {
-                          final email = emailCtrl.text.trim();
-                          final firstName = firstNameCtrl.text.trim();
-                          final middleName = middleNameCtrl.text.trim();
-                          final lastName = lastNameCtrl.text.trim();
+                    final email = emailCtrl.text.trim();
+                    final firstName = firstNameCtrl.text.trim();
+                    final middleName = middleNameCtrl.text.trim();
+                    final lastName = lastNameCtrl.text.trim();
 
-                          // Role validation
-                          if (role == null) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Please select a role'),
-                                ),
-                              );
-                            }
-                            return;
-                          }
+                    // Validation
+                    if (role == null) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please select a role')),
+                        );
+                      }
+                      return;
+                    }
 
-                          // Name validations
-                          final firstNameError = _validateName(
-                            firstName,
-                            'First name',
+                    final firstNameError = _validateName(firstName, 'First name');
+                    if (firstNameError != null) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(firstNameError)),
+                        );
+                      }
+                      return;
+                    }
+
+                    final lastNameError = _validateName(lastName, 'Last name');
+                    if (lastNameError != null) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(lastNameError)),
+                        );
+                      }
+                      return;
+                    }
+
+                    if (middleName.isNotEmpty) {
+                      final middleNameError = _validateName(middleName, 'Middle name');
+                      if (middleNameError != null) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(middleNameError)),
                           );
-                          if (firstNameError != null) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(firstNameError)),
-                              );
-                            }
-                            return;
-                          }
+                        }
+                        return;
+                      }
+                    }
 
-                          final lastNameError = _validateName(
-                            lastName,
-                            'Last name',
-                          );
-                          if (lastNameError != null) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(lastNameError)),
-                              );
-                            }
-                            return;
-                          }
+                    final mi = middleName.isNotEmpty ? ' ${middleName[0]}.' : '';
+                    final displayName = '$lastName, $firstName$mi';
 
-                          if (middleName.isNotEmpty) {
-                            final middleNameError = _validateName(
-                              middleName,
-                              'Middle name',
-                            );
-                            if (middleNameError != null) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(middleNameError)),
-                                );
-                              }
-                              return;
-                            }
-                          }
+                    if (email.isEmpty) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter email address')),
+                        );
+                      }
+                      return;
+                    }
 
-                          // Generate display name
-                          final mi = middleName.isNotEmpty
-                              ? ' ${middleName[0]}.'
-                              : '';
-                          final displayName = '$lastName, $firstName$mi';
+                    if (!_isValidGmail(email)) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Only Gmail accounts are allowed')),
+                        );
+                      }
+                      return;
+                    }
 
-                          // Email validation - Gmail only
-                          if (email.isEmpty) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Please enter email address'),
-                                ),
-                              );
-                            }
-                            return;
-                          }
+                    setState(() => loading = true);
 
-                          if (!_isValidGmail(email)) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Only Gmail accounts are allowed',
-                                  ),
-                                ),
-                              );
-                            }
-                            return;
-                          }
+                    try {
+                      final employeeId = await _generateEmployeeId(role!);
 
-                          setState(() => loading = true);
+                      // Create user with secondary auth
+                      final secondaryApp = await _getOrCreateSecondaryApp();
+                      final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
 
-                          try {
-                            // Generate employee ID
-                            final employeeId = await _generateEmployeeId(role!);
+                      final newCred = await secondaryAuth.createUserWithEmailAndPassword(
+                        email: email,
+                        password: generatedPassword,
+                      );
+                      final newUid = newCred.user!.uid;
 
-                            // Create User In Secondary Auth Instance
-                            final secondaryApp =
-                                await _getOrCreateSecondaryApp();
-                            final secondaryAuth = FirebaseAuth.instanceFor(
-                              app: secondaryApp,
-                            );
+                      await newCred.user!.updateDisplayName(displayName);
 
-                            final newCred = await secondaryAuth
-                                .createUserWithEmailAndPassword(
-                                  email: email,
-                                  password: generatedPassword,
-                                );
-                            final newUid = newCred.user!.uid;
+                      // 🔥 SEND VERIFICATION EMAIL
+                      await newCred.user!.sendEmailVerification();
 
-                            // Update user profile with display name
-                            await newCred.user!.updateDisplayName(displayName);
+                      // Save to Firestore with verification tracking
+                      final userData = {
+                        'uid': newUid,
+                        'email': email,
+                        'employeeId': employeeId,
+                        'firstName': firstName,
+                        'middleName': middleName,
+                        'lastName': lastName,
+                        'name': displayName,
+                        'role': role,
+                        'status': true,
+                        'emailVerified': false,
+                        'tempPassword': generatedPassword,
+                        'verificationEmailSentAt': FieldValue.serverTimestamp(),
+                        'verificationEmailCount': 1,
+                        'createdAt': FieldValue.serverTimestamp(),
+                        'createdBy': widget.user.email,
+                      };
 
-                            // Save to Firestore
-                            final userData = {
-                              'uid': newUid,
-                              'email': email,
-                              'employeeId': employeeId,
-                              'firstName': firstName,
-                              'middleName': middleName,
-                              'lastName': lastName,
-                              'name': displayName,
-                              'role': role,
-                              'status': true,
-                              'createdAt': FieldValue.serverTimestamp(),
-                              'createdBy': widget.user.email,
-                              'tempPassword': generatedPassword,
-                            };
+                      if (employmentType != null) {
+                        userData['employmentType'] = employmentType;
+                      }
+                      if (role == "inspector" && area != null) {
+                        userData['area'] = area;
+                      }
 
-                            // Add optional fields
-                            if (employmentType != null) {
-                              userData['employmentType'] = employmentType;
-                            }
-                            if (role == "inspector" && area != null) {
-                              userData['area'] = area;
-                            }
+                      await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(newUid)
+                          .set(userData);
 
-                            await FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(newUid)
-                                .set(userData);
+                      // Create notification
+                      await FirebaseFirestore.instance.collection('notifications').add({
+                        'title': 'New Account Created',
+                        'message': '$displayName has been added as $role with ID $employeeId. Verification email sent.',
+                        'time': FieldValue.serverTimestamp(),
+                        'dismissed': false,
+                        'type': 'updates',
+                        'createdBy': widget.user.email,
+                      });
 
-                            // Create notification
-                            await FirebaseFirestore.instance
-                                .collection('notifications')
-                                .add({
-                                  'title': 'New Account Created',
-                                  'message':
-                                      '$displayName has been added as $role with ID $employeeId',
-                                  'time': FieldValue.serverTimestamp(),
-                                  'dismissed': false,
-                                  'type': 'updates',
-                                  'createdBy': widget.user.email,
-                                });
+                      await secondaryAuth.signOut();
 
-                            await secondaryAuth.signOut();
+                      if (context.mounted) {
+                        Navigator.pop(dialogCtx);
 
-                            if (context.mounted) {
-                              Navigator.pop(dialogCtx);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'User $displayName created as $role with ID $employeeId. Temporary password has been set.',
-                                  ),
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Error: $e')),
-                              );
-                            }
-                          } finally {
-                            setState(() => loading = false);
-                          }
-                        },
+                        // Show success dialog with instructions
+                        _showAccountCreatedDialog(
+                          context: context,
+                          displayName: displayName,
+                          email: email,
+                          employeeId: employeeId,
+                          tempPassword: generatedPassword,
+                          role: role!,
+                        );
+                      }
+                    } on FirebaseAuthException catch (e) {
+                      String errorMessage = 'Error creating user';
+
+                      switch (e.code) {
+                        case 'email-already-in-use':
+                          errorMessage = 'This email is already registered';
+                          break;
+                        case 'invalid-email':
+                          errorMessage = 'Invalid email address';
+                          break;
+                        case 'weak-password':
+                          errorMessage = 'Password is too weak';
+                          break;
+                        default:
+                          errorMessage = e.message ?? 'Error creating user';
+                      }
+
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                        );
+                      }
+                    } finally {
+                      setState(() => loading = false);
+                    }
+                  },
                   child: loading
                       ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                       : const Text("Create User"),
                 ),
               ],
@@ -1363,7 +2310,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: DropdownButtonFormField<String>(
-                      initialValue: role,
+                      value: role,
                       decoration: const InputDecoration(
                         labelText: 'Role *',
                         border: InputBorder.none,
@@ -1430,7 +2377,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
                       child: DropdownButtonFormField<String>(
-                        initialValue: employmentType,
+                        value: employmentType,
                         items: const [
                           DropdownMenuItem(
                             value: "full_time",

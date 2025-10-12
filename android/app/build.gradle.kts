@@ -33,7 +33,7 @@ android {
         minSdk = flutter.minSdkVersion  // Good for Firebase (minimum is 21)
         targetSdk = 36
         versionCode = 6
-        versionName = "0.6.0"
+        versionName = "1.0.0"
         multiDexEnabled = true  // Correct for Firebase
     }
 
@@ -71,6 +71,8 @@ android {
 dependencies {
     // IMPORTANT: Use AndroidX instead of old support library
     implementation("androidx.multidex:multidex:2.0.1")
+    implementation("androidx.preference:preference:1.2.0")
+    implementation("androidx.work:work-runtime:2.8.1")
 }
 
 flutter {

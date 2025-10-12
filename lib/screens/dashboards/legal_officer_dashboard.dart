@@ -8,8 +8,8 @@ import '../legalofficer/inspector_report_history.dart';
 import '../legalofficer/violation_report_management.dart';
 import '../legalofficer/employee_list_view.dart';
 import '../legalofficer/inspector_report_management.dart';
-import '../legalofficer/hiring_management.dart';
 import '../legalofficer/ticket_log.dart';
+import '../legalofficer/applicant_management.dart';
 
 class LegalOfficerDashboardScreen extends StatefulWidget {
   const LegalOfficerDashboardScreen({super.key, required this.user});
@@ -27,6 +27,10 @@ class _LegalOfficerDashboardScreenState
   int _selectedIndex = 0;
   Widget? _currentScreen;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _hasShownPasswordReminder = false; // ADDED: Password reminder flag
+
+  // Hiring Management dropdown state
+  bool _isHiringExpanded = false;
 
   // Password change variables
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -38,6 +42,74 @@ class _LegalOfficerDashboardScreenState
   bool _showCurrentPassword = false;
   bool _showNewPassword = false;
   bool _showConfirmPassword = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentScreen = null; // Start with main dashboard
+    _checkIfNewAccount(); // ADDED: Check if new account on init
+  }
+
+  // ADDED: Check if new account (created within 24 hours)
+  Future<void> _checkIfNewAccount() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final creationTime = user.metadata.creationTime;
+        if (creationTime != null &&
+            DateTime.now().difference(creationTime).inHours < 24 &&
+            !_hasShownPasswordReminder) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showPasswordChangeReminder();
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking account status: $e');
+    }
+  }
+
+  // ADDED: Show password change reminder
+  void _showPasswordChangeReminder() {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text(
+              'Password Change Required',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'For security reasons, please change your password in the Change Password section.',
+              style: TextStyle(color: Colors.white, fontSize: 14),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.orange,
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: 'Change Now',
+          textColor: Colors.white,
+          onPressed: () {
+            _showChangePasswordDialog(); // Open password change dialog directly
+          },
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+
+    setState(() => _hasShownPasswordReminder = true);
+  }
 
   // Stream to get inspectors with their inspection counts
   Stream<List<Map<String, dynamic>>> getInspectorsStream() {
@@ -52,10 +124,10 @@ class _LegalOfficerDashboardScreenState
             final inspectorData = doc.data();
             final inspectorId = doc.id;
 
-            // Get inspection count for this inspector
+            // Get inspection count for this inspector from inspector_trip collection
             final inspectionSnapshot = await FirebaseFirestore.instance
-                .collection('inspector_reports')
-                .where('inspectorId', isEqualTo: inspectorId)
+                .collection('inspector_trip')
+                .where('uid', isEqualTo: inspectorId)
                 .get();
 
             final inspectionCount = inspectionSnapshot.docs.length;
@@ -187,6 +259,9 @@ class _LegalOfficerDashboardScreenState
       _currentPasswordController.clear();
       _newPasswordController.clear();
       _confirmPasswordController.clear();
+
+      // Update the flag to indicate password has been changed
+      setState(() => _hasShownPasswordReminder = true);
 
       Navigator.of(context).pop(); // Close the dialog
     } on FirebaseAuthException catch (e) {
@@ -531,12 +606,6 @@ class _LegalOfficerDashboardScreenState
   }
 
   @override
-  void initState() {
-    super.initState();
-    _currentScreen = null; // Start with main dashboard
-  }
-
-  @override
   void dispose() {
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
@@ -635,8 +704,8 @@ class _LegalOfficerDashboardScreenState
         return 'Incident Report Management';
       } else if (_currentScreen is EmployeeListViewScreen) {
         return 'Employee List View';
-      } else if (_currentScreen is HiringManagementScreen) {
-        return 'Hiring Management';
+      } else if (_currentScreen is ApplicantManagementScreen) {
+        return 'Applicant Management';
       } else if (_currentScreen is TicketTable) {
         return 'Ticket Logs';
       }
@@ -732,15 +801,10 @@ class _LegalOfficerDashboardScreenState
                     Navigator.pop(context);
                   },
                 ),
-                _buildDrawerItem(
-                  icon: Icons.work,
-                  title: 'Hiring Management',
-                  isSelected: _currentScreen is HiringManagementScreen,
-                  onTap: () {
-                    _navigateToScreen(const HiringManagementScreen());
-                    Navigator.pop(context);
-                  },
-                ),
+
+                // HIRING MANAGEMENT DROPDOWN SECTION
+                _buildHiringManagementDropdown(),
+
                 _buildDrawerItem(
                   icon: Icons.confirmation_number,
                   title: 'Ticket Logs',
@@ -781,6 +845,75 @@ class _LegalOfficerDashboardScreenState
           ),
           const SizedBox(height: 12),
         ],
+      ),
+    );
+  }
+
+  // UPDATED METHOD: Hiring Management Dropdown with only Applicant Management
+  Widget _buildHiringManagementDropdown() {
+    return ExpansionTile(
+      leading: const Icon(Icons.work, color: Color(0xFF0D2364)),
+      title: Text(
+        'Hiring Management',
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: _isHiringExpanded ? FontWeight.bold : FontWeight.normal,
+          color: _isHiringExpanded ? const Color(0xFF0D2364) : Colors.black87,
+        ),
+      ),
+      trailing: Icon(
+        _isHiringExpanded ? Icons.expand_less : Icons.expand_more,
+        color: const Color(0xFF0D2364),
+      ),
+      initiallyExpanded: _isHiringExpanded,
+      onExpansionChanged: (expanded) {
+        setState(() {
+          _isHiringExpanded = expanded;
+        });
+      },
+      children: [
+        // Applicant Management Option ONLY
+        _buildDropdownItem(
+          title: 'Applicant Management',
+          isSelected: _currentScreen is ApplicantManagementScreen,
+          onTap: () {
+            _navigateToScreen(const ApplicantManagementScreen());
+            Navigator.pop(context);
+          },
+        ),
+      ],
+    );
+  }
+
+  // ADD THIS METHOD: Dropdown item widget
+  Widget _buildDropdownItem({
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(left: 16, right: 8, bottom: 4),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFF0D2364).withOpacity(0.1) : null,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: ListTile(
+        dense: true,
+        contentPadding: const EdgeInsets.only(left: 32, right: 16),
+        leading: Icon(
+          Icons.circle,
+          size: 8,
+          color: isSelected ? const Color(0xFF0D2364) : Colors.grey,
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? const Color(0xFF0D2364) : Colors.black87,
+          ),
+        ),
+        onTap: onTap,
       ),
     );
   }
@@ -1152,7 +1285,7 @@ class _LegalOfficerDashboardScreenState
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // <-- GENERATED INCIDENT ID
+                        // GENERATED INCIDENT ID
                         Text(
                           'INC-${(index + 1).toString().padLeft(2, '0')}',
                           style: const TextStyle(
@@ -1294,7 +1427,7 @@ class _LegalOfficerDashboardScreenState
     );
   }
 
-  // FIXED INCIDENT TABLE - HINDI NA SCROLLABLE
+  // FIXED INCIDENT TABLE - NO LONGER SCROLLABLE
   Widget _buildIncidentTable() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600 && screenWidth < 1024;

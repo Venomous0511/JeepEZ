@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 import '../../models/app_user.dart';
 
@@ -14,7 +15,7 @@ class TicketReportApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Ticket Report',
+      title: '',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
       home: const TicketReportScreen(),
@@ -41,7 +42,10 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
   Future<void> _loadCurrentUser() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
       setState(() {
         user = AppUser.fromMap(uid, doc.data()!);
       });
@@ -51,10 +55,13 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
   bool showTicketTable = false;
   bool isLoading = false;
 
-  final TextEditingController _openingTicketController = TextEditingController();
-  final TextEditingController _closingTicketController = TextEditingController();
+  final TextEditingController _openingTicketController =
+      TextEditingController();
+  final TextEditingController _closingTicketController =
+      TextEditingController();
   final TextEditingController _unitNumberController = TextEditingController();
-  final TextEditingController _conductorNameController = TextEditingController();
+  final TextEditingController _conductorNameController =
+      TextEditingController();
 
   Color customBlueColor = const Color(0xFF0D2364);
 
@@ -68,17 +75,24 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
   String location = '';
   String unitNumber = '';
 
+  // Time controllers
+  final TextEditingController _openingTimeController = TextEditingController();
+  final TextEditingController _closingTimeController = TextEditingController();
+
   @override
   void dispose() {
     _openingTicketController.dispose();
     _closingTicketController.dispose();
     _unitNumberController.dispose();
     _conductorNameController.dispose();
+    _openingTimeController.dispose();
+    _closingTimeController.dispose();
     super.dispose();
   }
 
   Future<void> _fetchInspectorTripData() async {
-    if (_unitNumberController.text.isEmpty || _conductorNameController.text.isEmpty) {
+    if (_unitNumberController.text.isEmpty ||
+        _conductorNameController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter both Unit Number and Conductor Name'),
@@ -96,10 +110,26 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
       QuerySnapshot querySnapshot = await FirebaseFirestore.instance
           .collection('inspector_trip')
           .where('unitNumber', isEqualTo: _unitNumberController.text.trim())
-          .where('conductorName', isEqualTo: _conductorNameController.text.trim())
+          .where(
+            'conductorName',
+            isEqualTo: _conductorNameController.text.trim(),
+          )
           .orderBy('timestamp', descending: true)
           .limit(1)
           .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        QuerySnapshot alternativeQuery = await FirebaseFirestore.instance
+            .collection('inspector_trip')
+            .where('unitNumber', isEqualTo: _unitNumberController.text.trim())
+            .orderBy('timestamp', descending: true)
+            .limit(1)
+            .get();
+
+        if (alternativeQuery.docs.isNotEmpty) {
+          querySnapshot = alternativeQuery;
+        }
+      }
 
       if (querySnapshot.docs.isNotEmpty) {
         DocumentSnapshot doc = querySnapshot.docs.first;
@@ -109,7 +139,6 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
 
         setState(() {
           ticketData.clear();
-
 
           for (var row in ticketSalesDataRaw) {
             if (row is Map) {
@@ -147,12 +176,16 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
           ticketData.clear();
           noOfPass = '0';
           inspectionTime = '';
+          conductorName = '';
+          driverName = '';
+          location = '';
+          unitNumber = '';
         });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('No data found for this Unit Number and Conductor'),
+              content: Text('No data found for this Unit Number'),
               backgroundColor: Colors.orange,
             ),
           );
@@ -176,10 +209,178 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
     }
   }
 
+  Future<void> _selectTime(
+    BuildContext context,
+    TextEditingController controller,
+  ) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+
+    if (picked != null) {
+      final formattedTime =
+          '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+      controller.text = formattedTime;
+    }
+  }
+
+  void _showReportHistory() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.9,
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Ticket Report History',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: customBlueColor,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('ticket_report')
+                        .where('employeeId', isEqualTo: user?.employeeId)
+                        .orderBy('timestamp', descending: true)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'No report history found',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        );
+                      }
+                      final docs = snapshot.data!.docs;
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final data =
+                              docs[index].data() as Map<String, dynamic>;
+                          final timestamp = data['timestamp'] as Timestamp?;
+                          final type = data['type']?.toString() ?? 'N/A';
+                          final ticketNumber =
+                              data['ticketNumber']?.toString() ?? 'N/A';
+                          final time = data['time']?.toString() ?? '';
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey[300]!),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '${type.toUpperCase()} TICKET',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: type == 'opening'
+                                            ? Colors.green
+                                            : Colors.blue,
+                                      ),
+                                    ),
+                                    Text(
+                                      '#$ticketNumber',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text('Unit: ${data['unitNumber'] ?? 'N/A'}'),
+                                Text(
+                                  'Conductor: ${data['conductorName'] ?? 'N/A'}',
+                                ),
+                                if (time.isNotEmpty) Text('Time: $time'),
+                                if (timestamp != null)
+                                  Text(
+                                    'Submitted: ${_formatTimestamp(timestamp)}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Divider(),
+                const SizedBox(height: 15),
+                Center(
+                  child: SizedBox(
+                    width: 120,
+                    height: 45,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: customBlueColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text('Close'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatTimestamp(Timestamp timestamp) {
+    final date = timestamp.toDate();
+    return DateFormat('MM/dd/yyyy HH:mm').format(date);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor: const Color(0xFF0D2364)),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0D2364),
+        title: const Text(''),
+      ),
       backgroundColor: Colors.white,
       body: SafeArea(
         child: LayoutBuilder(
@@ -193,12 +394,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      margin: EdgeInsets.only(bottom: isSmallScreen ? 20 : 30),
-                      child: _buildTitle(isSmallScreen),
-                    ),
-
-                    // Search Section
+                    // Search Section - WALANG TICKET REPORT TITLE
                     Container(
                       margin: EdgeInsets.only(bottom: isSmallScreen ? 20 : 30),
                       padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
@@ -224,6 +420,46 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                         ),
                       ),
 
+                    // Ticket Report Summary
+                    if (unitNumber.isNotEmpty)
+                      Container(
+                        margin: EdgeInsets.only(
+                          bottom: isSmallScreen ? 20 : 30,
+                        ),
+                        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withAlpha(50),
+                              blurRadius: 5,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: _buildTicketReportForm(isSmallScreen),
+                      ),
+
+                    // Show/Hide Ticket Table Button
+                    if (ticketData.isNotEmpty)
+                      Container(
+                        margin: EdgeInsets.only(
+                          bottom: isSmallScreen ? 15 : 20,
+                        ),
+                        child: _buildTicketButton(isSmallScreen),
+                      ),
+
+                    // Ticket Table
+                    if (showTicketTable && ticketData.isNotEmpty)
+                      Container(
+                        margin: EdgeInsets.only(
+                          bottom: isSmallScreen ? 20 : 30,
+                        ),
+                        child: _buildTicketTable(isSmallScreen),
+                      ),
+
+                    // TICKET LOGS SECTION
                     Container(
                       margin: EdgeInsets.only(bottom: isSmallScreen ? 20 : 30),
                       padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
@@ -238,89 +474,62 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                           ),
                         ],
                       ),
-                      child: _buildTicketReportForm(isSmallScreen),
-                    ),
-
-                    Container(
-                      margin: EdgeInsets.only(bottom: isSmallScreen ? 15 : 20),
-                      child: _buildTicketButton(isSmallScreen),
-                    ),
-
-                    if (showTicketTable && ticketData.isNotEmpty)
-                      Container(
-                        margin: EdgeInsets.only(bottom: isSmallScreen ? 20 : 30),
-                        child: _buildTicketTable(isSmallScreen),
-                      ),
-
-                    if (showTicketTable && ticketData.isEmpty)
-                      Container(
-                        margin: EdgeInsets.only(bottom: isSmallScreen ? 20 : 30),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[300]!),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'No ticket data available. Please search for a unit and conductor.',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 14 : 16,
-                              color: Colors.grey[600],
-                            ),
-                            textAlign: TextAlign.center,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Header with History Button
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'TICKET LOGS',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 18 : 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: customBlueColor,
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: _showReportHistory,
+                                icon: const Icon(Icons.history, size: 24),
+                                tooltip: 'View Report History',
+                                style: IconButton.styleFrom(
+                                  backgroundColor: customBlueColor,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.all(8),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ),
+                          const SizedBox(height: 15),
 
-                    Container(
-                      margin: EdgeInsets.only(bottom: isSmallScreen ? 15 : 20),
-                      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withAlpha(50),
-                            blurRadius: 5,
-                            offset: const Offset(0, 2),
+                          // Opening Ticket Row
+                          _buildTicketLogRow(
+                            'Opening Ticket',
+                            _openingTicketController,
+                            _openingTimeController,
+                            isSmallScreen,
+                            Icons.play_arrow,
+                            Colors.green,
                           ),
-                        ],
-                      ),
-                      child: _buildOpeningTicketField(isSmallScreen),
-                    ),
+                          const SizedBox(height: 15),
 
-                    Container(
-                      margin: EdgeInsets.only(bottom: isSmallScreen ? 15 : 20),
-                      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withAlpha(50),
-                            blurRadius: 5,
-                            offset: const Offset(0, 2),
+                          // Closing Ticket Row
+                          _buildTicketLogRow(
+                            'Closing Ticket',
+                            _closingTicketController,
+                            _closingTimeController,
+                            isSmallScreen,
+                            Icons.stop,
+                            Colors.red,
                           ),
                         ],
                       ),
-                      child: _buildClosingTicketField(isSmallScreen),
                     ),
 
+                    // Submit Buttons
                     Container(
                       margin: EdgeInsets.only(bottom: isSmallScreen ? 10 : 15),
-                      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withAlpha(50),
-                            blurRadius: 5,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
                       child: _buildSubmitButtons(isSmallScreen),
                     ),
                   ],
@@ -329,26 +538,6 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
             );
           },
         ),
-      ),
-    );
-  }
-
-  Widget _buildTitle(bool isSmallScreen) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-      decoration: BoxDecoration(
-        color: customBlueColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        'Ticket Report',
-        style: TextStyle(
-          fontSize: isSmallScreen ? 24 : 28,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-        textAlign: TextAlign.center,
       ),
     );
   }
@@ -404,11 +593,11 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
   }
 
   Widget _buildSearchField(
-      String label,
-      TextEditingController controller,
-      String hint,
-      bool isSmallScreen,
-      ) {
+    String label,
+    TextEditingController controller,
+    String hint,
+    bool isSmallScreen,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -456,13 +645,11 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
         ),
         const SizedBox(height: 15),
 
-        if (unitNumber.isNotEmpty) ...[
-          _buildInfoRow('Unit Number:', unitNumber, isSmallScreen),
-          _buildInfoRow('Driver:', driverName, isSmallScreen),
-          _buildInfoRow('Conductor:', conductorName, isSmallScreen),
-          _buildInfoRow('Location:', location, isSmallScreen),
-          const SizedBox(height: 10),
-        ],
+        _buildInfoRow('Unit Number:', unitNumber, isSmallScreen),
+        _buildInfoRow('Driver:', driverName, isSmallScreen),
+        _buildInfoRow('Conductor:', conductorName, isSmallScreen),
+        _buildInfoRow('Location:', location, isSmallScreen),
+        const SizedBox(height: 10),
 
         Text(
           'Total passenger from latest ticket inspection:',
@@ -486,7 +673,10 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border.all(color: Colors.grey[300]!),
@@ -502,7 +692,10 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border.all(color: Colors.grey[300]!),
@@ -600,9 +793,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: customBlueColor,
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey[300]!),
-                  ),
+                  border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
                 ),
                 child: Row(
                   children: [
@@ -664,7 +855,11 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                           textAlign: TextAlign.center,
                         ),
                       ),
-                      for (int colIndex = 0; colIndex < ticketData[rowIndex].length; colIndex++)
+                      for (
+                        int colIndex = 0;
+                        colIndex < ticketData[rowIndex].length;
+                        colIndex++
+                      )
                         SizedBox(
                           width: isSmallScreen ? 80 : 100,
                           child: Text(
@@ -686,159 +881,162 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
     );
   }
 
-  Widget _buildOpeningTicketField(bool isSmallScreen) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Opening Ticket:',
-          style: TextStyle(
-            fontSize: isSmallScreen ? 16 : 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[400]!),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: TextField(
-            controller: _openingTicketController,
-            keyboardType: TextInputType.number,
-            maxLength: 6,
-            decoration: InputDecoration(
-              hintText: 'Enter opening ticket number (1-99999)...',
-              hintStyle: TextStyle(color: Colors.grey[600]),
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-              counterText: "",
-            ),
-            style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
-            onChanged: (value) {
-              if (value.isNotEmpty) {
-                final filtered = value.replaceAll(RegExp(r'[^0-9]'), '');
-                if (filtered != value) {
-                  _openingTicketController.value = TextEditingValue(
-                    text: filtered,
-                    selection: TextSelection.collapsed(offset: filtered.length),
-                  );
-                }
-                if (filtered.isNotEmpty) {
-                  final number = int.tryParse(filtered);
-                  if (number != null && number > 99999) {
-                    _openingTicketController.value = TextEditingValue(
-                      text: '99999',
-                      selection: TextSelection.collapsed(offset: 4),
-                    );
-                  }
-                }
-              }
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '${_openingTicketController.text.length}/6',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: _openingTicketController.text.length > 6
-                      ? Colors.red
-                      : Colors.grey[600],
-                ),
-              ),
-              if (_openingTicketController.text.isNotEmpty)
+  Widget _buildTicketLogRow(
+    String label,
+    TextEditingController ticketController,
+    TextEditingController timeController,
+    bool isSmallScreen,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey[300]!),
+        borderRadius: BorderRadius.circular(8),
+        color: Colors.grey[50],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 20),
+                const SizedBox(width: 8),
                 Text(
-                  'Range: 1-99999',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  label,
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 16 : 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
                 ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildClosingTicketField(bool isSmallScreen) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Closing Ticket:',
-          style: TextStyle(
-            fontSize: isSmallScreen ? 16 : 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[400]!),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: TextField(
-            controller: _closingTicketController,
-            keyboardType: TextInputType.number,
-            maxLength: 6,
-            decoration: InputDecoration(
-              hintText: 'Enter closing ticket number (1-99999)...',
-              hintStyle: TextStyle(color: Colors.grey[600]),
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-              counterText: "",
+              ],
             ),
-            style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
-            onChanged: (value) {
-              if (value.isNotEmpty) {
-                final filtered = value.replaceAll(RegExp(r'[^0-9]'), '');
-                if (filtered != value) {
-                  _closingTicketController.value = TextEditingValue(
-                    text: filtered,
-                    selection: TextSelection.collapsed(offset: filtered.length),
-                  );
-                }
-                if (filtered.isNotEmpty) {
-                  final number = int.tryParse(filtered);
-                  if (number != null && number > 99999) {
-                    _closingTicketController.value = TextEditingValue(
-                      text: '99999',
-                      selection: TextSelection.collapsed(offset: 4),
-                    );
-                  }
-                }
-              }
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '${_closingTicketController.text.length}/6',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: _closingTicketController.text.length > 6
-                      ? Colors.red
-                      : Colors.grey[600],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Ticket Number:',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 14 : 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[400]!),
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.white,
+                        ),
+                        child: TextField(
+                          controller: ticketController,
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                          decoration: InputDecoration(
+                            hintText: 'Enter ticket number (1-99999)...',
+                            hintStyle: TextStyle(color: Colors.grey[600]),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.all(
+                              isSmallScreen ? 12 : 14,
+                            ),
+                            counterText: "",
+                          ),
+                          style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
+                          onChanged: (value) {
+                            if (value.isNotEmpty) {
+                              final filtered = value.replaceAll(
+                                RegExp(r'[^0-9]'),
+                                '',
+                              );
+                              if (filtered != value) {
+                                ticketController.value = TextEditingValue(
+                                  text: filtered,
+                                  selection: TextSelection.collapsed(
+                                    offset: filtered.length,
+                                  ),
+                                );
+                              }
+                              if (filtered.isNotEmpty) {
+                                final number = int.tryParse(filtered);
+                                if (number != null && number > 99999) {
+                                  ticketController.value = TextEditingValue(
+                                    text: '99999',
+                                    selection: TextSelection.collapsed(
+                                      offset: 4,
+                                    ),
+                                  );
+                                }
+                              }
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              if (_closingTicketController.text.isNotEmpty)
-                Text(
-                  'Range: 1-99999',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 1,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Time:',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 14 : 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      GestureDetector(
+                        onTap: () => _selectTime(context, timeController),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey[400]!),
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.white,
+                          ),
+                          padding: EdgeInsets.all(isSmallScreen ? 12 : 14),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  timeController.text.isEmpty
+                                      ? 'Select time'
+                                      : timeController.text,
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 14 : 16,
+                                    color: timeController.text.isEmpty
+                                        ? Colors.grey[600]
+                                        : Colors.black,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.access_time,
+                                color: customBlueColor,
+                                size: 20,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -854,9 +1052,14 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                 backgroundColor: customBlueColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              child: const Text('Submit Opening Ticket', style: TextStyle(fontSize: 16)),
+              child: const Text(
+                'Submit Opening Ticket',
+                style: TextStyle(fontSize: 16),
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -868,9 +1071,14 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                 backgroundColor: customBlueColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              child: const Text('Submit Closing Ticket', style: TextStyle(fontSize: 16)),
+              child: const Text(
+                'Submit Closing Ticket',
+                style: TextStyle(fontSize: 16),
+              ),
             ),
           ),
         ],
@@ -885,9 +1093,14 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                 backgroundColor: customBlueColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              child: const Text('Submit Opening Ticket', style: TextStyle(fontSize: 16)),
+              child: const Text(
+                'Submit Opening Ticket',
+                style: TextStyle(fontSize: 16),
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -898,9 +1111,14 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                 backgroundColor: customBlueColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              child: const Text('Submit Closing Ticket', style: TextStyle(fontSize: 16)),
+              child: const Text(
+                'Submit Closing Ticket',
+                style: TextStyle(fontSize: 16),
+              ),
             ),
           ),
         ],
@@ -913,10 +1131,28 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
         ? _openingTicketController.text.trim()
         : _closingTicketController.text.trim();
 
+    String time = type == 'opening'
+        ? _openingTimeController.text.trim()
+        : _closingTimeController.text.trim();
+
     if (ticketNumber.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please enter ${type == 'opening' ? 'opening' : 'closing'} ticket number'),
+          content: Text(
+            'Please enter ${type == 'opening' ? 'opening' : 'closing'} ticket number',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (time.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please select ${type == 'opening' ? 'opening' : 'closing'} time',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -938,28 +1174,35 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
     Map<String, dynamic> ticketDataToSave = {
       'type': type,
       'ticketNumber': number,
-      'unitNumber': user?.assignedVehicle,
-      'conductorName': user?.name,
+      'time': time,
+      'unitNumber': user?.assignedVehicle ?? _unitNumberController.text.trim(),
+      'conductorName': user?.name ?? _conductorNameController.text.trim(),
       'employeeId': user?.employeeId,
       'timestamp': FieldValue.serverTimestamp(),
     };
 
     try {
-      await FirebaseFirestore.instance.collection('ticket_report').add(ticketDataToSave);
+      await FirebaseFirestore.instance
+          .collection('ticket_report')
+          .add(ticketDataToSave);
 
       if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${type == 'opening' ? 'Opening' : 'Closing'} Ticket $ticketNumber saved successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${type == 'opening' ? 'Opening' : 'Closing'} Ticket $ticketNumber saved successfully!',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
 
       if (type == 'opening') {
         _openingTicketController.clear();
+        _openingTimeController.clear();
       } else {
         _closingTicketController.clear();
+        _closingTimeController.clear();
       }
     } catch (e) {
       if (mounted) {
