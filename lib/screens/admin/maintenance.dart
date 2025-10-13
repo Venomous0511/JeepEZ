@@ -61,35 +61,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
 
       _loadMaintenanceData(vehicleId);
     } catch (e) {
-      print('Error updating status: $e');
-    }
-  }
-
-  Future<void> _addStatusUpdate(
-    String vehicleId,
-    String maintenanceId,
-    String updateText,
-  ) async {
-    try {
-      final update = {
-        'text': updateText,
-        'timestamp': FieldValue.serverTimestamp(),
-        'updatedBy': 'Admin', // You can replace this with actual user name
-      };
-
-      await FirebaseFirestore.instance
-          .collection('vehicles')
-          .doc(vehicleId)
-          .collection('maintenance')
-          .doc(maintenanceId)
-          .update({
-            'updates': FieldValue.arrayUnion([update]),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-
-      _loadMaintenanceData(vehicleId);
-    } catch (e) {
-      print('Error adding update: $e');
+      debugPrint('Error updating status: $e');
     }
   }
 
@@ -131,103 +103,6 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
               ),
             ],
           ),
-        );
-      },
-    );
-  }
-
-  void _showUpdatesDialog(
-    BuildContext context,
-    List<dynamic> updates,
-    String title,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Updates - $title'),
-          content: SizedBox(
-            width: 400,
-            height: 300,
-            child: updates.isEmpty
-                ? const Center(child: Text("No updates available"))
-                : SingleChildScrollView(
-                    child: Column(
-                      children: updates.map((update) {
-                        final updateData = update as Map<String, dynamic>;
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 4),
-                          child: ListTile(
-                            title: Text(updateData['text'] ?? ''),
-                            subtitle: Text(
-                              updateData['timestamp'] != null
-                                  ? 'Updated on: ${(updateData['timestamp'] as Timestamp).toDate().toString()}'
-                                  : '',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            leading: const Icon(
-                              Icons.update,
-                              color: Colors.blue,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showAddUpdateDialog(
-    BuildContext context,
-    String vehicleId,
-    String maintenanceId,
-  ) {
-    final updateController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Add Status Update'),
-          content: TextField(
-            controller: updateController,
-            decoration: const InputDecoration(
-              labelText: 'Update details',
-              border: OutlineInputBorder(),
-            ),
-            maxLines: 3,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (updateController.text.trim().isNotEmpty) {
-                  _addStatusUpdate(
-                    vehicleId,
-                    maintenanceId,
-                    updateController.text.trim(),
-                  );
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('Add Update'),
-            ),
-          ],
         );
       },
     );

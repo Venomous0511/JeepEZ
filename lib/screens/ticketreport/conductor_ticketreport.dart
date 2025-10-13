@@ -38,8 +38,14 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
   void initState() {
     super.initState();
     _loadCurrentUser();
-    _addOpeningTicketRow();
-    _addClosingTicketRow();
+
+    // Start with only one row for each section
+    openingTicketRows = [
+      List.generate(6, (index) => TextEditingController(text: '0')),
+    ];
+    closingTicketRows = [
+      List.generate(6, (index) => TextEditingController(text: '0')),
+    ];
   }
 
   Future<void> _loadCurrentUser() async {
@@ -60,36 +66,30 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
   Future<void> _checkTodaySubmissions() async {
     if (user == null) return;
 
-    final today = DateTime.now();
-    final startOfDay = DateTime(today.year, today.month, today.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
+    final firestore = FirebaseFirestore.instance;
+    final dateKey = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final unit = (user['assignedVehicle'] ?? 'N/A').toString();
+    final conductor = (user['name'] ?? '').toString().toLowerCase().trim();
+    final docId = '${dateKey}_${unit}_$conductor'.replaceAll(' ', '_');
 
     try {
-      // Check for opening ticket submission today
-      final openingQuery = await FirebaseFirestore.instance
-          .collection('ticket_report')
-          .where('employeeId', isEqualTo: user['employeeId'])
-          .where('type', isEqualTo: 'opening')
-          .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-          .where('timestamp', isLessThan: endOfDay)
-          .get();
+      final doc = await firestore.collection('ticket_report').doc(docId).get();
 
-      // Check for closing ticket submission today
-      final closingQuery = await FirebaseFirestore.instance
-          .collection('ticket_report')
-          .where('employeeId', isEqualTo: user['employeeId'])
-          .where('type', isEqualTo: 'closing')
-          .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-          .where('timestamp', isLessThan: endOfDay)
-          .get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        final opening = data['openingTickets'] as List?;
+        final closing = data['closingTickets'] as List?;
 
-      setState(() {
-        hasSubmittedOpeningToday = openingQuery.docs.isNotEmpty;
-        hasSubmittedClosingToday = closingQuery.docs.isNotEmpty;
-        if (openingQuery.docs.isNotEmpty) {
-          todayOpeningDocId = openingQuery.docs.first.id;
-        }
-      });
+        setState(() {
+          hasSubmittedOpeningToday = opening != null && opening.isNotEmpty;
+          hasSubmittedClosingToday = closing != null && closing.isNotEmpty;
+        });
+      } else {
+        setState(() {
+          hasSubmittedOpeningToday = false;
+          hasSubmittedClosingToday = false;
+        });
+      }
     } catch (e) {
       debugPrint('Error checking today submissions: $e');
     }
@@ -196,10 +196,44 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
+      List<TicketReportData> allReports = [];
+
+      for (var doc in snapshot.docs) {
         final data = doc.data();
-        return TicketReportData.fromMap(data);
-      }).toList();
+
+        final timestamp = (data['timestamp'] as Timestamp).toDate();
+        final openingTickets = (data['openingTickets'] as List?) ?? [];
+        final closingTickets = (data['closingTickets'] as List?) ?? [];
+
+        // ✅ Create a record for opening if available
+        if (openingTickets.isNotEmpty) {
+          allReports.add(
+            TicketReportData(
+              timestamp: timestamp,
+              openingTickets: List<Map<String, dynamic>>.from(openingTickets),
+              closingTickets: [],
+              type: 'opening',
+            ),
+          );
+        }
+
+        // ✅ Create a record for closing if available
+        if (closingTickets.isNotEmpty) {
+          allReports.add(
+            TicketReportData(
+              timestamp: timestamp,
+              openingTickets: [],
+              closingTickets: List<Map<String, dynamic>>.from(closingTickets),
+              type: 'closing',
+            ),
+          );
+        }
+      }
+
+      // Sort so most recent comes first
+      allReports.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+      return allReports;
     });
   }
 
@@ -251,88 +285,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                         itemCount: reports.length,
                         itemBuilder: (context, index) {
                           final report = reports[index];
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[100],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey[300]!),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: report.type == 'opening'
-                                                ? Colors.green[100]
-                                                : Colors.red[100],
-                                            borderRadius:
-                                            BorderRadius.circular(4),
-                                          ),
-                                          child: Text(
-                                            report.type.toUpperCase(),
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                              color: report.type == 'opening'
-                                                  ? Colors.green[800]
-                                                  : Colors.red[800],
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Submission #${index + 1}',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            color: customBlueColor,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Text(
-                                      _formatDate(report.timestamp),
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                if (report.type == 'opening')
-                                  Text(
-                                    'Opening: ${report.openingTickets.length} trip(s)',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.green[700],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  )
-                                else
-                                  Text(
-                                    'Closing: ${report.closingTickets.length} trip(s)',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.red[700],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          );
+                          return _buildHistoryCard(report, index);
                         },
                       );
                     },
@@ -363,6 +316,99 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildHistoryCard(TicketReportData report, int index) {
+    final tickets = report.type == 'opening'
+        ? report.openingTickets
+        : report.closingTickets;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      child: ExpansionTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: report.type == 'opening'
+                ? Colors.green[100]
+                : Colors.red[100],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            report.type == 'opening' ? Icons.play_arrow : Icons.stop,
+            color: report.type == 'opening'
+                ? Colors.green[800]
+                : Colors.red[800],
+          ),
+        ),
+        title: Text(
+          '${report.type.toUpperCase()} Ticket Report',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: customBlueColor,
+          ),
+        ),
+        subtitle: Text(
+          _formatDate(report.timestamp),
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ticket Report:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: customBlueColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...tickets.asMap().entries.map((entry) {
+                  Map<String, dynamic> ticket = entry.value;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 4,
+                          children: [
+                            _buildTicketDetail('20', ticket['20'] ?? '0'),
+                            _buildTicketDetail('15', ticket['15'] ?? '0'),
+                            _buildTicketDetail('10', ticket['10'] ?? '0'),
+                            _buildTicketDetail('5', ticket['5'] ?? '0'),
+                            _buildTicketDetail('2', ticket['2'] ?? '0'),
+                            _buildTicketDetail('1', ticket['1'] ?? '0'),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTicketDetail(String label, String value) {
+    return Text(
+      '$label: $value',
+      style: const TextStyle(fontSize: 12),
     );
   }
 
@@ -461,7 +507,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  user?['assignedVehicle'] ?? 'Not Assigned',
+                                  user?['assignedVehicle'].toString() ?? 'Not Assigned',
                                   style: const TextStyle(
                                     fontSize: 24,
                                     color: Colors.white,
@@ -780,14 +826,6 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                 ),
               ],
             ),
-            IconButton(
-              onPressed: onAddRow,
-              icon: const Icon(
-                Icons.add_circle,
-                color: Color(0xFF0D2364),
-              ),
-              tooltip: 'Add Row',
-            ),
           ],
         ),
         const SizedBox(height: 15),
@@ -838,16 +876,6 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                             ),
                           ),
                         ),
-                      SizedBox(
-                        width: 60,
-                        child: Center(
-                          child: Icon(
-                            Icons.delete,
-                            color: Colors.white,
-                            size: isSmallScreen ? 16 : 20,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -933,18 +961,6 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                               ),
                             ),
                           ),
-                        SizedBox(
-                          width: 60,
-                          child: IconButton(
-                            onPressed: () => onRemoveRow(rowIndex),
-                            icon: Icon(
-                              Icons.delete_outline,
-                              color: Colors.red[700],
-                              size: isSmallScreen ? 16 : 20,
-                            ),
-                            tooltip: 'Remove Row',
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -957,45 +973,37 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
   }
 
   Future<void> _submitOpeningTickets() async {
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('User not logged in'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
     try {
-      // Convert opening ticket rows
-      List<Map<String, dynamic>> openingTicketData = [];
-      for (int i = 0; i < openingTicketRows.length; i++) {
-        Map<String, dynamic> rowData = {
-          'row': i + 1,
-          '20': openingTicketRows[i][0].text,
-          '15': openingTicketRows[i][1].text,
-          '10': openingTicketRows[i][2].text,
-          '5': openingTicketRows[i][3].text,
-          '2': openingTicketRows[i][4].text,
-          '1': openingTicketRows[i][5].text,
-        };
-        openingTicketData.add(rowData);
-      }
+      if (user == null) return;
 
-      Map<String, dynamic> ticketData = {
+      final firestore = FirebaseFirestore.instance;
+
+      // Unique ID: date + unit + conductor
+      final dateKey = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final unit = (user['assignedVehicle'] ?? 'N/A').toString();
+      final conductor = (user['name'] ?? '').toString().toLowerCase().trim();
+      final docId = '${dateKey}_${unit}_$conductor'.replaceAll(' ', '_');
+
+      // Prepare ticket rows
+      List<Map<String, dynamic>> ticketData = openingTicketRows.map((row) {
+        Map<String, dynamic> ticket = {};
+        for (int i = 0; i < ticketHeaders.length; i++) {
+          ticket[ticketHeaders[i]] = row[i].text.trim();
+        }
+        return ticket;
+      }).toList();
+
+      // Save or merge into same doc
+      await firestore.collection('ticket_report').doc(docId).set({
+        'employeeId': user['employeeId'],
+        'conductorName': user['name'],
+        'unitNumber': user['assignedVehicle'] ?? 'N/A',
         'type': 'opening',
-        'openingTickets': openingTicketData,
-        'closingTickets': [],
-        'employeeId': user?['employeeId'],
-        'conductorName': user?['name'],
-        'unitNumber': user?['assignedVehicle'],
         'timestamp': FieldValue.serverTimestamp(),
-      };
+        'openingTickets': ticketData,
+      }, SetOptions(merge: true));
 
-      await FirebaseFirestore.instance
-          .collection('ticket_report')
-          .add(ticketData);
+      setState(() => hasSubmittedOpeningToday = true);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1005,24 +1013,12 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
           ),
         );
       }
-
-      // Reset opening rows and refresh status
-      setState(() {
-        for (var row in openingTicketRows) {
-          for (var controller in row) {
-            controller.dispose();
-          }
-        }
-        openingTicketRows.clear();
-        _addOpeningTicketRow();
-      });
-
-      await _checkTodaySubmissions();
     } catch (e) {
+      debugPrint('Error submitting opening tickets: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error saving opening tickets: $e'),
+            content: Text('Failed to submit opening tickets: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1031,82 +1027,49 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
   }
 
   Future<void> _submitClosingTickets() async {
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('User not logged in'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    if (!hasSubmittedOpeningToday) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please submit opening tickets first!'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
     try {
-      // Convert closing ticket rows
-      List<Map<String, dynamic>> closingTicketData = [];
-      for (int i = 0; i < closingTicketRows.length; i++) {
-        Map<String, dynamic> rowData = {
-          'row': i + 1,
-          '20': closingTicketRows[i][0].text,
-          '15': closingTicketRows[i][1].text,
-          '10': closingTicketRows[i][2].text,
-          '5': closingTicketRows[i][3].text,
-          '2': closingTicketRows[i][4].text,
-          '1': closingTicketRows[i][5].text,
-        };
-        closingTicketData.add(rowData);
-      }
+      if (user == null) return;
 
-      Map<String, dynamic> ticketData = {
+      final firestore = FirebaseFirestore.instance;
+
+      // Same docId logic as opening
+      final dateKey = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final unit = (user['assignedVehicle'] ?? 'N/A').toString();
+      final conductor = (user['name'] ?? '').toString().toLowerCase().trim();
+      final docId = '${dateKey}_${unit}_$conductor'.replaceAll(' ', '_');
+
+      // Prepare ticket rows
+      List<Map<String, dynamic>> ticketData = closingTicketRows.map((row) {
+        Map<String, dynamic> ticket = {};
+        for (int i = 0; i < ticketHeaders.length; i++) {
+          ticket[ticketHeaders[i]] = row[i].text.trim();
+        }
+        return ticket;
+      }).toList();
+
+      // Merge the closing data into same doc
+      await firestore.collection('ticket_report').doc(docId).set({
         'type': 'closing',
-        'openingTickets': [],
-        'closingTickets': closingTicketData,
-        'employeeId': user?['employeeId'],
-        'conductorName': user?['name'],
-        'unitNumber': user?['assignedVehicle'],
         'timestamp': FieldValue.serverTimestamp(),
-      };
+        'closingTickets': ticketData,
+      }, SetOptions(merge: true));
 
-      await FirebaseFirestore.instance
-          .collection('ticket_report')
-          .add(ticketData);
+      setState(() => hasSubmittedClosingToday = true);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Closing tickets submitted successfully!'),
-            backgroundColor: Colors.green,
+            backgroundColor: Colors.redAccent,
           ),
         );
       }
-
-      // Reset closing rows and refresh status
-      setState(() {
-        for (var row in closingTicketRows) {
-          for (var controller in row) {
-            controller.dispose();
-          }
-        }
-        closingTicketRows.clear();
-        _addClosingTicketRow();
-      });
-
-      await _checkTodaySubmissions();
     } catch (e) {
+      debugPrint('Error submitting closing tickets: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error saving closing tickets: $e'),
+            content: Text('Failed to submit closing tickets: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1144,7 +1107,7 @@ class TicketReportData {
       timestamp: (data['timestamp'] as Timestamp).toDate(),
       openingTickets: openingTickets,
       closingTickets: closingTickets,
-      type: data['type'] ?? 'both',
+      type: data['type'],
     );
   }
 }

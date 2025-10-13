@@ -148,7 +148,7 @@ class _InspectorReportHistoryScreenState
         final query = _searchQuery.toLowerCase();
 
         return (data['unitNumber']?.toString().toLowerCase().contains(query) ??
-                false) ||
+            false) ||
             (data['driverName']?.toString().toLowerCase().contains(query) ??
                 false) ||
             (data['conductorName']?.toString().toLowerCase().contains(query) ??
@@ -257,6 +257,221 @@ class _InspectorReportHistoryScreenState
     );
   }
 
+  void _showTicketInspectionDetails(BuildContext context, Map<String, dynamic> data) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
+    // Extract ticket inspection data
+    final ticketInspection = data['ticketInspection'] as Map<String, dynamic>? ?? {};
+    final List<String> denominations = ['20', '15', '10', '5', '2', '1'];
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          insetPadding: EdgeInsets.all(isMobile ? 16 : 24),
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: isMobile ? double.infinity : 600,
+            ),
+            padding: EdgeInsets.all(isMobile ? 16 : 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.receipt_long, color: Color(0xFF0D2364)),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Ticket Inspection Details',
+                        style: TextStyle(
+                          fontSize: isMobile ? 16 : 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0D2364),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close, size: isMobile ? 20 : 24),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildDetailRow('Trip No', data['noOfTrips']?.toString() ?? 'N/A', isMobile),
+                        _buildDetailRow('Unit Number', data['unitNumber']?.toString() ?? 'N/A', isMobile),
+                        _buildDetailRow('Driver', data['driverName']?.toString() ?? 'N/A', isMobile),
+                        _buildDetailRow('Conductor', data['conductorName']?.toString() ?? 'N/A', isMobile),
+                        _buildDetailRow('Location', data['location']?.toString() ?? 'N/A', isMobile),
+                        _buildDetailRow('Inspection Time', data['inspectionTime']?.toString() ?? 'N/A', isMobile),
+                        _buildDetailRow('Passengers', data['noOfPass']?.toString() ?? 'N/A', isMobile),
+
+                        SizedBox(height: 20),
+
+                        // Ticket Inspection Table
+                        if (ticketInspection.isNotEmpty) ...[
+                          Text(
+                            'Ticket Inspection Breakdown',
+                            style: TextStyle(
+                              fontSize: isMobile ? 14 : 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0D2364),
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey[300]!),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              children: [
+                                // Header
+                                Container(
+                                  padding: EdgeInsets.all(isMobile ? 8 : 12),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFF0D2364),
+                                    borderRadius: BorderRadius.only(
+                                      topLeft: Radius.circular(7),
+                                      topRight: Radius.circular(7),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'Fare',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: isMobile ? 12 : 14,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          'Ticket Number',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: isMobile ? 12 : 14,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Rows
+                                ...denominations.map((denom) {
+                                  final ticketNumber = ticketInspection[denom]?.toString() ?? 'N/A';
+                                  final index = denominations.indexOf(denom);
+
+                                  return Container(
+                                    padding: EdgeInsets.all(isMobile ? 8 : 12),
+                                    decoration: BoxDecoration(
+                                      color: index.isEven ? Colors.grey[50] : Colors.white,
+                                      border: Border(
+                                        bottom: BorderSide(
+                                          color: Colors.grey[300]!,
+                                          width: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            denom,
+                                            style: TextStyle(
+                                              fontSize: isMobile ? 12 : 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF0D2364),
+                                            ),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Text(
+                                            ticketNumber,
+                                            style: TextStyle(
+                                              fontSize: isMobile ? 12 : 14,
+                                              color: Colors.black87,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(
+                      'Close',
+                      style: TextStyle(fontSize: isMobile ? 14 : 16),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, bool isMobile) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+                fontSize: isMobile ? 12 : 14,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: isMobile ? 12 : 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildReportCards(BuildContext context, List<DocumentSnapshot> trips) {
     return Column(
       children: trips.map((doc) {
@@ -287,10 +502,10 @@ class _InspectorReportHistoryScreenState
                         ),
                       ),
                     ),
-                    PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert),
-                      onSelected: (value) {},
-                      itemBuilder: (BuildContext context) => [],
+                    IconButton(
+                      icon: const Icon(Icons.visibility, color: Color(0xFF0D2364)),
+                      onPressed: () => _showTicketInspectionDetails(context, data),
+                      tooltip: 'View Ticket Details',
                     ),
                   ],
                 ),
@@ -511,10 +726,10 @@ class _InspectorReportHistoryScreenState
                 DataCell(Text(data['noOfPass']?.toString() ?? 'N/A')),
                 DataCell(Text(data['location']?.toString() ?? 'N/A')),
                 DataCell(
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, size: 20),
-                    onSelected: (value) {},
-                    itemBuilder: (BuildContext context) => [],
+                  IconButton(
+                    icon: const Icon(Icons.visibility, size: 20, color: Color(0xFF0D2364)),
+                    onPressed: () => _showTicketInspectionDetails(context, data),
+                    tooltip: 'View Ticket Details',
                   ),
                 ),
               ],

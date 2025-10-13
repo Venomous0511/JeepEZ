@@ -36,7 +36,7 @@ class _TicketTableState extends State<TicketTable> {
     return _firestore.collection('ticket_report').snapshots().asyncMap((ticketSnapshot) async {
       // Load inspector trips
       final inspectorSnapshot = await _firestore.collection('inspector_trip').get();
-      Map<String, int> inspectorData = {}; // key: date-unit-conductor, value: passengers
+      Map<String, int> inspectorData = {};
 
       for (var doc in inspectorSnapshot.docs) {
         final data = doc.data();
@@ -54,7 +54,7 @@ class _TicketTableState extends State<TicketTable> {
         }
       }
 
-      // 🔹 Step 2: Process ticket reports
+      // Process ticket reports
       List<TicketData> tickets = [];
 
       for (var doc in ticketSnapshot.docs) {
@@ -1217,7 +1217,7 @@ class _TicketTableState extends State<TicketTable> {
           stream: _getTicketsStream(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator());
             }
 
             if (snapshot.hasError) {
@@ -1230,6 +1230,9 @@ class _TicketTableState extends State<TicketTable> {
             final filteredTickets = _applyFilters(allTickets);
             final vehicleOptions = _getVehicleOptions(allTickets);
 
+            final screenHeight = MediaQuery.of(context).size.height;
+            final safeMaxHeight = (screenHeight * 0.6).clamp(400.0, double.infinity);
+
             return Column(
               children: [
                 Expanded(
@@ -1240,10 +1243,12 @@ class _TicketTableState extends State<TicketTable> {
                         children: [
                           _buildSearchAndFilterSection(isMobile, vehicleOptions),
                           SizedBox(height: isMobile ? 12 : 16),
+
+                          // Ticket container with safe height constraints
                           Container(
                             constraints: BoxConstraints(
                               minHeight: 400,
-                              maxHeight: MediaQuery.of(context).size.height * 0.6,
+                              maxHeight: safeMaxHeight,
                             ),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8),

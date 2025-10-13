@@ -310,7 +310,7 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                         selectedPosition.isNotEmpty &&
                         dateController.text.isNotEmpty) {
                       if (isEditing) {
-                        candidate!.name = nameController.text;
+                        candidate.name = nameController.text;
                         candidate.position = selectedPosition;
                         candidate.interviewDate = dateController.text;
                         _updateCandidate(candidate);

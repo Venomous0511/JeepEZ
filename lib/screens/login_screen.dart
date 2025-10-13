@@ -810,11 +810,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: sending
-                      ? null
-                      : () {
-                    Navigator.of(dialogContext).pop();
-                  },
+                  onPressed: sending ? null : () => Navigator.of(dialogContext).pop(),
                   child: const Text("Cancel"),
                 ),
                 ElevatedButton.icon(
@@ -827,7 +823,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   onPressed: sending
                       ? null
-                      : () {
+                      : () async  {
                     final email = emailController.text.trim();
                     if (email.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -838,7 +834,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       );
                       return;
                     }
-                    _sendResetLink(email, dialogContext, setDialogState);
+                    setDialogState(() {
+                      sending = true;
+                    });
+
+                    await _sendResetLinkAsync(email, dialogContext);
                   },
                   icon: sending
                       ? const SizedBox(
@@ -868,6 +868,66 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       });
     });
+  }
+
+  Future<void> _sendResetLinkAsync(String email, BuildContext dialogContext) async {
+    // Validate email format
+    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    if (!emailRegex.hasMatch(email)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Please enter a valid email address"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+
+      if (context.mounted) {
+        Navigator.of(dialogContext).pop();
+        _showPasswordResetSuccessDialog(email);
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'Failed to send reset email';
+
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'No account found with this email address';
+          break;
+        case 'invalid-email':
+          errorMessage = 'Invalid email address format';
+          break;
+        case 'too-many-requests':
+          errorMessage = 'Too many requests. Please try again later';
+          break;
+        default:
+          errorMessage = e.message ?? 'Failed to send reset email';
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
   }
 
   void _sendResetLink(
@@ -1235,7 +1295,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => RoleBasedDashboard(user: user!),
+          builder: (_) => RoleBasedDashboard(user: user),
         ),
       );
 

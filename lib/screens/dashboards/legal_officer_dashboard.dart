@@ -782,7 +782,6 @@ class _LegalOfficerDashboardScreenState
     );
   }
 
-  // UPDATED METHOD: Hiring Management Dropdown with only Applicant Management
   // UPDATED METHOD: Hiring Management Dropdown with only Applicant Management and icon
   Widget _buildHiringManagementDropdown() {
     return ExpansionTile(

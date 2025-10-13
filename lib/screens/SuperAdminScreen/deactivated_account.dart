@@ -291,7 +291,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
 
         // Table with Horizontal Scroll
         Expanded(
-          child: Container(
+          child: SizedBox(
             width: double.infinity,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -308,7 +308,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
                       color: Color(0xFF0D2364),
                       fontSize: 14,
                     ),
-                    dataRowHeight: 60,
+                    dataRowMinHeight: 60,
                     columnSpacing: 20,
                     horizontalMargin: 16,
                     columns: const [

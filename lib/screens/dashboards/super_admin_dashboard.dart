@@ -106,7 +106,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                             (newDoc) => newDoc.id == doc.id,
                           ),
                         )
-                        .toList(),
                   ];
                 }
 
