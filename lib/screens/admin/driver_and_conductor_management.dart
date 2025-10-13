@@ -298,10 +298,24 @@ class _DriverConductorManagementScreenState
     }).toList();
   }
 
-  // Action menu with the requested format
+  // Check if employee has a schedule set
+  bool _hasSchedule(Map<String, dynamic> data) {
+    final schedule = data['schedule']?.toString();
+    return schedule != null && schedule.isNotEmpty && schedule != 'Not set';
+  }
+
+  // Check if employee has a vehicle assigned
+  bool _hasVehicle(Map<String, dynamic> data) {
+    final vehicle = data['assignedVehicle']?.toString();
+    return vehicle != null && vehicle.isNotEmpty && vehicle != 'Not assigned';
+  }
+
+  // State-based Action Menu
   void _showActionMenu(BuildContext context, QueryDocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     final employeeName = data['name']?.toString() ?? 'Employee';
+    final hasSchedule = _hasSchedule(data);
+    final hasVehicle = _hasVehicle(data);
 
     showModalBottomSheet(
       context: context,
@@ -309,40 +323,77 @@ class _DriverConductorManagementScreenState
         return SafeArea(
           child: Wrap(
             children: <Widget>[
+              // Schedule Actions - State-based
+              if (!hasSchedule) ...[
+                ListTile(
+                  leading: const Icon(
+                    Icons.calendar_today,
+                    color: Colors.green,
+                  ),
+                  title: const Text('Set Schedule'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showScheduleSelector(context, doc, data);
+                  },
+                ),
+              ] else ...[
+                ListTile(
+                  leading: const Icon(
+                    Icons.edit_calendar,
+                    color: Colors.orange,
+                  ),
+                  title: const Text('Change Schedule'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showScheduleSelector(context, doc, data);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: const Text('Clear Schedule'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _clearSchedule(doc.id, data);
+                  },
+                ),
+              ],
+
+              // Vehicle Actions - State-based
+              if (!hasVehicle) ...[
+                ListTile(
+                  leading: const Icon(
+                    Icons.directions_bus,
+                    color: Colors.green,
+                  ),
+                  title: const Text('Assign Vehicle'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showVehicleSelector(context, doc, data);
+                  },
+                ),
+              ] else ...[
+                ListTile(
+                  leading: const Icon(Icons.edit, color: Colors.orange),
+                  title: const Text('Change Vehicle'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showVehicleSelector(context, doc, data);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.cancel, color: Colors.red),
+                  title: const Text('Remove Vehicle'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _removeVehicle(doc.id, data);
+                  },
+                ),
+              ],
+
+              // History Actions (always available)
+              const Divider(),
               ListTile(
-                leading: const Icon(Icons.calendar_today),
-                title: const Text('Set Schedule'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showScheduleSelector(context, doc, data);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.directions_bus),
-                title: const Text('Assign Vehicle'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showVehicleSelector(context, doc, data);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.edit_calendar),
-                title: const Text('Change Schedule'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showScheduleSelector(context, doc, data);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.edit),
-                title: const Text('Change Vehicle'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showVehicleSelector(context, doc, data);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.history),
+                leading: const Icon(Icons.history, color: Colors.blue),
                 title: const Text('View Schedule History'),
                 onTap: () {
                   Navigator.pop(context);
@@ -350,7 +401,7 @@ class _DriverConductorManagementScreenState
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.history_edu),
+                leading: const Icon(Icons.history_edu, color: Colors.blue),
                 title: const Text('View Vehicle History'),
                 onTap: () {
                   Navigator.pop(context);
@@ -362,6 +413,81 @@ class _DriverConductorManagementScreenState
         );
       },
     );
+  }
+
+  // Clear schedule function
+  Future<void> _clearSchedule(
+    String docId,
+    Map<String, dynamic> employeeData,
+  ) async {
+    try {
+      final currentSchedule = employeeData['schedule']?.toString() ?? 'Not set';
+
+      await _firestore.collection('users').doc(docId).update({
+        'schedule': 'Not set',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      await _firestore.collection('schedules').add({
+        'userId': docId,
+        'employeeName': employeeData['name'] ?? 'Unknown',
+        'employeeId': employeeData['employeeId'] ?? 'Unknown',
+        'previousSchedule': currentSchedule,
+        'newSchedule': 'Not set',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Schedule cleared & history saved')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error clearing schedule: $e')));
+      }
+    }
+  }
+
+  // Remove vehicle function
+  Future<void> _removeVehicle(
+    String docId,
+    Map<String, dynamic> employeeData,
+  ) async {
+    try {
+      final currentVehicle =
+          employeeData['assignedVehicle']?.toString() ?? 'Not assigned';
+
+      await _firestore.collection('users').doc(docId).update({
+        'assignedVehicle': 'Not assigned',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      await _firestore.collection('vehicle_history').add({
+        'userId': docId,
+        'employeeName': employeeData['name'] ?? 'Unknown',
+        'employeeId': employeeData['employeeId'] ?? 'Unknown',
+        'previousVehicle': currentVehicle != 'Not assigned'
+            ? 'UNIT $currentVehicle'
+            : currentVehicle,
+        'newVehicle': 'Not assigned',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Vehicle removed & history saved')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error removing vehicle: $e')));
+      }
+    }
   }
 
   // Schedule selector dialog
@@ -383,7 +509,7 @@ class _DriverConductorManagementScreenState
     };
 
     final currentSchedule = data['schedule']?.toString() ?? '';
-    if (currentSchedule.isNotEmpty) {
+    if (currentSchedule.isNotEmpty && currentSchedule != 'Not set') {
       final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       final fullDays = [
         'Monday',
@@ -431,7 +557,9 @@ class _DriverConductorManagementScreenState
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Select Schedule for ${employeeData['name']}',
+                        _hasSchedule(data)
+                            ? 'Change Schedule for ${employeeData['name']}'
+                            : 'Set Schedule for ${employeeData['name']}',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 16),
@@ -494,7 +622,9 @@ class _DriverConductorManagementScreenState
                                 );
                               }
                             },
-                            child: const Text('Save'),
+                            child: Text(
+                              _hasSchedule(data) ? 'Update' : 'Set Schedule',
+                            ),
                           ),
                         ],
                       ),
@@ -540,7 +670,9 @@ class _DriverConductorManagementScreenState
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Select Vehicle for ${employeeData['name']}',
+                      _hasVehicle(data)
+                          ? 'Change Vehicle for ${employeeData['name']}'
+                          : 'Assign Vehicle for ${employeeData['name']}',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -578,7 +710,7 @@ class _DriverConductorManagementScreenState
                             );
                             Navigator.pop(context);
                           },
-                          child: const Text('Save'),
+                          child: Text(_hasVehicle(data) ? 'Update' : 'Assign'),
                         ),
                       ],
                     ),

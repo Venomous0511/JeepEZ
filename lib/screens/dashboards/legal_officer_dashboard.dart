@@ -703,6 +703,15 @@ class _LegalOfficerDashboardScreenState
                   },
                 ),
                 _buildDrawerItem(
+                  icon: Icons.confirmation_number,
+                  title: 'Ticket Log History',
+                  isSelected: _currentScreen is TicketTable,
+                  onTap: () {
+                    _navigateToScreen(const TicketTable());
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildDrawerItem(
                   icon: Icons.report_problem,
                   title: 'Violation Report Management',
                   isSelected: _currentScreen is ViolationReportHistoryScreen,
@@ -726,7 +735,7 @@ class _LegalOfficerDashboardScreenState
                 ),
                 _buildDrawerItem(
                   icon: Icons.people,
-                  title: 'Employee List View',
+                  title: 'Employee List',
                   isSelected: _currentScreen is EmployeeListViewScreen,
                   onTap: () {
                     _navigateToScreen(
@@ -738,16 +747,6 @@ class _LegalOfficerDashboardScreenState
 
                 // HIRING MANAGEMENT DROPDOWN SECTION
                 _buildHiringManagementDropdown(),
-
-                _buildDrawerItem(
-                  icon: Icons.confirmation_number,
-                  title: 'Ticket Logs',
-                  isSelected: _currentScreen is TicketTable,
-                  onTap: () {
-                    _navigateToScreen(const TicketTable());
-                    Navigator.pop(context);
-                  },
-                ),
               ],
             ),
           ),
@@ -784,6 +783,7 @@ class _LegalOfficerDashboardScreenState
   }
 
   // UPDATED METHOD: Hiring Management Dropdown with only Applicant Management
+  // UPDATED METHOD: Hiring Management Dropdown with only Applicant Management and icon
   Widget _buildHiringManagementDropdown() {
     return ExpansionTile(
       leading: const Icon(Icons.work, color: Color(0xFF0D2364)),
@@ -806,24 +806,26 @@ class _LegalOfficerDashboardScreenState
         });
       },
       children: [
-        // Applicant Management Option ONLY
+        // Applicant Management Option WITH ICON
         _buildDropdownItem(
-          title: 'Applicant Management',
+          title: 'Applicant management',
           isSelected: _currentScreen is ApplicantManagementScreen,
           onTap: () {
             _navigateToScreen(const ApplicantManagementScreen());
             Navigator.pop(context);
           },
+          icon: Icons.person_search, // Icon for Applicant Management
         ),
       ],
     );
   }
 
-  // ADD THIS METHOD: Dropdown item widget
+  // UPDATED METHOD: Dropdown item widget with icon support
   Widget _buildDropdownItem({
     required String title,
     required bool isSelected,
     required VoidCallback onTap,
+    IconData? icon, // New parameter for custom icon
   }) {
     return Container(
       margin: const EdgeInsets.only(left: 16, right: 8, bottom: 4),
@@ -834,11 +836,17 @@ class _LegalOfficerDashboardScreenState
       child: ListTile(
         dense: true,
         contentPadding: const EdgeInsets.only(left: 32, right: 16),
-        leading: Icon(
-          Icons.circle,
-          size: 8,
-          color: isSelected ? const Color(0xFF0D2364) : Colors.grey,
-        ),
+        leading: icon != null
+            ? Icon(
+                icon,
+                size: 20,
+                color: isSelected ? const Color(0xFF0D2364) : Colors.grey,
+              )
+            : Icon(
+                Icons.circle,
+                size: 8,
+                color: isSelected ? const Color(0xFF0D2364) : Colors.grey,
+              ),
         title: Text(
           title,
           style: TextStyle(
