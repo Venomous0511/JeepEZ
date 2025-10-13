@@ -31,13 +31,13 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
   final TextEditingController driverNameController = TextEditingController();
   final TextEditingController conductorNameController = TextEditingController();
   final TextEditingController inspectionTimeController =
-      TextEditingController();
+  TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController noOfPassController = TextEditingController();
   final TextEditingController noOfTripsController = TextEditingController();
 
-  // List to hold multiple rows of ticket data (max 4 rows)
-  List<List<TextEditingController>> ticketRows = [];
+  // Single row of ticket data
+  late List<TextEditingController> ticketRow;
 
   // Ticket denominations (header)
   final List<String> ticketHeaders = ['20', '15', '10', '5', '2', '1'];
@@ -45,50 +45,13 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
   @override
   void initState() {
     super.initState();
-    _addTicketRow();
-  }
-
-  void _addTicketRow() {
-    if (ticketRows.length < 4) {
-      setState(() {
-        ticketRows.add(
-          List.generate(6, (index) => TextEditingController(text: '0')),
-        );
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Maximum 4 rows allowed'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-    }
-  }
-
-  void _removeTicketRow(int rowIndex) {
-    if (ticketRows.length > 1) {
-      setState(() {
-        for (var controller in ticketRows[rowIndex]) {
-          controller.dispose();
-        }
-        ticketRows.removeAt(rowIndex);
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('At least one row is required'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-    }
+    ticketRow = List.generate(6, (index) => TextEditingController(text: '0'));
   }
 
   @override
   void dispose() {
-    for (var row in ticketRows) {
-      for (var controller in row) {
-        controller.dispose();
-      }
+    for (var controller in ticketRow) {
+      controller.dispose();
     }
     unitNumberController.dispose();
     driverNameController.dispose();
@@ -249,30 +212,13 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      'Ticket Inspection Report (Max 4 inspections)',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF0D2364),
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    onPressed: _addTicketRow,
-                                    icon: const Icon(
-                                      Icons.add_circle,
-                                      color: Color(0xFF0D2364),
-                                    ),
-                                    tooltip: 'Add Row',
-                                  ),
-                                ],
+                              Text(
+                                'Ticket Inspection Report',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0D2364),
+                                ),
                               ),
                               const SizedBox(height: 12),
 
@@ -303,19 +249,6 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                         ),
                                         child: Row(
                                           children: [
-                                            SizedBox(
-                                              width: 60,
-                                              child: Center(
-                                                child: Text(
-                                                  '#',
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
                                             for (String header in ticketHeaders)
                                               SizedBox(
                                                 width: 80,
@@ -325,151 +258,88 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                                     style: TextStyle(
                                                       fontSize: 16,
                                                       fontWeight:
-                                                          FontWeight.bold,
+                                                      FontWeight.bold,
                                                       color: Colors.white,
                                                     ),
                                                   ),
                                                 ),
                                               ),
-                                            SizedBox(
-                                              width: 60,
-                                              child: Center(
-                                                child: Icon(
-                                                  Icons.delete,
-                                                  color: Colors.white,
-                                                  size: 20,
-                                                ),
-                                              ),
-                                            ),
                                           ],
                                         ),
                                       ),
 
-                                      // Data Rows
-                                      for (
-                                        int rowIndex = 0;
-                                        rowIndex < ticketRows.length;
-                                        rowIndex++
-                                      )
-                                        Container(
-                                          decoration: BoxDecoration(
-                                            border: Border(
-                                              bottom:
-                                                  rowIndex ==
-                                                      ticketRows.length - 1
-                                                  ? BorderSide.none
-                                                  : BorderSide(
-                                                      color: Colors.grey[400]!,
-                                                    ),
-                                            ),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              // Row number
-                                              SizedBox(
-                                                width: 60,
-                                                child: Center(
-                                                  child: Text(
-                                                    '${rowIndex + 1}',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: const Color(
-                                                        0xFF0D2364,
-                                                      ),
-                                                    ),
+                                      // Single Data Row
+                                      Row(
+                                        children: [
+                                          // Input fields for each denomination
+                                          for (int colIndex = 0;
+                                          colIndex < 6;
+                                          colIndex++)
+                                            Container(
+                                              width: 80,
+                                              decoration: BoxDecoration(
+                                                border: Border(
+                                                  right: BorderSide(
+                                                    color: Colors.grey[400]!,
                                                   ),
                                                 ),
                                               ),
-                                              // Input fields for each denomination
-                                              for (
-                                                int colIndex = 0;
-                                                colIndex < 6;
-                                                colIndex++
-                                              )
-                                                Container(
-                                                  width: 80,
-                                                  decoration: BoxDecoration(
-                                                    border: Border(
-                                                      right: BorderSide(
-                                                        color:
-                                                            Colors.grey[400]!,
-                                                      ),
-                                                    ),
+                                              child: Padding(
+                                                padding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 12,
+                                                ),
+                                                child: TextField(
+                                                  controller:
+                                                  ticketRow[colIndex],
+                                                  textAlign: TextAlign.center,
+                                                  keyboardType:
+                                                  TextInputType.number,
+                                                  decoration:
+                                                  const InputDecoration(
+                                                    border: InputBorder
+                                                        .none,
+                                                    contentPadding:
+                                                    EdgeInsets.zero,
+                                                    isDense: true,
+                                                    hintText: '0',
                                                   ),
-                                                  child: Padding(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 8,
-                                                          vertical: 12,
+                                                  style: const TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.black,
+                                                  ),
+                                                  onChanged: (value) {
+                                                    if (value.isNotEmpty &&
+                                                        !RegExp(
+                                                          r'^[0-9]*$',
+                                                        ).hasMatch(value)) {
+                                                      ticketRow[colIndex]
+                                                          .text = value
+                                                          .replaceAll(
+                                                        RegExp(
+                                                          r'[^0-9]',
                                                         ),
-                                                    child: TextField(
-                                                      controller:
-                                                          ticketRows[rowIndex][colIndex],
-                                                      textAlign:
-                                                          TextAlign.center,
-                                                      keyboardType:
-                                                          TextInputType.number,
-                                                      decoration:
-                                                          const InputDecoration(
-                                                            border: InputBorder
-                                                                .none,
-                                                            contentPadding:
-                                                                EdgeInsets.zero,
-                                                            isDense: true,
-                                                            hintText: '0',
-                                                          ),
-                                                      style: const TextStyle(
-                                                        fontSize: 14,
-                                                        color: Colors.black,
-                                                      ),
-                                                      onChanged: (value) {
-                                                        if (value.isNotEmpty &&
-                                                            !RegExp(
-                                                              r'^[0-9]*$',
-                                                            ).hasMatch(value)) {
-                                                          ticketRows[rowIndex][colIndex]
-                                                              .text = value
-                                                              .replaceAll(
-                                                                RegExp(
-                                                                  r'[^0-9]',
-                                                                ),
-                                                                '',
-                                                              );
-                                                          ticketRows[rowIndex][colIndex]
-                                                                  .selection =
-                                                              TextSelection.fromPosition(
-                                                                TextPosition(
-                                                                  offset:
-                                                                      ticketRows[rowIndex][colIndex]
-                                                                          .text
-                                                                          .length,
-                                                                ),
-                                                              );
-                                                        }
-                                                      },
-                                                    ),
-                                                  ),
-                                                ),
-                                              // Delete button
-                                              SizedBox(
-                                                width: 60,
-                                                child: IconButton(
-                                                  onPressed: () =>
-                                                      _removeTicketRow(
-                                                        rowIndex,
-                                                      ),
-                                                  icon: Icon(
-                                                    Icons.delete_outline,
-                                                    color: Colors.red[700],
-                                                  ),
-                                                  tooltip: 'Remove Row',
+                                                        '',
+                                                      );
+                                                      ticketRow[colIndex]
+                                                          .selection =
+                                                          TextSelection
+                                                              .fromPosition(
+                                                            TextPosition(
+                                                              offset: ticketRow[
+                                                              colIndex]
+                                                                  .text
+                                                                  .length,
+                                                            ),
+                                                          );
+                                                    }
+                                                  },
                                                 ),
                                               ),
-                                            ],
-                                          ),
-                                        ),
+                                            ),
+                                        ],
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -542,10 +412,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
   }
 
   Widget _buildTimePickerField(
-    String label,
-    TextEditingController controller, {
-    Color textColor = Colors.black,
-  }) {
+      String label,
+      TextEditingController controller, {
+        Color textColor = Colors.black,
+      }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -596,12 +466,12 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
   }
 
   Widget _buildFormField(
-    String label,
-    TextEditingController controller,
-    String hintText, {
-    Color textColor = Colors.black,
-    ValueChanged<String>? onChanged,
-  }) {
+      String label,
+      TextEditingController controller,
+      String hintText, {
+        Color textColor = Colors.black,
+        ValueChanged<String>? onChanged,
+      }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -671,9 +541,9 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                     stream: FirebaseFirestore.instance
                         .collection('inspector_trip')
                         .where(
-                          'uid',
-                          isEqualTo: FirebaseAuth.instance.currentUser?.uid,
-                        )
+                      'uid',
+                      isEqualTo: FirebaseAuth.instance.currentUser?.uid,
+                    )
                         .orderBy('timestamp', descending: true)
                         .snapshots(),
                     builder: (context, snapshot) {
@@ -694,7 +564,7 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                         itemCount: docs.length,
                         itemBuilder: (context, index) {
                           final data =
-                              docs[index].data() as Map<String, dynamic>;
+                          docs[index].data() as Map<String, dynamic>;
                           final timestamp = data['timestamp'] as Timestamp?;
                           return Container(
                             margin: const EdgeInsets.only(bottom: 8),
@@ -796,20 +666,16 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
       return;
     }
 
-    // Convert ticket rows to List<Map<String, dynamic>>
-    List<Map<String, dynamic>> ticketSalesData = [];
-    for (int i = 0; i < ticketRows.length; i++) {
-      Map<String, dynamic> rowData = {
-        'row': i + 1,
-        '20': ticketRows[i][0].text,
-        '15': ticketRows[i][1].text,
-        '10': ticketRows[i][2].text,
-        '5': ticketRows[i][3].text,
-        '2': ticketRows[i][4].text,
-        '1': ticketRows[i][5].text,
-      };
-      ticketSalesData.add(rowData);
-    }
+    // Convert ticket row to Map<String, dynamic>
+    Map<String, dynamic> ticketInspectionData = {
+      'row': 1,
+      '20': ticketRow[0].text,
+      '15': ticketRow[1].text,
+      '10': ticketRow[2].text,
+      '5': ticketRow[3].text,
+      '2': ticketRow[4].text,
+      '1': ticketRow[5].text,
+    };
 
     Map<String, dynamic> formData = {
       'unitNumber': unitNumberController.text,
@@ -819,7 +685,7 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
       'noOfPass': noOfPassController.text,
       'location': locationController.text,
       'noOfTrips': noOfTripsController.text,
-      'ticketSalesData': ticketSalesData,
+      'ticketInspection': ticketInspectionData,
       'uid': user.uid,
       'timestamp': FieldValue.serverTimestamp(),
     };
@@ -838,15 +704,11 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
       locationController.clear();
       noOfTripsController.clear();
 
-      // Reset ticket rows
+      // Reset ticket row
       setState(() {
-        for (var row in ticketRows) {
-          for (var controller in row) {
-            controller.dispose();
-          }
+        for (var controller in ticketRow) {
+          controller.text = '0';
         }
-        ticketRows.clear();
-        _addTicketRow();
       });
 
       if (mounted) {

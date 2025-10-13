@@ -32,10 +32,23 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
   final TextEditingController _violationController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _timeController = TextEditingController();
+  final TextEditingController _otherViolationController =
+      TextEditingController();
 
   String? _reportedEmployeeId;
   String? _reporterEmployeeId;
   bool _isLoading = false;
+  String? _selectedViolationType; // For dropdown selection
+
+  // List of violation types for dropdown
+  final List<String> _violationTypes = [
+    'Reckless driving',
+    'Driver Misconduct',
+    'Conductor Misconduct',
+    'Taking a non-registered route',
+    'Aggressive driving / road rage',
+    'Other/s',
+  ];
 
   @override
   void initState() {
@@ -65,8 +78,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
   }
 
   /// Fetch employeeId for the violator based on name and position
-  Future<String?> _fetchViolatorEmployeeId(
-      String name, String position) async {
+  Future<String?> _fetchViolatorEmployeeId(String name, String position) async {
     try {
       // Try exact match first
       final querySnapshot = await FirebaseFirestore.instance
@@ -77,7 +89,9 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
-        final employeeId = querySnapshot.docs.first.data()['employeeId']?.toString();
+        final employeeId = querySnapshot.docs.first
+            .data()['employeeId']
+            ?.toString();
         if (employeeId != null && employeeId.isNotEmpty) {
           return employeeId;
         }
@@ -93,7 +107,8 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
         final userName = data['name']?.toString().toLowerCase() ?? '';
         final userRole = data['role']?.toString().toLowerCase() ?? '';
 
-        if (userName == name.toLowerCase() && userRole == position.toLowerCase()) {
+        if (userName == name.toLowerCase() &&
+            userRole == position.toLowerCase()) {
           final employeeId = data['employeeId']?.toString();
           if (employeeId != null && employeeId.isNotEmpty) {
             return employeeId;
@@ -112,15 +127,6 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text(
-          'Violation Report',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: const Color(0xFF0D2364),
-        elevation: 0,
-        foregroundColor: Colors.white,
-      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -148,10 +154,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                   const SizedBox(height: 8),
                   const Text(
                     'Study according to the form on accurate and correct information.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white70,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.white70),
                   ),
                 ],
               ),
@@ -216,7 +219,105 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
             ),
             const SizedBox(height: 16),
 
-            // Violation Committed field
+            // Violation Type Dropdown - NEW FIELD
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Violation Type:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Dropdown for violation types
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Colors.grey.shade400,
+                        width: 1.0,
+                      ),
+                      borderRadius: BorderRadius.circular(4.0),
+                    ),
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedViolationType,
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedViolationType = newValue;
+                          if (newValue != 'Other/s') {
+                            _otherViolationController.clear();
+                            // Auto-fill the violation description with selected type
+                            _violationController.text = newValue ?? '';
+                          } else {
+                            _violationController.clear();
+                          }
+                        });
+                      },
+                      items: _violationTypes.map<DropdownMenuItem<String>>((
+                        String value,
+                      ) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(
+                            value,
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 14,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12.0,
+                          vertical: 8.0,
+                        ),
+                        isDense: true,
+                      ),
+                      validator: (value) =>
+                          value == null ? 'Please select violation type' : null,
+                      isExpanded: true,
+                      hint: Text(
+                        'Select violation type...',
+                        style: TextStyle(color: Colors.grey.shade500),
+                      ),
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+
+                  // Other Violation Text Field (appears only when "Other/s" is selected)
+                  if (_selectedViolationType == 'Other/s') ...[
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _otherViolationController,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        hintText: 'Specify other violation type...',
+                        labelText: 'Other Violation Type',
+                      ),
+                      onChanged: (value) {
+                        // Auto-fill the violation description with other type
+                        _violationController.text = value;
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Violation Committed field (Description)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Column(
@@ -327,9 +428,11 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : () {
-                    _saveAndSubmit();
-                  },
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          _saveAndSubmit();
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0D2364),
                     foregroundColor: Colors.white,
@@ -341,18 +444,21 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                   ),
                   child: _isLoading
                       ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      valueColor:
-                      AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
                       : const Text(
-                    'Save & Submit',
-                    style: TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                          'Save & Submit',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -364,6 +470,18 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
   }
 
   void _saveAndSubmit() async {
+    // Validation for violation type field
+    if (_selectedViolationType == null) {
+      _showDialog('Error', 'Please select a violation type');
+      return;
+    }
+
+    if (_selectedViolationType == 'Other/s' &&
+        _otherViolationController.text.isEmpty) {
+      _showDialog('Error', 'Please specify the other violation type');
+      return;
+    }
+
     if (_nameController.text.isEmpty ||
         _positionController.text.isEmpty ||
         _violationController.text.isEmpty ||
@@ -408,12 +526,23 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
         }
       }
 
+      // Determine the final violation type value
+      String finalViolationType;
+      if (_selectedViolationType == 'Other/s' &&
+          _otherViolationController.text.isNotEmpty) {
+        finalViolationType = _otherViolationController.text.trim();
+      } else {
+        finalViolationType = _selectedViolationType ?? '';
+      }
+
       // Add to Firestore
       await FirebaseFirestore.instance.collection('violation_report').add({
         'reportedName': _nameController.text.trim(),
         'reportedPosition': _positionController.text.trim(),
         'reportedEmployeeId': _reportedEmployeeId ?? '',
-        'violation': _violationController.text.trim(),
+        'violationType': finalViolationType, // New field for violation type
+        'violation': _violationController.text
+            .trim(), // Existing violation description
         'location': _locationController.text.trim(),
         'time': _timeController.text.trim(),
         'reporterUid': user.uid,
@@ -429,8 +558,10 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
       _violationController.clear();
       _locationController.clear();
       _timeController.clear();
+      _otherViolationController.clear();
       setState(() {
         _reportedEmployeeId = null;
+        _selectedViolationType = null;
       });
     } catch (e) {
       _showDialog('Error', 'Failed to submit report: $e');
@@ -495,6 +626,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
     _violationController.dispose();
     _locationController.dispose();
     _timeController.dispose();
+    _otherViolationController.dispose();
     super.dispose();
   }
 }

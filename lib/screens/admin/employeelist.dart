@@ -542,7 +542,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     if (confirm != true) return;
 
     // Show loading
-    if (context.mounted) {
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Row(
@@ -617,7 +617,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       // Sign out from secondary auth
       await secondaryAuth.signOut();
 
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -654,7 +654,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           errorMessage = e.message ?? 'Failed to send verification email';
       }
 
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -665,7 +665,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         );
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -793,7 +793,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     if (confirm != true) return;
 
     // Show loading
-    if (context.mounted) {
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Row(
@@ -835,7 +835,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         'createdBy': widget.user.email,
       });
 
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
 
         // Show success dialog
@@ -903,7 +903,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           errorMessage = e.message ?? 'Failed to send password reset email';
       }
 
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -914,7 +914,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         );
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1469,7 +1469,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 data['name'] ?? '',
                 style: isCompact ? const TextStyle(fontSize: 12) : null,
               ),
-              // 🔥 NEW: Email verification indicator
+              // NEW: Email verification indicator
               if (!isEmailVerified) ...[
                 const SizedBox(width: 8),
                 Tooltip(
@@ -1557,7 +1557,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         DataCell(
           Row(
             children: [
-              // 🔥 NEW: Resend verification button (only if not verified)
+              // NEW: Resend verification button (only if not verified)
               if (!isEmailVerified) ...[
                 Tooltip(
                   message: 'Resend verification email',
@@ -1582,7 +1582,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 const SizedBox(width: 4),
               ],
 
-              // 🔥 NEW: Verified checkmark (only if verified)
+              // NEW: Verified checkmark (only if verified)
               if (isEmailVerified) ...[
                 Tooltip(
                   message: 'Email verified',
@@ -1602,6 +1602,28 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 ),
                 const SizedBox(width: 4),
               ],
+
+              Tooltip(
+                message: 'Send password reset email',
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.purple),
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.lock_reset,
+                      color: Colors.purple,
+                      size: isCompact ? 18 : 20,
+                    ),
+                    onPressed: () => _sendPasswordResetToUser(docId, data),
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
 
               // Edit button
               Container(
@@ -1855,7 +1877,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: DropdownButtonFormField<String>(
-                          initialValue: role,
+                          value: role,
                           decoration: const InputDecoration(
                             labelText: 'Role *',
                             border: InputBorder.none,
@@ -1922,7 +1944,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           role == "inspector") ...[
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          initialValue: employmentType,
+                          value: employmentType,
                           items: const [
                             DropdownMenuItem(
                               value: "full_time",
@@ -1949,7 +1971,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       if (role == "inspector") ...[
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          initialValue: area,
+                          value: area,
                           items: const [
                             DropdownMenuItem(
                               value: "Gaya Gaya",
@@ -2396,7 +2418,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: DropdownButtonFormField<String>(
-                      initialValue: role,
+                      value: role,
                       decoration: const InputDecoration(
                         labelText: 'Role *',
                         border: InputBorder.none,
@@ -2464,7 +2486,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
                       child: DropdownButtonFormField<String>(
-                        initialValue: employmentType,
+                        value: employmentType,
                         items: const [
                           DropdownMenuItem(
                             value: "full_time",
@@ -2491,7 +2513,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   if (role == "inspector") ...[
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      initialValue: area,
+                      value: area,
                       items: const [
                         DropdownMenuItem(
                           value: "Gaya Gaya",

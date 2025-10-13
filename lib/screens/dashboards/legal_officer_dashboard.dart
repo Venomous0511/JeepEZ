@@ -769,10 +769,10 @@ class _LegalOfficerDashboardScreenState
             ),
             trailing: _isLoggingOut
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
                 : null,
             onTap: _isLoggingOut ? null : _signOut,
           ),

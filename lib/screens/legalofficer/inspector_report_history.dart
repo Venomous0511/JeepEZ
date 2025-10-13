@@ -472,12 +472,13 @@ class _InspectorReportHistoryScreenState
             final data = doc.data() as Map<String, dynamic>;
             final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
             final inspectorUid = data['uid']?.toString() ?? '';
+            final noOfTrips = data['noOfTrips']?.toString() ?? doc.id;
 
             return DataRow(
               cells: [
                 DataCell(
                   Text(
-                    doc.id,
+                    noOfTrips,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),

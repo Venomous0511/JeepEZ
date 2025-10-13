@@ -34,30 +34,32 @@ class _TicketTableState extends State<TicketTable> {
 
   Stream<List<TicketData>> _getTicketsStream() {
     return _firestore.collection('ticket_report').snapshots().asyncMap((ticketSnapshot) async {
-      // Get inspector trips for passenger count
+      // Load inspector trips
       final inspectorSnapshot = await _firestore.collection('inspector_trip').get();
       Map<String, int> inspectorData = {}; // key: date-unit-conductor, value: passengers
 
       for (var doc in inspectorSnapshot.docs) {
         final data = doc.data();
+
         if (data['timestamp'] != null && data['noOfPass'] != null) {
           final timestamp = (data['timestamp'] as Timestamp).toDate();
           final dateKey = DateFormat('yyyy-MM-dd').format(timestamp);
-          final unitNumber = data['unitNumber']?.toString() ?? '';
-          final conductorName = data['conductorName'] ?? '';
+          final unitNumber = data['unitNumber']?.toString().trim() ?? '';
+          final conductorName = data['conductorName']?.toString().toLowerCase().trim() ?? '';
           final passengers = int.tryParse(data['noOfPass'].toString()) ?? 0;
 
+          // Composite key: date-unit-conductor
           final key = '$dateKey-$unitNumber-$conductorName';
           inspectorData[key] = passengers;
         }
       }
 
+      // 🔹 Step 2: Process ticket reports
       List<TicketData> tickets = [];
 
       for (var doc in ticketSnapshot.docs) {
         final data = doc.data();
 
-        // Skip if required fields are null
         if (data['timestamp'] == null) {
           debugPrint('Skipping document ${doc.id}: missing timestamp');
           continue;
@@ -65,18 +67,17 @@ class _TicketTableState extends State<TicketTable> {
 
         final timestamp = (data['timestamp'] as Timestamp).toDate();
         final dateKey = DateFormat('yyyy-MM-dd').format(timestamp);
-        final unitNumber = data['unitNumber']?.toString() ?? 'Unknown';
-        final conductorName = data['conductorName'] ?? 'Unknown';
+        final unitNumber = data['unitNumber']?.toString().trim() ?? 'Unknown';
+        final conductorName = data['conductorName']?.toString().toLowerCase().trim() ?? 'Unknown';
         final employeeId = data['employeeId'] ?? '';
 
-        // Get opening and closing tickets
+        // Match inspector trip to get number of passengers
+        final inspectorKey = '$dateKey-$unitNumber-$conductorName';
+        final passengers = inspectorData[inspectorKey] ?? 0;
+
         final openingTickets = data['openingTickets'] as List<dynamic>? ?? [];
         final closingTickets = data['closingTickets'] as List<dynamic>? ?? [];
 
-        debugPrint('Processing doc ${doc.id}: unit=$unitNumber, conductor=$conductorName');
-        debugPrint('Opening tickets: ${openingTickets.length}, Closing tickets: ${closingTickets.length}');
-
-        // Process each row (each row is a trip)
         int maxRows = openingTickets.length > closingTickets.length
             ? openingTickets.length
             : closingTickets.length;
@@ -89,16 +90,13 @@ class _TicketTableState extends State<TicketTable> {
               ? closingTickets[rowIndex] as Map<String, dynamic>? ?? {}
               : {};
 
-          // Denominations to process
           List<String> denominations = ['20', '15', '10', '5', '2', '1'];
 
-          int totalPassengers = 0;
           int? firstOpeningTicket;
           int? firstClosingTicket;
           bool hasData = false;
           Map<String, DenominationData> denominationBreakdown = {};
 
-          // Calculate passengers for each denomination and sum them up
           for (String denom in denominations) {
             final openingStr = openingMap[denom]?.toString();
             final closingStr = closingMap[denom]?.toString();
@@ -107,30 +105,17 @@ class _TicketTableState extends State<TicketTable> {
               hasData = true;
               final opening = int.tryParse(openingStr.replaceAll('"', '')) ?? 0;
 
-              // Store the first opening ticket for display
-              if (firstOpeningTicket == null) {
-                firstOpeningTicket = opening;
-              }
+              firstOpeningTicket ??= opening;
 
               int? closing;
               int passengersForDenom = 0;
 
               if (closingStr != null && closingStr.isNotEmpty) {
                 closing = int.tryParse(closingStr.replaceAll('"', '')) ?? 0;
-
-                // Store the first closing ticket for display
-                if (firstClosingTicket == null) {
-                  firstClosingTicket = closing;
-                }
-
-                // Calculate passengers for this denomination
+                firstClosingTicket ??= closing;
                 passengersForDenom = (closing - opening).abs();
-                totalPassengers += passengersForDenom;
-
-                debugPrint('Row ${rowIndex + 1}, ₱$denom: Opening=$opening, Closing=$closing, Passengers=$passengersForDenom');
               }
 
-              // Store denomination breakdown
               denominationBreakdown[denom] = DenominationData(
                 opening: opening,
                 closing: closing,
@@ -139,13 +124,8 @@ class _TicketTableState extends State<TicketTable> {
             }
           }
 
-          // Skip if no valid data found
-          if (!hasData || firstOpeningTicket == null) {
-            debugPrint('Skipping row $rowIndex: no valid ticket data');
-            continue;
-          }
+          if (!hasData || firstOpeningTicket == null) continue;
 
-          // Create a ticket entry for this trip
           tickets.add(TicketData(
             tripNo: '${rowIndex + 1}',
             vehicle: unitNumber,
@@ -154,23 +134,19 @@ class _TicketTableState extends State<TicketTable> {
             date: timestamp,
             openingTicketNo: firstOpeningTicket,
             closingTicketNo: firstClosingTicket,
-            passengers: totalPassengers,
+            passengers: passengers,
             submittedBy: conductorName,
             openingTimestamp: timestamp,
             closingTimestamp: firstClosingTicket != null ? timestamp : null,
             denominationBreakdown: denominationBreakdown,
           ));
-
-          debugPrint('Added Trip ${rowIndex + 1}: unit=$unitNumber, Total Passengers=$totalPassengers');
         }
       }
 
-      // Sort by date descending, then by trip number
+      // 🔹 Sort tickets
       tickets.sort((a, b) {
         final dateCompare = b.date.compareTo(a.date);
         if (dateCompare != 0) return dateCompare;
-
-        // Extract numeric part of trip number for sorting
         final aNum = int.tryParse(a.tripNo) ?? 0;
         final bNum = int.tryParse(b.tripNo) ?? 0;
         return aNum.compareTo(bNum);
@@ -384,7 +360,7 @@ class _TicketTableState extends State<TicketTable> {
                         // Denomination Breakdown Section
                         if (ticket.denominationBreakdown.isNotEmpty) ...[
                           Text(
-                            'Ticket Breakdown by Denomination',
+                            'Ticket Breakdown',
                             style: TextStyle(
                               fontSize: isMobile ? 14 : 16,
                               fontWeight: FontWeight.bold,
@@ -446,18 +422,6 @@ class _TicketTableState extends State<TicketTable> {
                                           textAlign: TextAlign.center,
                                         ),
                                       ),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Text(
-                                          'Passengers',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: isMobile ? 12 : 14,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
                                     ],
                                   ),
                                 ),
@@ -483,7 +447,7 @@ class _TicketTableState extends State<TicketTable> {
                                         Expanded(
                                           flex: 2,
                                           child: Text(
-                                            '₱$denom',
+                                            denom,
                                             style: TextStyle(
                                               fontSize: isMobile ? 12 : 14,
                                               fontWeight: FontWeight.w600,
@@ -513,58 +477,15 @@ class _TicketTableState extends State<TicketTable> {
                                             textAlign: TextAlign.center,
                                           ),
                                         ),
-                                        Expanded(
-                                          flex: 2,
-                                          child: Text(
-                                            data.passengers.toString(),
-                                            style: TextStyle(
-                                              fontSize: isMobile ? 12 : 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.green[700],
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ),
                                       ],
                                     ),
                                   );
-                                }).toList(),
+                                }),
                               ],
                             ),
                           ),
                           SizedBox(height: 16),
                         ],
-
-                        // Total Summary
-                        Container(
-                          padding: EdgeInsets.all(isMobile ? 12 : 16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[50],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Color(0xFF0D2364), width: 2),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Total Passengers:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey[700],
-                                  fontSize: isMobile ? 14 : 16,
-                                ),
-                              ),
-                              Text(
-                                ticket.passengers.toString(),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: isMobile ? 18 : 20,
-                                  color: Color(0xFF0D2364),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -1284,98 +1205,6 @@ class _TicketTableState extends State<TicketTable> {
     );
   }
 
-  Future<int> _calculateTotalPassengersFromTicketReport() async {
-    try {
-      final querySnapshot = await _firestore.collection('ticket_report').get();
-
-      int totalPassengers = 0;
-
-      for (var doc in querySnapshot.docs) {
-        final data = doc.data();
-
-        final openingTickets = data['openingTickets'] as List<dynamic>? ?? [];
-        final closingTickets = data['closingTickets'] as List<dynamic>? ?? [];
-
-        for (int i = 0; i < openingTickets.length && i < closingTickets.length; i++) {
-          final openingMap = openingTickets[i] as Map<String, dynamic>? ?? {};
-          final closingMap = closingTickets[i] as Map<String, dynamic>? ?? {};
-
-          for (String denomination in ['1', '2', '5', '10', '15', '20']) {
-            final openingStr = openingMap[denomination]?.toString() ?? '0';
-            final closingStr = closingMap[denomination]?.toString() ?? '0';
-
-            final opening = int.tryParse(openingStr.replaceAll('"', '')) ?? 0;
-            final closing = int.tryParse(closingStr.replaceAll('"', '')) ?? 0;
-
-            final ticketsUsed = (closing - opening).abs();
-            totalPassengers += ticketsUsed;
-          }
-        }
-      }
-
-      return totalPassengers;
-    } catch (e) {
-      debugPrint('Error calculating total passengers: $e');
-      return 0;
-    }
-  }
-
-  Widget _buildResultsFooter(List<TicketData> tickets, int totalTickets, bool isMobile) {
-    return Container(
-      padding: EdgeInsets.all(isMobile ? 8 : 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(8),
-          bottomRight: Radius.circular(8),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withAlpha(50),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Showing ${tickets.length} of $totalTickets tickets',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: isMobile ? 10 : 12,
-            ),
-          ),
-          if (tickets.isNotEmpty)
-            FutureBuilder<int>(
-              future: _calculateTotalPassengersFromTicketReport(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  );
-                }
-
-                final totalPassengers = snapshot.data ?? 0;
-
-                return Text(
-                  'Total Passengers: $totalPassengers',
-                  style: TextStyle(
-                    color: const Color(0xFF0D2364),
-                    fontSize: isMobile ? 10 : 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -1435,7 +1264,6 @@ class _TicketTableState extends State<TicketTable> {
                     ),
                   ),
                 ),
-                _buildResultsFooter(filteredTickets, allTickets.length, isMobile),
               ],
             );
           },

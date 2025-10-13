@@ -13,6 +13,7 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
   String? _vehicleId;
   List<String> _scheduleDays = [];
   bool _isLoading = true;
+  String _employmentType = ""; // Add this variable
 
   @override
   void initState() {
@@ -38,6 +39,8 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
       final userData = userDoc.data()!;
       final assignedVehicle = userData['assignedVehicle']?.toString();
       final scheduleStr = userData['schedule'] as String?;
+      final employmentType =
+          userData['employmentType'] as String?; // Fetch employment type
 
       // 2. Convert schedule string to list of days
       List<String> scheduleDays = [];
@@ -63,6 +66,8 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
       setState(() {
         _vehicleId = vehicleId;
         _scheduleDays = scheduleDays;
+        _employmentType =
+            employmentType ?? "Not specified"; // Set employment type
         _isLoading = false;
       });
     } catch (e) {
@@ -75,6 +80,9 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
     return Scaffold(
       appBar: AppBar(backgroundColor: const Color(0xFF0D2364)),
       body: _isLoading
@@ -93,9 +101,9 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
                         color: const Color(0xFF0D2364),
                         borderRadius: BorderRadius.circular(12.0),
                       ),
-                      child: Text(
+                      child: const Text(
                         "Your Schedule",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -104,44 +112,112 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12.0),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withAlpha(50),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                          border: Border.all(
-                            color: Colors.grey.shade300,
-                            width: 1.0,
+                    // Blue Container with Schedule
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(isMobile ? 16 : 20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D2364), // BLUE CONTAINER
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
                           ),
-                        ),
-                        child: _scheduleDays.isEmpty
-                            ? const Center(child: Text("No schedule found."))
-                            : ListView.builder(
-                                itemCount: _scheduleDays.length,
-                                itemBuilder: (context, index) {
-                                  return ListTile(
-                                    title: Text(
-                                      _scheduleDays[index],
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    trailing: Text(
-                                      "UNIT: ${_vehicleId ?? "-"}",
-                                      style: const TextStyle(
-                                        color: Colors.black54,
-                                      ),
-                                    ),
-                                  );
-                                },
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Unit number - UPDATED WITH WHITE TEXT
+                          Text(
+                            'UNIT ${_vehicleId ?? "N/A"}',
+                            style: TextStyle(
+                              color: Colors.white, // WHITE TEXT
+                              fontSize: isMobile ? 20 : 24,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Employment Type - ADDED
+                          Text(
+                            _employmentType.toUpperCase(),
+                            style: TextStyle(
+                              color: Colors.white, // WHITE TEXT
+                              fontSize: isMobile ? 16 : 18,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // SCHEDULE SECTION
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.3),
+                                width: 1,
                               ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Schedule Title
+                                const SizedBox(height: 12),
+
+                                // Schedule entries
+                                if (_scheduleDays.isEmpty)
+                                  Text(
+                                    "No schedule found",
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.7),
+                                      fontSize: isMobile ? 14 : 16,
+                                    ),
+                                  )
+                                else
+                                  Column(
+                                    children: _scheduleDays.map((day) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 8,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 8,
+                                              height: 8,
+                                              decoration: const BoxDecoration(
+                                                color: Colors.white,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                day,
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: isMobile ? 14 : 16,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],

@@ -83,6 +83,14 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
   int _currentPage = 0;
   bool _isLoading = false;
 
+  // List of available positions for dropdown
+  final List<String> _positionOptions = [
+    'Legal Officer',
+    'Driver',
+    'Conductor',
+    'Inspector',
+  ];
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -182,9 +190,16 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
   void _showCandidateDialog({Candidate? candidate}) {
     final isEditing = candidate != null;
     final nameController = TextEditingController(text: candidate?.name ?? '');
-    final positionController = TextEditingController(
-      text: candidate?.position ?? '',
-    );
+
+    // FIX: Ensure the initial value exists in the position options
+    String selectedPosition;
+    if (candidate?.position != null &&
+        _positionOptions.contains(candidate!.position)) {
+      selectedPosition = candidate.position;
+    } else {
+      selectedPosition = _positionOptions.first;
+    }
+
     final dateController = TextEditingController(
       text: candidate?.interviewDate ?? '',
     );
@@ -218,8 +233,21 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      TextField(
-                        controller: positionController,
+                      DropdownButtonFormField<String>(
+                        value: selectedPosition,
+                        onChanged: (String? newValue) {
+                          setDialogState(() {
+                            selectedPosition = newValue!;
+                          });
+                        },
+                        items: _positionOptions.map<DropdownMenuItem<String>>((
+                          String position,
+                        ) {
+                          return DropdownMenuItem<String>(
+                            value: position,
+                            child: Text(position),
+                          );
+                        }).toList(),
                         decoration: const InputDecoration(
                           labelText: 'Position',
                           border: OutlineInputBorder(),
@@ -279,18 +307,18 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                   ),
                   onPressed: () {
                     if (nameController.text.isNotEmpty &&
-                        positionController.text.isNotEmpty &&
+                        selectedPosition.isNotEmpty &&
                         dateController.text.isNotEmpty) {
                       if (isEditing) {
-                        candidate.name = nameController.text;
-                        candidate.position = positionController.text;
+                        candidate!.name = nameController.text;
+                        candidate.position = selectedPosition;
                         candidate.interviewDate = dateController.text;
                         _updateCandidate(candidate);
                       } else {
                         final newCandidate = Candidate(
                           id: '',
                           name: nameController.text,
-                          position: positionController.text,
+                          position: selectedPosition,
                           interviewDate: dateController.text,
                         );
                         _addCandidate(newCandidate);
@@ -312,6 +340,7 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
     );
   }
 
+  // Iba pang methods nananatiling pareho...
   Future<void> _uploadResume(Candidate candidate) async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -1144,13 +1173,13 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                         _currentPage = 0;
                       });
                     },
-                    items: ['All', 'Driver', 'Conductor', 'Inspector']
-                        .map(
-                          (position) => DropdownMenuItem(
+                    items: ['All', ..._positionOptions]
+                        .map<DropdownMenuItem<String>>((String position) {
+                          return DropdownMenuItem<String>(
                             value: position,
                             child: Text(position),
-                          ),
-                        )
+                          );
+                        })
                         .toList(),
                     decoration: InputDecoration(
                       labelText: 'Filter by Position',
@@ -1212,13 +1241,13 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                           _currentPage = 0;
                         });
                       },
-                      items: ['All', 'Driver', 'Conductor', 'Inspector']
-                          .map(
-                            (position) => DropdownMenuItem(
+                      items: ['All', ..._positionOptions]
+                          .map<DropdownMenuItem<String>>((String position) {
+                            return DropdownMenuItem<String>(
                               value: position,
                               child: Text(position),
-                            ),
-                          )
+                            );
+                          })
                           .toList(),
                       decoration: InputDecoration(
                         labelText: 'Filter by Position',
@@ -1269,12 +1298,12 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                     _currentPage = 0;
                   });
                 },
-                items: [5, 10, 15, 20]
-                    .map(
-                      (value) =>
-                          DropdownMenuItem(value: value, child: Text('$value')),
-                    )
-                    .toList(),
+                items: [5, 10, 15, 20].map<DropdownMenuItem<int>>((int value) {
+                  return DropdownMenuItem<int>(
+                    value: value,
+                    child: Text('$value'),
+                  );
+                }).toList(),
               ),
               const Spacer(),
             ],
