@@ -96,6 +96,7 @@ class _TicketTableState extends State<TicketTable> {
           int? firstOpeningTicket;
           int? firstClosingTicket;
           bool hasData = false;
+          Map<String, DenominationData> denominationBreakdown = {};
 
           // Calculate passengers for each denomination and sum them up
           for (String denom in denominations) {
@@ -107,20 +108,34 @@ class _TicketTableState extends State<TicketTable> {
               final opening = int.tryParse(openingStr.replaceAll('"', '')) ?? 0;
 
               // Store the first opening ticket for display
-              firstOpeningTicket ??= opening;
+              if (firstOpeningTicket == null) {
+                firstOpeningTicket = opening;
+              }
+
+              int? closing;
+              int passengersForDenom = 0;
 
               if (closingStr != null && closingStr.isNotEmpty) {
-                final closing = int.tryParse(closingStr.replaceAll('"', '')) ?? 0;
+                closing = int.tryParse(closingStr.replaceAll('"', '')) ?? 0;
 
                 // Store the first closing ticket for display
-                firstClosingTicket ??= closing;
+                if (firstClosingTicket == null) {
+                  firstClosingTicket = closing;
+                }
 
                 // Calculate passengers for this denomination
-                final passengersForDenom = (closing - opening).abs();
+                passengersForDenom = (closing - opening).abs();
                 totalPassengers += passengersForDenom;
 
                 debugPrint('Row ${rowIndex + 1}, ₱$denom: Opening=$opening, Closing=$closing, Passengers=$passengersForDenom');
               }
+
+              // Store denomination breakdown
+              denominationBreakdown[denom] = DenominationData(
+                opening: opening,
+                closing: closing,
+                passengers: passengersForDenom,
+              );
             }
           }
 
@@ -143,6 +158,7 @@ class _TicketTableState extends State<TicketTable> {
             submittedBy: conductorName,
             openingTimestamp: timestamp,
             closingTimestamp: firstClosingTicket != null ? timestamp : null,
+            denominationBreakdown: denominationBreakdown,
           ));
 
           debugPrint('Added Trip ${rowIndex + 1}: unit=$unitNumber, Total Passengers=$totalPassengers');
@@ -312,7 +328,7 @@ class _TicketTableState extends State<TicketTable> {
           insetPadding: EdgeInsets.all(isMobile ? 16 : 24),
           child: Container(
             constraints: BoxConstraints(
-              maxWidth: isMobile ? double.infinity : 500,
+              maxWidth: isMobile ? double.infinity : 600,
             ),
             padding: EdgeInsets.all(isMobile ? 16 : 20),
             child: Column(
@@ -325,7 +341,7 @@ class _TicketTableState extends State<TicketTable> {
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Trip Details - ${ticket.tripNo}',
+                        'Trip Details - Trip ${ticket.tripNo}',
                         style: TextStyle(
                           fontSize: isMobile ? 16 : 18,
                           fontWeight: FontWeight.bold,
@@ -340,74 +356,217 @@ class _TicketTableState extends State<TicketTable> {
                   ],
                 ),
                 SizedBox(height: 16),
-                SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildDetailRow('Trip No.', ticket.tripNo, isMobile),
-                      _buildDetailRow('Vehicle Unit', ticket.vehicle, isMobile),
-                      _buildDetailRow('Conductor', ticket.conductorName, isMobile),
-                      _buildDetailRow('Employee ID', ticket.employeeId, isMobile),
-                      _buildDetailRow('Date', _formatDate(ticket.date), isMobile),
-                      _buildDetailRow(
-                        'Opening Ticket No.',
-                        _formatTicketNumber(ticket.openingTicketNo),
-                        isMobile,
-                      ),
-                      _buildDetailRow(
-                        'Opening Time',
-                        _formatTime(ticket.openingTimestamp),
-                        isMobile,
-                      ),
-                      _buildDetailRow(
-                        'Closing Ticket No.',
-                        _formatTicketNumber(ticket.closingTicketNo),
-                        isMobile,
-                      ),
-                      _buildDetailRow(
-                        'Closing Time',
-                        _formatTime(ticket.closingTimestamp),
-                        isMobile,
-                      ),
-                      _buildDetailRow(
-                        'Passenger Count',
-                        ticket.passengers.toString(),
-                        isMobile,
-                      ),
-                      _buildDetailRow('Submitted By', ticket.submittedBy, isMobile),
-                      SizedBox(height: 16),
-                      if (ticket.closingTicketNo != null)
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildDetailRow('Trip No.', ticket.tripNo, isMobile),
+                        _buildDetailRow('Vehicle Unit', ticket.vehicle, isMobile),
+                        _buildDetailRow('Conductor', ticket.conductorName, isMobile),
+                        _buildDetailRow('Employee ID', ticket.employeeId, isMobile),
+                        _buildDetailRow('Date', _formatDate(ticket.date), isMobile),
+                        _buildDetailRow(
+                          'Opening Time',
+                          _formatTime(ticket.openingTimestamp),
+                          isMobile,
+                        ),
+                        _buildDetailRow(
+                          'Closing Time',
+                          _formatTime(ticket.closingTimestamp),
+                          isMobile,
+                        ),
+                        _buildDetailRow('Submitted By', ticket.submittedBy, isMobile),
+
+                        SizedBox(height: 20),
+
+                        // Denomination Breakdown Section
+                        if (ticket.denominationBreakdown.isNotEmpty) ...[
+                          Text(
+                            'Ticket Breakdown by Denomination',
+                            style: TextStyle(
+                              fontSize: isMobile ? 14 : 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0D2364),
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey[300]!),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              children: [
+                                // Header
+                                Container(
+                                  padding: EdgeInsets.all(isMobile ? 8 : 12),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFF0D2364),
+                                    borderRadius: BorderRadius.only(
+                                      topLeft: Radius.circular(7),
+                                      topRight: Radius.circular(7),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 2,
+                                        child: Text(
+                                          'Fare',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: isMobile ? 12 : 14,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Text(
+                                          'Opening',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: isMobile ? 12 : 14,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Text(
+                                          'Closing',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: isMobile ? 12 : 14,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Text(
+                                          'Passengers',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: isMobile ? 12 : 14,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Rows
+                                ...ticket.denominationBreakdown.entries.map((entry) {
+                                  final denom = entry.key;
+                                  final data = entry.value;
+                                  final index = ticket.denominationBreakdown.keys.toList().indexOf(denom);
+
+                                  return Container(
+                                    padding: EdgeInsets.all(isMobile ? 8 : 12),
+                                    decoration: BoxDecoration(
+                                      color: index.isEven ? Colors.grey[50] : Colors.white,
+                                      border: Border(
+                                        bottom: BorderSide(
+                                          color: Colors.grey[300]!,
+                                          width: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          flex: 2,
+                                          child: Text(
+                                            '₱$denom',
+                                            style: TextStyle(
+                                              fontSize: isMobile ? 12 : 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF0D2364),
+                                            ),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Text(
+                                            _formatTicketNumber(data.opening),
+                                            style: TextStyle(
+                                              fontSize: isMobile ? 12 : 14,
+                                              color: Colors.black87,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Text(
+                                            _formatTicketNumber(data.closing),
+                                            style: TextStyle(
+                                              fontSize: isMobile ? 12 : 14,
+                                              color: Colors.black87,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Text(
+                                            data.passengers.toString(),
+                                            style: TextStyle(
+                                              fontSize: isMobile ? 12 : 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.green[700],
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                        ],
+
+                        // Total Summary
                         Container(
-                          padding: EdgeInsets.all(12),
+                          padding: EdgeInsets.all(isMobile ? 12 : 16),
                           decoration: BoxDecoration(
                             color: Colors.grey[50],
                             borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Color(0xFF0D2364), width: 2),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Total Tickets Used:',
+                                'Total Passengers:',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Colors.grey[700],
-                                  fontSize: isMobile ? 12 : 14,
+                                  fontSize: isMobile ? 14 : 16,
                                 ),
                               ),
                               Text(
-                                ((ticket.closingTicketNo! - ticket.openingTicketNo).abs() + 1)
-                                    .toString(),
+                                ticket.passengers.toString(),
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: isMobile ? 14 : 16,
+                                  fontSize: isMobile ? 18 : 20,
                                   color: Color(0xFF0D2364),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 SizedBox(height: 16),
@@ -803,7 +962,7 @@ class _TicketTableState extends State<TicketTable> {
             child: Center(child: CircularProgressIndicator()),
           ),
 
-        // Ticket Report Summary - Wrapped in scrollable container
+        // Ticket Report Summary
         if (unitNumber.isNotEmpty) ...[
           SizedBox(height: isMobile ? 12 : 16),
           Container(
@@ -1125,7 +1284,6 @@ class _TicketTableState extends State<TicketTable> {
     );
   }
 
-  // FIXED: Updated to match actual Firestore structure
   Future<int> _calculateTotalPassengersFromTicketReport() async {
     try {
       final querySnapshot = await _firestore.collection('ticket_report').get();
@@ -1135,46 +1293,26 @@ class _TicketTableState extends State<TicketTable> {
       for (var doc in querySnapshot.docs) {
         final data = doc.data();
 
-        // Get opening and closing tickets arrays
         final openingTickets = data['openingTickets'] as List<dynamic>? ?? [];
         final closingTickets = data['closingTickets'] as List<dynamic>? ?? [];
 
-        debugPrint('Processing doc: ${doc.id}');
-        debugPrint('Opening tickets length: ${openingTickets.length}');
-        debugPrint('Closing tickets length: ${closingTickets.length}');
-
-        // Process each item in the arrays (each item is a map with denominations)
         for (int i = 0; i < openingTickets.length && i < closingTickets.length; i++) {
           final openingMap = openingTickets[i] as Map<String, dynamic>? ?? {};
           final closingMap = closingTickets[i] as Map<String, dynamic>? ?? {};
 
-          debugPrint('Row $i - Opening: $openingMap');
-          debugPrint('Row $i - Closing: $closingMap');
-
-          // Sum up tickets for all denominations (1, 2, 5, 10, 15, 20)
           for (String denomination in ['1', '2', '5', '10', '15', '20']) {
-            // Remove leading zeros and parse as int
             final openingStr = openingMap[denomination]?.toString() ?? '0';
             final closingStr = closingMap[denomination]?.toString() ?? '0';
 
-            // Remove leading zeros by parsing as int
             final opening = int.tryParse(openingStr.replaceAll('"', '')) ?? 0;
             final closing = int.tryParse(closingStr.replaceAll('"', '')) ?? 0;
 
-            debugPrint('Denomination $denomination: Opening=$opening, Closing=$closing');
-
-            // Calculate tickets used for this denomination
             final ticketsUsed = (closing - opening).abs();
             totalPassengers += ticketsUsed;
-
-            if (ticketsUsed > 0) {
-              debugPrint('Added $ticketsUsed tickets from denomination $denomination');
-            }
           }
         }
       }
 
-      debugPrint('Total passengers calculated: $totalPassengers');
       return totalPassengers;
     } catch (e) {
       debugPrint('Error calculating total passengers: $e');
@@ -1265,7 +1403,6 @@ class _TicketTableState extends State<TicketTable> {
 
             return Column(
               children: [
-                // Scrollable content
                 Expanded(
                   child: SingleChildScrollView(
                     child: Padding(
@@ -1298,7 +1435,6 @@ class _TicketTableState extends State<TicketTable> {
                     ),
                   ),
                 ),
-                // Fixed footer at bottom
                 _buildResultsFooter(filteredTickets, allTickets.length, isMobile),
               ],
             );
@@ -1355,6 +1491,7 @@ class TicketData {
   final String submittedBy;
   final DateTime openingTimestamp;
   final DateTime? closingTimestamp;
+  final Map<String, DenominationData> denominationBreakdown;
 
   TicketData({
     required this.tripNo,
@@ -1368,5 +1505,18 @@ class TicketData {
     required this.submittedBy,
     required this.openingTimestamp,
     this.closingTimestamp,
+    this.denominationBreakdown = const {},
+  });
+}
+
+class DenominationData {
+  final int opening;
+  final int? closing;
+  final int passengers;
+
+  DenominationData({
+    required this.opening,
+    this.closing,
+    required this.passengers,
   });
 }

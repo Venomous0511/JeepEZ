@@ -12,19 +12,11 @@ class VehicleChecklistScreen extends StatefulWidget {
 class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
   String? _assignedVehicle;
   bool _isLoadingVehicle = true;
-  String _currentPriority = '';
 
   @override
   void initState() {
     super.initState();
     _fetchAssignedVehicle();
-    _defectsController.addListener(_updatePriority);
-  }
-
-  void _updatePriority() {
-    setState(() {
-      _currentPriority = _determinePriority(_defectsController.text);
-    });
   }
 
   Future<void> _fetchAssignedVehicle() async {
@@ -48,29 +40,6 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
       setState(() => _isLoadingVehicle = false);
       debugPrint('Error fetching vehicle: $e');
     }
-  }
-
-  String _determinePriority(String defectText) {
-    final lower = defectText.toLowerCase();
-
-    // High Priority Issues
-    if (lower.contains('brake') ||
-        lower.contains('engine') ||
-        lower.contains('tire') ||
-        lower.contains('steering')) {
-      return 'HIGH';
-    }
-
-    // Medium Priority Issues
-    if (lower.contains('oil') ||
-        lower.contains('water') ||
-        lower.contains('battery') ||
-        lower.contains('light')) {
-      return 'MEDIUM';
-    }
-
-    // Default to Low
-    return 'LOW';
   }
 
   final List<String> _inspectionItems = [
@@ -144,9 +113,9 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
       final maintenanceData = {
         'vehicleId': int.parse(vehicleId),
         'title': hasDefects ? defects : 'No issues found',
-        'priority': hasDefects ? _determinePriority(defects) : 'LOW',
         'issueDate': FieldValue.serverTimestamp(),
         'createdBy': user.email,
+        'reportedBy': user.displayName,
         'checklistItems': checkedItems,
         'hasDefects': hasDefects,
         'status': 'pending',
@@ -169,7 +138,6 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
       setState(() {
         _checklistItems.clear();
         _defectsController.clear();
-        _currentPriority = '';
       });
     } catch (e) {
       if (mounted) {
@@ -182,7 +150,6 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
 
   @override
   void dispose() {
-    _defectsController.removeListener(_updatePriority);
     _defectsController.dispose();
     super.dispose();
   }
@@ -389,7 +356,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                             style: TextStyle(fontSize: isMobile ? 13 : 14),
                             decoration: InputDecoration(
                               hintText:
-                                  'Describe any defects found during inspection... (Leave empty if no defects)',
+                                  'Describe any defects found during inspection... (Leave a no defects or N/A)',
                               hintStyle: TextStyle(
                                 fontSize: isMobile ? 13 : 14,
                               ),
@@ -427,17 +394,6 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Priority: $_currentPriority',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: _currentPriority == 'HIGH'
-                              ? Colors.red
-                              : _currentPriority == 'MEDIUM'
-                              ? Colors.orange
-                              : Colors.green,
-                        ),
-                      ),
                       if (_defectsController.text.length > 100)
                         Text(
                           'Character limit exceeded!',
