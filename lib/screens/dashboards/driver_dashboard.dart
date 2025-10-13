@@ -270,16 +270,20 @@ class _DriverDashboardState extends State<DriverDashboard>
 
         // Filter logs for current user and today
         final userLogs = data.where((log) {
-          final logDate = DateFormat('yyyy-MM-dd')
-              .format(DateTime.parse(log['timestamp']).toLocal());
+          final logDate = DateFormat(
+            'yyyy-MM-dd',
+          ).format(DateTime.parse(log['timestamp']).toLocal());
           final logName = log['name']?.toString() ?? '';
 
           return logDate == today && logName == widget.user.name;
         }).toList();
 
         // Sort by timestamp
-        userLogs.sort((a, b) => DateTime.parse(a['timestamp'])
-            .compareTo(DateTime.parse(b['timestamp'])));
+        userLogs.sort(
+          (a, b) => DateTime.parse(
+            a['timestamp'],
+          ).compareTo(DateTime.parse(b['timestamp'])),
+        );
 
         // Group into pairs (tap-in, tap-out)
         List<Map<String, dynamic>> timeLogs = [];
@@ -299,10 +303,7 @@ class _DriverDashboardState extends State<DriverDashboard>
 
         // If there's an unpaired tap-in, add it with no tap-out
         if (currentIn != null) {
-          timeLogs.add({
-            'timeIn': currentIn['timestamp'],
-            'timeOut': null,
-          });
+          timeLogs.add({'timeIn': currentIn['timestamp'], 'timeOut': null});
         }
 
         return timeLogs;
@@ -314,7 +315,6 @@ class _DriverDashboardState extends State<DriverDashboard>
       return [];
     }
   }
-
 
   String _formatTime(String? timestamp) {
     if (timestamp == null) return '--:--';
@@ -532,11 +532,37 @@ class _DriverDashboardState extends State<DriverDashboard>
                               ),
                               const SizedBox(height: 12),
 
+                              // Tap In Tap Out Headers - ALWAYS VISIBLE
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    "Time",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: isMobile ? 14 : 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    "Status",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: isMobile ? 14 : 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+
                               // Dynamic Time entries
                               FutureBuilder<List<Map<String, dynamic>>>(
                                 future: _fetchTodayTimeLogs(),
                                 builder: (context, snapshot) {
-                                  if (snapshot.connectionState == ConnectionState.waiting) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
                                     return const Center(
                                       child: CircularProgressIndicator(
                                         color: Colors.white,
@@ -558,12 +584,83 @@ class _DriverDashboardState extends State<DriverDashboard>
                                   final timeLogs = snapshot.data ?? [];
 
                                   if (timeLogs.isEmpty) {
-                                    return Text(
-                                      "No time logs for today",
-                                      style: TextStyle(
-                                        color: Colors.white.withOpacity(0.7),
-                                        fontSize: isMobile ? 14 : 16,
-                                      ),
+                                    return Column(
+                                      children: [
+                                        // No time logs message
+                                        Text(
+                                          "No time logs for today",
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(
+                                              0.7,
+                                            ),
+                                            fontSize: isMobile ? 14 : 16,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        // Tap In Tap Out placeholders
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  "--:--",
+                                                  style: TextStyle(
+                                                    color: Colors.white
+                                                        .withOpacity(0.5),
+                                                    fontSize: isMobile
+                                                        ? 14
+                                                        : 16,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  "--:--",
+                                                  style: TextStyle(
+                                                    color: Colors.white
+                                                        .withOpacity(0.5),
+                                                    fontSize: isMobile
+                                                        ? 14
+                                                        : 16,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.end,
+                                              children: [
+                                                Text(
+                                                  "Tap In",
+                                                  style: TextStyle(
+                                                    color: Colors.white
+                                                        .withOpacity(0.5),
+                                                    fontSize: isMobile
+                                                        ? 14
+                                                        : 16,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  "Tap Out",
+                                                  style: TextStyle(
+                                                    color: Colors.white
+                                                        .withOpacity(0.5),
+                                                    fontSize: isMobile
+                                                        ? 14
+                                                        : 16,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     );
                                   }
 
@@ -571,18 +668,24 @@ class _DriverDashboardState extends State<DriverDashboard>
                                   return Column(
                                     children: timeLogs.map((log) {
                                       return Padding(
-                                        padding: const EdgeInsets.only(bottom: 12),
+                                        padding: const EdgeInsets.only(
+                                          bottom: 12,
+                                        ),
                                         child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
                                           children: [
                                             Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 Text(
                                                   _formatTime(log['timeIn']),
                                                   style: TextStyle(
                                                     color: Colors.white,
-                                                    fontSize: isMobile ? 14 : 16,
+                                                    fontSize: isMobile
+                                                        ? 14
+                                                        : 16,
                                                     fontWeight: FontWeight.w500,
                                                   ),
                                                 ),
@@ -591,28 +694,35 @@ class _DriverDashboardState extends State<DriverDashboard>
                                                   _formatTime(log['timeOut']),
                                                   style: TextStyle(
                                                     color: Colors.white,
-                                                    fontSize: isMobile ? 14 : 16,
+                                                    fontSize: isMobile
+                                                        ? 14
+                                                        : 16,
                                                     fontWeight: FontWeight.w500,
                                                   ),
                                                 ),
                                               ],
                                             ),
                                             Column(
-                                              crossAxisAlignment: CrossAxisAlignment.end,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.end,
                                               children: [
                                                 Text(
-                                                  "Check-in",
+                                                  "Tap In",
                                                   style: TextStyle(
                                                     color: Colors.white,
-                                                    fontSize: isMobile ? 14 : 16,
+                                                    fontSize: isMobile
+                                                        ? 14
+                                                        : 16,
                                                   ),
                                                 ),
                                                 const SizedBox(height: 8),
                                                 Text(
-                                                  "Check-out",
+                                                  "Tap Out",
                                                   style: TextStyle(
                                                     color: Colors.white,
-                                                    fontSize: isMobile ? 14 : 16,
+                                                    fontSize: isMobile
+                                                        ? 14
+                                                        : 16,
                                                   ),
                                                 ),
                                               ],

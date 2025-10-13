@@ -66,8 +66,8 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
       setState(() {
         _vehicleId = vehicleId;
         _scheduleDays = scheduleDays;
-        _employmentType =
-            employmentType ?? "Not specified"; // Set employment type
+        // Trim underscores and set employment type
+        _employmentType = _trimUnderscores(employmentType ?? "Not specified");
         _isLoading = false;
       });
     } catch (e) {
@@ -76,6 +76,11 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  // Method to trim underscores from employment type
+  String _trimUnderscores(String employmentType) {
+    return employmentType.replaceAll('_', ' ').trim();
   }
 
   @override
