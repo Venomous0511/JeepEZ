@@ -11,18 +11,29 @@ class IncidentReportScreen extends StatefulWidget {
 
 class _IncidentReportScreenState extends State<IncidentReportScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _typeController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _personsController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _otherTypeController = TextEditingController();
 
   // Focus nodes to track field focus
-  final FocusNode _typeFocusNode = FocusNode();
   final FocusNode _locationFocusNode = FocusNode();
   final FocusNode _personsFocusNode = FocusNode();
   final FocusNode _descriptionFocusNode = FocusNode();
+  final FocusNode _otherTypeFocusNode = FocusNode();
 
   String? _vehicleId; // store assigned vehicle ID
+  String? _selectedAccidentType; // store selected accident type
+
+  // List of accident types for dropdown
+  final List<String> _accidentTypes = [
+    'Brake failure or loss of braking power',
+    'Traffic obstruction due to stalled jeepney',
+    'Overheating engine during stop-and-go traffic',
+    'Flat tire / tire blowout',
+    'Accident due to slippery or flooded roads',
+    'Other/s',
+  ];
 
   @override
   void initState() {
@@ -30,9 +41,9 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
     _fetchAssignedVehicle(); // fetch vehicle when screen opens
 
     // Add listeners to update character count
-    _typeController.addListener(() => setState(() {}));
     _locationController.addListener(() => setState(() {}));
     _personsController.addListener(() => setState(() {}));
+    _otherTypeController.addListener(() => setState(() {}));
   }
 
   Future<void> _fetchAssignedVehicle() async {
@@ -72,8 +83,17 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
     }
 
     try {
+      // Determine the final type value
+      String finalType;
+      if (_selectedAccidentType == 'Other/s' &&
+          _otherTypeController.text.isNotEmpty) {
+        finalType = _otherTypeController.text.trim();
+      } else {
+        finalType = _selectedAccidentType ?? '';
+      }
+
       await FirebaseFirestore.instance.collection('incident_report').add({
-        'type': _typeController.text.trim(),
+        'type': finalType,
         'location': _locationController.text.trim(),
         'persons': employeeId,
         'description': _descriptionController.text.trim(),
@@ -91,10 +111,8 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
         );
       }
 
-      _typeController.clear();
-      _locationController.clear();
-      _personsController.clear();
-      _descriptionController.clear();
+      // Reset form
+      _resetForm();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -104,10 +122,19 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
     }
   }
 
+  void _resetForm() {
+    setState(() {
+      _selectedAccidentType = null;
+    });
+    _locationController.clear();
+    _personsController.clear();
+    _descriptionController.clear();
+    _otherTypeController.clear();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor: const Color(0xFF0D2364)),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -152,18 +179,153 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                     child: ListView(
                       shrinkWrap: true,
                       children: [
-                        _buildFormField(
-                          label: "Type of Incident",
-                          hintText: "e.g. Road Crash",
-                          controller: _typeController,
-                          focusNode: _typeFocusNode,
-                          isRequired: true,
-                          maxLength: 100,
-                          currentLength: _typeController.text.length,
+                        // Type of Accident Dropdown
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Type of Accident *",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Colors.grey.shade400,
+                                  width: 1.0,
+                                ),
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                              child: DropdownButtonFormField<String>(
+                                value: _selectedAccidentType,
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    _selectedAccidentType = newValue;
+                                    if (newValue != 'Other/s') {
+                                      _otherTypeController.clear();
+                                    }
+                                  });
+                                },
+                                items: _accidentTypes
+                                    .map<DropdownMenuItem<String>>((
+                                      String value,
+                                    ) {
+                                      return DropdownMenuItem<String>(
+                                        value: value,
+                                        child: Text(
+                                          value,
+                                          style: TextStyle(
+                                            color: Colors.grey.shade700,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      );
+                                    })
+                                    .toList(),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12.0,
+                                    vertical: 16.0,
+                                  ),
+                                  isDense: true,
+                                ),
+                                validator: (value) => value == null
+                                    ? 'Please select accident type'
+                                    : null,
+                                isExpanded: true,
+                                hint: Text(
+                                  'Select type of accident...',
+                                  style: TextStyle(color: Colors.grey.shade500),
+                                ),
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 20),
+
+                        // Other Type Text Field (appears only when "Other/s" is selected)
+                        if (_selectedAccidentType == 'Other/s') ...[
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Specify Other Accident Type *",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: Colors.grey.shade400,
+                                    width: 1.0,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8.0),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    TextFormField(
+                                      controller: _otherTypeController,
+                                      focusNode: _otherTypeFocusNode,
+                                      style: TextStyle(
+                                        color: Colors.grey.shade700,
+                                      ),
+                                      maxLength: 100,
+                                      decoration: InputDecoration(
+                                        hintText:
+                                            'Please specify the accident type...',
+                                        hintStyle: TextStyle(
+                                          color: Colors.grey.shade500,
+                                        ),
+                                        border: InputBorder.none,
+                                        contentPadding: const EdgeInsets.all(
+                                          12.0,
+                                        ),
+                                      ),
+                                      validator: (value) => value!.isEmpty
+                                          ? 'Please specify accident type'
+                                          : null,
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        right: 12.0,
+                                        bottom: 8.0,
+                                      ),
+                                      child: Text(
+                                        '${_otherTypeController.text.length}/100',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color:
+                                              _otherTypeController.text.length >
+                                                  100
+                                              ? Colors.red
+                                              : Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+
                         _buildFormField(
-                          label: "Location of Incident",
+                          label: "Location of Incident *",
                           hintText: "e.g. Road + Landmark/Intersection",
                           controller: _locationController,
                           focusNode: _locationFocusNode,
@@ -173,7 +335,7 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                         ),
                         const SizedBox(height: 20),
                         _buildFormField(
-                          label: "Person/s Involved",
+                          label: "Person/s Involved *",
                           hintText: "e.g. Driver, Conductor, or Passenger",
                           controller: _personsController,
                           focusNode: _personsFocusNode,
@@ -186,7 +348,7 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "DESCRIPTION OF INCIDENT",
+                              "DESCRIPTION OF INCIDENT *",
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -219,8 +381,9 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                                   border: InputBorder.none,
                                   contentPadding: const EdgeInsets.all(12.0),
                                 ),
-                                validator: (value) =>
-                                    value!.isEmpty ? 'Required' : null,
+                                validator: (value) => value!.isEmpty
+                                    ? 'Please describe the incident'
+                                    : null,
                               ),
                             ),
                           ],
@@ -309,7 +472,8 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                   contentPadding: const EdgeInsets.all(12.0),
                 ),
                 validator: isRequired
-                    ? (value) => value!.isEmpty ? 'Required' : null
+                    ? (value) =>
+                          value!.isEmpty ? 'This field is required' : null
                     : null,
               ),
               Padding(
@@ -333,14 +497,14 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
 
   @override
   void dispose() {
-    _typeController.dispose();
     _locationController.dispose();
     _personsController.dispose();
     _descriptionController.dispose();
-    _typeFocusNode.dispose();
+    _otherTypeController.dispose();
     _locationFocusNode.dispose();
     _personsFocusNode.dispose();
     _descriptionFocusNode.dispose();
+    _otherTypeFocusNode.dispose();
     super.dispose();
   }
 }

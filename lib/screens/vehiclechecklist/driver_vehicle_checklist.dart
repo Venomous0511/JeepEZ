@@ -389,7 +389,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                             style: TextStyle(fontSize: isMobile ? 13 : 14),
                             decoration: InputDecoration(
                               hintText:
-                                  'Describe any defects found during inspection... (Leave empty if no defects)',
+                                  'Describe any defects found. If none, please indicate "No defects found".',
                               hintStyle: TextStyle(
                                 fontSize: isMobile ? 13 : 14,
                               ),
