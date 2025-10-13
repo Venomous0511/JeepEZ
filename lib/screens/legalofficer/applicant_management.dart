@@ -25,17 +25,57 @@ class Candidate {
     Map<String, bool>? requirements,
     this.createdAt,
     this.updatedAt,
-  }) : requirements =
-           requirements ??
-           {
-             'Driver License': false,
-             'Government Issued IDs': false,
-             'NBI Clearance': false,
-             'Barangay Clearance': false,
-             'Medical Certificate': false,
-             'Initial Interview': false,
-             'Training': false,
-           };
+  }) : requirements = requirements ?? _getDefaultRequirements('');
+
+  // Method to get default requirements based on position
+  static Map<String, bool> _getDefaultRequirements(String position) {
+    switch (position.toLowerCase()) {
+      case 'driver':
+        return {
+          'Driver License': false,
+          'Government Issued IDs': false,
+          'NBI Clearance': false,
+          'Barangay Clearance': false,
+          'Medical Certificate': false,
+          'Initial Interview': false,
+          'Training': false,
+        };
+      case 'conductor':
+      case 'inspector':
+      case 'legal officer':
+        return {
+          'Government Issued IDs': false,
+          'NBI Clearance': false,
+          'Barangay Clearance': false,
+          'Medical Certificate': false,
+          'Initial Interview': false,
+          'Training': false,
+        };
+      default:
+        return {
+          'Government Issued IDs': false,
+          'NBI Clearance': false,
+          'Barangay Clearance': false,
+          'Medical Certificate': false,
+          'Initial Interview': false,
+          'Training': false,
+        };
+    }
+  }
+
+  // Update requirements when position changes
+  void updateRequirementsForPosition(String newPosition) {
+    final newRequirements = _getDefaultRequirements(newPosition);
+
+    // Preserve existing requirement statuses if they exist in new requirements
+    for (var requirement in newRequirements.keys) {
+      if (requirements.containsKey(requirement)) {
+        newRequirements[requirement] = requirements[requirement]!;
+      }
+    }
+
+    requirements = newRequirements;
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -238,6 +278,12 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                         onChanged: (String? newValue) {
                           setDialogState(() {
                             selectedPosition = newValue!;
+                            // Update requirements when position changes
+                            if (isEditing) {
+                              candidate!.updateRequirementsForPosition(
+                                newValue,
+                              );
+                            }
                           });
                         },
                         items: _positionOptions.map<DropdownMenuItem<String>>((
@@ -506,6 +552,33 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Display position-specific note
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info, color: Colors.blue[700], size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                candidate.position == 'Driver'
+                                    ? 'Driver-specific requirements include Driver License'
+                                    : 'General employment requirements',
+                                style: TextStyle(
+                                  fontSize: isMobile ? 12 : 13,
+                                  color: Colors.blue[700],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       ...candidate.requirements.keys.map((key) {
                         return _buildRequirementItem(
                           key,

@@ -2300,6 +2300,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       text: data['middleName'] ?? '',
     );
     final lastNameCtrl = TextEditingController(text: data['lastName'] ?? '');
+    final emailCtrl = TextEditingController(text: data['email'] ?? '');
     String? role = data['role'];
     String? employmentType = data['employmentType'];
     String? area = data['area'];
@@ -2316,7 +2317,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 🔥 UPDATED: Separate name fields
+                  // Name fields
                   TextField(
                     controller: firstNameCtrl,
                     maxLength: 20,
@@ -2386,77 +2387,48 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Role selection with color
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: role != null ? roleColor : Colors.grey,
-                        width: 1.5,
-                      ),
-                      borderRadius: BorderRadius.circular(4),
+                  // Email field (REPLACED ROLE WITH EMAIL)
+                  TextField(
+                    controller: emailCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Email *',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
                     ),
-                    child: DropdownButtonFormField<String>(
-                      initialValue: role,
-                      decoration: const InputDecoration(
-                        labelText: 'Role *',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      items: [
-                        _buildRoleDropdownItem(
-                          "legal_officer",
-                          "Legal Officer",
-                        ),
-                        _buildRoleDropdownItem("driver", "Driver"),
-                        _buildRoleDropdownItem("conductor", "Conductor"),
-                        _buildRoleDropdownItem("inspector", "Inspector"),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          role = value;
-                          // Reset employment type and area when role changes
-                          if (value != "driver" &&
-                              value != "conductor" &&
-                              value != "inspector") {
-                            employmentType = null;
-                            area = null;
-                          }
-                        });
-                      },
-                    ),
+                    keyboardType: TextInputType.emailAddress,
                   ),
 
-                  if (role != null) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: roleColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: roleColor,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _capitalizeRole(role!),
-                            style: TextStyle(
-                              color: roleColor,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
+                  const SizedBox(height: 16),
+
+                  // Display current role (read-only)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: roleColor),
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                  ],
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: roleColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Role: ${_capitalizeRole(role!)}',
+                          style: TextStyle(
+                            color: roleColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
                   if (role == 'driver' ||
                       role == 'conductor' ||
@@ -2487,7 +2459,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       ),
                     ),
 
-                  // 🔥 UPDATED: Area field only for inspectors
+                  // Area field for inspectors
                   if (role == "inspector") ...[
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
@@ -2530,6 +2502,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   final firstName = firstNameCtrl.text.trim();
                   final middleName = middleNameCtrl.text.trim();
                   final lastName = lastNameCtrl.text.trim();
+                  final email = emailCtrl.text.trim();
 
                   // Validation
                   final firstNameError = _validateName(firstName, 'First name');
@@ -2567,11 +2540,29 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     }
                   }
 
-                  // 🔥 UPDATED: Format display name
-                  final mi = middleName.isNotEmpty ? ' ${middleName[0]}.' : '';
-                  final displayName = '$lastName, $firstName$mi';
+                  if (email.isEmpty) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please enter email address'),
+                        ),
+                      );
+                    }
+                    return;
+                  }
 
-                  // 🔥 UPDATED: Validate area for inspectors
+                  if (!_isValidGmail(email)) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Only Gmail accounts are allowed'),
+                        ),
+                      );
+                    }
+                    return;
+                  }
+
+                  // Validate area for inspectors
                   if (role == "inspector" && (area == null || area!.isEmpty)) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -2583,33 +2574,63 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     return;
                   }
 
-                  // 🔥 UPDATED: Update data with separate name fields and area
+                  // Format display name
+                  final mi = middleName.isNotEmpty ? ' ${middleName[0]}.' : '';
+                  final displayName = '$lastName, $firstName$mi';
+
+                  // Update data with email
                   final updateData = {
                     "firstName": firstName,
                     "middleName": middleName,
                     "lastName": lastName,
                     "name": displayName,
-                    "role": role,
+                    "email": email, // UPDATED: Add email to update
                     "updatedAt": FieldValue.serverTimestamp(),
                   };
 
-                  // Only add employmentType if it exists and user has a role that should have it
+                  // Add employmentType if applicable
                   if (employmentType != null &&
                       (role == 'driver' ||
                           role == 'conductor' ||
                           role == 'inspector')) {
-                    updateData["employmentType"] = employmentType;
+                    updateData["employmentType"] = email;
                   }
 
-                  // 🔥 UPDATED: Add area only for inspectors
+                  // Add area for inspectors
                   if (role == "inspector" && area != null) {
-                    updateData["area"] = area;
+                    updateData["area"] = area!; // Use ! to assert it's not null
                   } else {
-                    // Remove area if role changed from inspector
                     updateData["area"] = FieldValue.delete();
                   }
 
                   try {
+                    // Update email in Firebase Auth if it changed
+                    if (email != data['email']) {
+                      final secondaryApp = await _getOrCreateSecondaryApp();
+                      final secondaryAuth = FirebaseAuth.instanceFor(
+                        app: secondaryApp,
+                      );
+
+                      // Sign in with current credentials to update email
+                      final tempPassword = data['tempPassword'] as String?;
+                      if (tempPassword != null) {
+                        await secondaryAuth.signInWithEmailAndPassword(
+                          email: data['email'],
+                          password: tempPassword,
+                        );
+
+                        final currentUser = secondaryAuth.currentUser;
+                        if (currentUser != null) {
+                          await currentUser.verifyBeforeUpdateEmail(email);
+                          // Send email verification for the new email
+                          await currentUser.sendEmailVerification();
+                        }
+
+                        await secondaryAuth.signOut();
+                      }
+                    }
+
+                    // Update Firestore
                     await FirebaseFirestore.instance
                         .collection('users')
                         .doc(docId)
@@ -2653,6 +2674,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     firstNameCtrl.dispose();
     middleNameCtrl.dispose();
     lastNameCtrl.dispose();
+    emailCtrl.dispose();
   }
 
   /// ---------------- DELETE USER ----------------

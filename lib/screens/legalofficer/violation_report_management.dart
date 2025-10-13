@@ -32,16 +32,17 @@ class _ViolationReportHistoryScreenState
         .snapshots()
         .map(
           (snapshot) => snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList(),
-    );
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          }).toList(),
+        );
   }
 
   /// Get all violations for a specific reported employee
   Future<List<Map<String, dynamic>>> getViolationsByEmployee(
-      String reportedEmployeeId) async {
+    String reportedEmployeeId,
+  ) async {
     try {
       final querySnapshot = await _firestore
           .collection('violation_report')
@@ -73,7 +74,8 @@ class _ViolationReportHistoryScreenState
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
-        return querySnapshot.docs.first.data()['email']?.toString() ?? 'Unknown';
+        return querySnapshot.docs.first.data()['email']?.toString() ??
+            'Unknown';
       }
       return 'Unknown';
     } catch (e) {
@@ -84,9 +86,9 @@ class _ViolationReportHistoryScreenState
 
   /// Update violation status
   Future<void> updateViolationStatus(
-      String violationId,
-      String newStatus,
-      ) async {
+    String violationId,
+    String newStatus,
+  ) async {
     try {
       await _firestore.collection('violation_report').doc(violationId).update({
         'status': newStatus,
@@ -99,14 +101,16 @@ class _ViolationReportHistoryScreenState
   }
 
   List<Map<String, dynamic>> _filterReports(
-      List<Map<String, dynamic>> reports,
-      ) {
+    List<Map<String, dynamic>> reports,
+  ) {
     if (_searchQuery.isEmpty) return reports;
 
     return reports.where((report) {
       final name = report['reportedName']?.toString().toLowerCase() ?? '';
-      final position = report['reportedPosition']?.toString().toLowerCase() ?? '';
-      final empId = report['reportedEmployeeId']?.toString().toLowerCase() ?? '';
+      final position =
+          report['reportedPosition']?.toString().toLowerCase() ?? '';
+      final empId =
+          report['reportedEmployeeId']?.toString().toLowerCase() ?? '';
       final location = report['location']?.toString().toLowerCase() ?? '';
       final violation = report['violation']?.toString().toLowerCase() ?? '';
       final status = report['status']?.toString().toLowerCase() ?? 'new';
@@ -122,15 +126,15 @@ class _ViolationReportHistoryScreenState
   }
 
   List<Map<String, dynamic>> _getPaginatedReports(
-      List<Map<String, dynamic>> reports,
-      ) {
+    List<Map<String, dynamic>> reports,
+  ) {
     final startIndex = _currentPage * _itemsPerPage;
     final endIndex = startIndex + _itemsPerPage;
     return reports.length > startIndex
         ? reports.sublist(
-      startIndex,
-      endIndex > reports.length ? reports.length : endIndex,
-    )
+            startIndex,
+            endIndex > reports.length ? reports.length : endIndex,
+          )
         : [];
   }
 
@@ -167,7 +171,9 @@ class _ViolationReportHistoryScreenState
 
                     final reports = snapshot.data!;
                     final filteredReports = _filterReports(reports);
-                    final paginatedReports = _getPaginatedReports(filteredReports);
+                    final paginatedReports = _getPaginatedReports(
+                      filteredReports,
+                    );
 
                     return Column(
                       children: [
@@ -334,8 +340,9 @@ class _ViolationReportHistoryScreenState
           reportData: report,
           getReporterEmail: () =>
               getReporterEmail(report['reporterEmployeeId']?.toString() ?? ''),
-          fetchViolations: () =>
-              getViolationsByEmployee(report['reportedEmployeeId']?.toString() ?? ''),
+          fetchViolations: () => getViolationsByEmployee(
+            report['reportedEmployeeId']?.toString() ?? '',
+          ),
           updateStatus: updateViolationStatus,
         );
       },
@@ -357,8 +364,9 @@ class _ViolationReportHistoryScreenState
           reportData: report,
           getReporterEmail: () =>
               getReporterEmail(report['reporterEmployeeId']?.toString() ?? ''),
-          fetchViolations: () =>
-              getViolationsByEmployee(report['reportedEmployeeId']?.toString() ?? ''),
+          fetchViolations: () => getViolationsByEmployee(
+            report['reportedEmployeeId']?.toString() ?? '',
+          ),
           updateStatus: updateViolationStatus,
         );
       },
@@ -389,10 +397,10 @@ class _ViolationReportHistoryScreenState
             icon: Icon(Icons.arrow_back_ios, size: isMobile ? 16 : 20),
             onPressed: _currentPage > 0
                 ? () {
-              setState(() {
-                _currentPage--;
-              });
-            }
+                    setState(() {
+                      _currentPage--;
+                    });
+                  }
                 : null,
           ),
           Text(
@@ -406,10 +414,10 @@ class _ViolationReportHistoryScreenState
             icon: Icon(Icons.arrow_forward_ios, size: isMobile ? 16 : 20),
             onPressed: _currentPage < totalPages - 1
                 ? () {
-              setState(() {
-                _currentPage++;
-              });
-            }
+                    setState(() {
+                      _currentPage++;
+                    });
+                  }
                 : null,
           ),
         ],
@@ -804,7 +812,8 @@ class _ViolationReportDialog extends StatefulWidget {
   final String status;
   final List<Map<String, dynamic>> violations;
   final Map<String, dynamic> reportData;
-  final Future<void> Function(String violationId, String newStatus) updateStatus;
+  final Future<void> Function(String violationId, String newStatus)
+  updateStatus;
   final bool isTablet;
 
   @override
@@ -865,14 +874,9 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
                   DropdownButton<String>(
                     value: selectedStatus,
                     isExpanded: true,
-                    items: [
-                      'New',
-                      'Open',
-                      'Under Investigation',
-                      'Resolved',
-                      'Closed'
-                    ]
-                        .map((String status) {
+                    items: ['New', 'Under Investigation', 'Resolved'].map((
+                      String status,
+                    ) {
                       return DropdownMenuItem<String>(
                         value: status,
                         child: Text(status),
@@ -965,10 +969,7 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery
-        .of(context)
-        .size
-        .width;
+    final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
 
     return Dialog(
@@ -976,10 +977,7 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
       child: Container(
         constraints: BoxConstraints(
           maxWidth: isMobile ? double.infinity : 800,
-          maxHeight: MediaQuery
-              .of(context)
-              .size
-              .height * 0.85,
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
         padding: EdgeInsets.all(isMobile ? 16 : 20),
         child: Column(
@@ -1059,102 +1057,106 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
             Expanded(
               child: widget.violations.isEmpty
                   ? Center(
-                child: Text(
-                  'No violation details found',
-                  style: TextStyle(
-                    fontSize: isMobile ? 14 : 16,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              )
-                  : ListView.builder(
-                itemCount: widget.violations.length,
-                itemBuilder: (context, index) {
-                  final violation = widget.violations[index];
-                  final violationType = violation['violation']?.toString() ??
-                      'No description';
-                  final location = violation['location']?.toString() ?? 'N/A';
-                  final time = violation['time']?.toString() ?? 'N/A';
-                  final violationStatus = violation['status']?.toString() ??
-                      _currentStatus;
-                  final submittedAt = violation['submittedAt'];
-                  final reporterEmployeeId = violation['reporterEmployeeId']
-                      ?.toString() ?? 'Unknown';
-
-                  return Card(
-                    margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
-                    elevation: 1,
-                    child: Padding(
-                      padding: EdgeInsets.all(isMobile ? 12 : 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  violationType,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: isMobile ? 14 : 16,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 2,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _getStatusColor(violationStatus),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  violationStatus,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: isMobile ? 10 : 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: isMobile ? 8 : 12),
-                          _buildViolationDetail(
-                            Icons.location_on,
-                            'Location',
-                            location,
-                            isMobile,
-                          ),
-                          _buildViolationDetail(
-                            Icons.access_time,
-                            'Time',
-                            time,
-                            isMobile,
-                          ),
-                          if (submittedAt != null)
-                            _buildViolationDetail(
-                              Icons.calendar_today,
-                              'Reported Date',
-                              _formatDate(submittedAt),
-                              isMobile,
-                            ),
-                          _buildViolationDetail(
-                            Icons.person,
-                            'Reported By (EMP ID)',
-                            reporterEmployeeId,
-                            isMobile,
-                          ),
-                        ],
+                      child: Text(
+                        'No violation details found',
+                        style: TextStyle(
+                          fontSize: isMobile ? 14 : 16,
+                          color: Colors.grey[600],
+                        ),
                       ),
+                    )
+                  : ListView.builder(
+                      itemCount: widget.violations.length,
+                      itemBuilder: (context, index) {
+                        final violation = widget.violations[index];
+                        final violationType =
+                            violation['violation']?.toString() ??
+                            'No description';
+                        final location =
+                            violation['location']?.toString() ?? 'N/A';
+                        final time = violation['time']?.toString() ?? 'N/A';
+                        final violationStatus =
+                            violation['status']?.toString() ?? _currentStatus;
+                        final submittedAt = violation['submittedAt'];
+                        final reporterEmployeeId =
+                            violation['reporterEmployeeId']?.toString() ??
+                            'Unknown';
+
+                        return Card(
+                          margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
+                          elevation: 1,
+                          child: Padding(
+                            padding: EdgeInsets.all(isMobile ? 12 : 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        violationType,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: isMobile ? 14 : 16,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 2,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _getStatusColor(violationStatus),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        violationStatus,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: isMobile ? 10 : 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: isMobile ? 8 : 12),
+                                _buildViolationDetail(
+                                  Icons.location_on,
+                                  'Location',
+                                  location,
+                                  isMobile,
+                                ),
+                                _buildViolationDetail(
+                                  Icons.access_time,
+                                  'Time',
+                                  time,
+                                  isMobile,
+                                ),
+                                if (submittedAt != null)
+                                  _buildViolationDetail(
+                                    Icons.calendar_today,
+                                    'Reported Date',
+                                    _formatDate(submittedAt),
+                                    isMobile,
+                                  ),
+                                _buildViolationDetail(
+                                  Icons.person,
+                                  'Reported By (EMP ID)',
+                                  reporterEmployeeId,
+                                  isMobile,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
           ],
         ),
@@ -1162,10 +1164,12 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
     );
   }
 
-  Widget _buildViolationDetail(IconData icon,
-      String label,
-      String value,
-      bool isMobile,) {
+  Widget _buildViolationDetail(
+    IconData icon,
+    String label,
+    String value,
+    bool isMobile,
+  ) {
     return Padding(
       padding: EdgeInsets.only(bottom: isMobile ? 6 : 8),
       child: Row(
@@ -1204,19 +1208,7 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
   String _formatDate(dynamic date) {
     if (date == null) return 'Unknown';
     if (date is Timestamp) {
-      return '${date
-          .toDate()
-          .month}/${date
-          .toDate()
-          .day}/${date
-          .toDate()
-          .year} ${date
-          .toDate()
-          .hour}:${date
-          .toDate()
-          .minute
-          .toString()
-          .padLeft(2, '0')}';
+      return '${date.toDate().month}/${date.toDate().day}/${date.toDate().year} ${date.toDate().hour}:${date.toDate().minute.toString().padLeft(2, '0')}';
     }
     return date.toString();
   }
