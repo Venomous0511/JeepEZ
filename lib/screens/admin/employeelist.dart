@@ -6,6 +6,8 @@ import '../../firebase_options.dart';
 import '../../models/app_user.dart';
 import 'dart:math';
 
+/// TODO: Put back the admin can resend verification email functionality
+
 class EmployeeListScreen extends StatefulWidget {
   final AppUser user;
   const EmployeeListScreen({super.key, required this.user});
@@ -2322,6 +2324,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       text: data['middleName'] ?? '',
     );
     final lastNameCtrl = TextEditingController(text: data['lastName'] ?? '');
+    final emailCtrl = TextEditingController(text: data['email'] ?? '');
     String? role = data['role'];
     String? employmentType = data['employmentType'];
     String? area = data['area'];
@@ -2338,7 +2341,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 🔥 UPDATED: Separate name fields
+                  // First Name
                   TextField(
                     controller: firstNameCtrl,
                     maxLength: 20,
@@ -2362,6 +2365,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
                   const SizedBox(height: 12),
 
+                  // Middle Name
                   TextField(
                     controller: middleNameCtrl,
                     maxLength: 20,
@@ -2385,6 +2389,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
                   const SizedBox(height: 12),
 
+                  // Last Name
                   TextField(
                     controller: lastNameCtrl,
                     maxLength: 20,
@@ -2408,52 +2413,54 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Role selection with color
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: role != null ? roleColor : Colors.grey,
-                        width: 1.5,
-                      ),
-                      borderRadius: BorderRadius.circular(4),
+                  // Email Field
+                  TextField(
+                    controller: emailCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Email *',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
                     ),
-                    child: DropdownButtonFormField<String>(
-                      value: role,
-                      decoration: const InputDecoration(
-                        labelText: 'Role *',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      items: [
-                        _buildRoleDropdownItem(
-                          "legal_officer",
-                          "Legal Officer",
-                        ),
-                        _buildRoleDropdownItem("driver", "Driver"),
-                        _buildRoleDropdownItem("conductor", "Conductor"),
-                        _buildRoleDropdownItem("inspector", "Inspector"),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          role = value;
-                          // Reset employment type and area when role changes
-                          if (value != "driver" &&
-                              value != "conductor" &&
-                              value != "inspector") {
-                            employmentType = null;
-                            area = null;
-                          }
-                        });
-                      },
-                    ),
+                    keyboardType: TextInputType.emailAddress,
                   ),
 
-                  if (role != null) ...[
-                    const SizedBox(height: 8),
+                  const SizedBox(height: 16),
+
+                  // Role Dropdown
+                  DropdownButtonFormField<String>(
+                    value: role,
+                    decoration: const InputDecoration(
+                      labelText: 'Role *',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      _buildRoleDropdownItem("legal_officer", "Legal Officer"),
+                      _buildRoleDropdownItem("driver", "Driver"),
+                      _buildRoleDropdownItem("conductor", "Conductor"),
+                      _buildRoleDropdownItem("inspector", "Inspector"),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        role = value;
+                        // Reset when role changes
+                        if (value != "driver" &&
+                            value != "conductor" &&
+                            value != "inspector") {
+                          employmentType = null;
+                          area = null;
+                        }
+                      });
+                    },
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Role Display (read-only)
+                  if (role != null)
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: roleColor.withOpacity(0.1),
+                        border: Border.all(color: roleColor),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Row(
@@ -2469,7 +2476,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            _capitalizeRole(role!),
+                            'Role: ${_capitalizeRole(role!)}',
                             style: TextStyle(
                               color: roleColor,
                               fontWeight: FontWeight.w600,
@@ -2478,38 +2485,37 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                         ],
                       ),
                     ),
-                  ],
 
+                  // Employment Type
                   if (role == 'driver' ||
                       role == 'conductor' ||
-                      role == 'inspector')
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: DropdownButtonFormField<String>(
-                        value: employmentType,
-                        items: const [
-                          DropdownMenuItem(
-                            value: "full_time",
-                            child: Text("Full-Time"),
-                          ),
-                          DropdownMenuItem(
-                            value: "part_time",
-                            child: Text("Part-Time"),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            employmentType = value;
-                          });
-                        },
-                        decoration: const InputDecoration(
-                          labelText: "Employment Type",
-                          border: OutlineInputBorder(),
+                      role == 'inspector') ...[
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: employmentType,
+                      items: const [
+                        DropdownMenuItem(
+                          value: "full_time",
+                          child: Text("Full-Time"),
                         ),
+                        DropdownMenuItem(
+                          value: "part_time",
+                          child: Text("Part-Time"),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          employmentType = value;
+                        });
+                      },
+                      decoration: const InputDecoration(
+                        labelText: "Employment Type *",
+                        border: OutlineInputBorder(),
                       ),
                     ),
+                  ],
 
-                  // 🔥 UPDATED: Area field only for inspectors
+                  // Area Field (Inspector only)
                   if (role == "inspector") ...[
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
@@ -2552,86 +2558,97 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   final firstName = firstNameCtrl.text.trim();
                   final middleName = middleNameCtrl.text.trim();
                   final lastName = lastNameCtrl.text.trim();
+                  final email = emailCtrl.text.trim();
 
-                  // Validation
+                  // Basic validation
                   final firstNameError = _validateName(firstName, 'First name');
                   if (firstNameError != null) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(firstNameError)));
-                    }
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text(firstNameError)));
                     return;
                   }
 
                   final lastNameError = _validateName(lastName, 'Last name');
                   if (lastNameError != null) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(lastNameError)));
-                    }
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text(lastNameError)));
                     return;
                   }
 
-                  if (middleName.isNotEmpty) {
-                    final middleNameError = _validateName(
-                      middleName,
-                      'Middle name',
+                  if (email.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please enter email address')),
                     );
-                    if (middleNameError != null) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(middleNameError)),
-                        );
-                      }
-                      return;
-                    }
+                    return;
                   }
 
-                  // 🔥 UPDATED: Format display name
+                  if (!_isValidGmail(email)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Only Gmail accounts are allowed')),
+                    );
+                    return;
+                  }
+
+                  if (role == "inspector" && (area == null || area!.isEmpty)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Please select an area for inspector')),
+                    );
+                    return;
+                  }
+
                   final mi = middleName.isNotEmpty ? ' ${middleName[0]}.' : '';
                   final displayName = '$lastName, $firstName$mi';
 
-                  // 🔥 UPDATED: Validate area for inspectors
-                  if (role == "inspector" && (area == null || area!.isEmpty)) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please select an area for inspector'),
-                        ),
-                      );
-                    }
-                    return;
-                  }
-
-                  // 🔥 UPDATED: Update data with separate name fields and area
+                  // Update data map
                   final updateData = {
                     "firstName": firstName,
                     "middleName": middleName,
                     "lastName": lastName,
                     "name": displayName,
-                    "role": role,
+                    "email": email,
                     "updatedAt": FieldValue.serverTimestamp(),
                   };
 
-                  // Only add employmentType if it exists and user has a role that should have it
                   if (employmentType != null &&
                       (role == 'driver' ||
                           role == 'conductor' ||
                           role == 'inspector')) {
-                    updateData["employmentType"] = employmentType;
+                    updateData["employmentType"] = employmentType as Object;
                   }
 
-                  // 🔥 UPDATED: Add area only for inspectors
                   if (role == "inspector" && area != null) {
-                    updateData["area"] = area;
+                    updateData["area"] = area!;
                   } else {
-                    // Remove area if role changed from inspector
                     updateData["area"] = FieldValue.delete();
                   }
 
                   try {
+                    // Update email in Firebase Auth if changed
+                    if (email != data['email']) {
+                      final secondaryApp = await _getOrCreateSecondaryApp();
+                      final secondaryAuth =
+                      FirebaseAuth.instanceFor(app: secondaryApp);
+
+                      final tempPassword = data['tempPassword'] as String?;
+                      if (tempPassword != null) {
+                        await secondaryAuth.signInWithEmailAndPassword(
+                          email: data['email'],
+                          password: tempPassword,
+                        );
+
+                        final currentUser = secondaryAuth.currentUser;
+                        if (currentUser != null) {
+                          await currentUser.verifyBeforeUpdateEmail(email);
+                          await currentUser.sendEmailVerification();
+                        }
+
+                        await secondaryAuth.signOut();
+                      }
+                    }
+
+                    // Firestore update
                     await FirebaseFirestore.instance
                         .collection('users')
                         .doc(docId)
@@ -2640,13 +2657,13 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     await FirebaseFirestore.instance
                         .collection('notifications')
                         .add({
-                          'title': 'Updated Account',
-                          'message': 'Updated account for $displayName',
-                          'time': FieldValue.serverTimestamp(),
-                          'dismissed': false,
-                          'type': 'updates',
-                          'createdBy': widget.user.email,
-                        });
+                      'title': 'Updated Account',
+                      'message': 'Updated account for $displayName',
+                      'time': FieldValue.serverTimestamp(),
+                      'dismissed': false,
+                      'type': 'updates',
+                      'createdBy': widget.user.email,
+                    });
 
                     if (context.mounted) {
                       Navigator.pop(context);
@@ -2675,6 +2692,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     firstNameCtrl.dispose();
     middleNameCtrl.dispose();
     lastNameCtrl.dispose();
+    emailCtrl.dispose();
   }
 
   /// ---------------- DELETE USER ----------------

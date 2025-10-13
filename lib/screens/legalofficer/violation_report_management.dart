@@ -39,6 +39,26 @@ class _ViolationReportHistoryScreenState
     );
   }
 
+  /// Get all violations for a specific reported employee
+  Future<List<Map<String, dynamic>>> getViolationsByEmployee(
+      String reportedEmployeeId) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('violation_report')
+          .where('reportedEmployeeId', isEqualTo: reportedEmployeeId)
+          .get();
+
+      return querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    } catch (e) {
+      debugPrint('Error fetching violations: $e');
+      return [];
+    }
+  }
+
   /// Get reporter's email using reporterEmployeeId
   Future<String> getReporterEmail(String reporterEmployeeId) async {
     try {
@@ -314,6 +334,8 @@ class _ViolationReportHistoryScreenState
           reportData: report,
           getReporterEmail: () =>
               getReporterEmail(report['reporterEmployeeId']?.toString() ?? ''),
+          fetchViolations: () =>
+              getViolationsByEmployee(report['reportedEmployeeId']?.toString() ?? ''),
           updateStatus: updateViolationStatus,
         );
       },
@@ -335,6 +357,8 @@ class _ViolationReportHistoryScreenState
           reportData: report,
           getReporterEmail: () =>
               getReporterEmail(report['reporterEmployeeId']?.toString() ?? ''),
+          fetchViolations: () =>
+              getViolationsByEmployee(report['reportedEmployeeId']?.toString() ?? ''),
           updateStatus: updateViolationStatus,
         );
       },
@@ -406,6 +430,7 @@ class _UserItemDesktop extends StatelessWidget {
     required this.isTablet,
     required this.reportData,
     required this.getReporterEmail,
+    required this.fetchViolations,
     required this.updateStatus,
   });
 
@@ -418,6 +443,7 @@ class _UserItemDesktop extends StatelessWidget {
   final bool isTablet;
   final Map<String, dynamic> reportData;
   final Future<String> Function() getReporterEmail;
+  final Future<List<Map<String, dynamic>>> Function() fetchViolations;
   final Future<void> Function(String, String) updateStatus;
 
   Color _getStatusColor(String status) {
@@ -439,11 +465,17 @@ class _UserItemDesktop extends StatelessWidget {
 
   void _showViolationReport(BuildContext context) async {
     try {
+      final violations = await fetchViolations();
+
       if (context.mounted) {
         showDialog(
           context: context,
           builder: (BuildContext dialogContext) {
             return _ViolationReportDialog(
+              name: name,
+              employeeId: employeeId,
+              status: status,
+              violations: violations,
               reportData: reportData,
               updateStatus: updateStatus,
               isTablet: isTablet,
@@ -587,6 +619,7 @@ class _UserItemMobile extends StatelessWidget {
     required this.status,
     required this.reportData,
     required this.getReporterEmail,
+    required this.fetchViolations,
     required this.updateStatus,
   });
 
@@ -598,6 +631,7 @@ class _UserItemMobile extends StatelessWidget {
   final String status;
   final Map<String, dynamic> reportData;
   final Future<String> Function() getReporterEmail;
+  final Future<List<Map<String, dynamic>>> Function() fetchViolations;
   final Future<void> Function(String, String) updateStatus;
 
   Color _getStatusColor(String status) {
@@ -619,11 +653,17 @@ class _UserItemMobile extends StatelessWidget {
 
   void _showViolationReport(BuildContext context) async {
     try {
+      final violations = await fetchViolations();
+
       if (context.mounted) {
         showDialog(
           context: context,
           builder: (BuildContext dialogContext) {
             return _ViolationReportDialog(
+              name: name,
+              employeeId: employeeId,
+              status: status,
+              violations: violations,
               reportData: reportData,
               updateStatus: updateStatus,
               isTablet: false,
@@ -747,14 +787,22 @@ class _UserItemMobile extends StatelessWidget {
   }
 }
 
-// Violation Report Dialog - Simplified to show single report
+// Violation Report Dialog
 class _ViolationReportDialog extends StatefulWidget {
   const _ViolationReportDialog({
+    required this.name,
+    required this.employeeId,
+    required this.status,
+    required this.violations,
     required this.reportData,
     required this.updateStatus,
     required this.isTablet,
   });
 
+  final String name;
+  final String employeeId;
+  final String status;
+  final List<Map<String, dynamic>> violations;
   final Map<String, dynamic> reportData;
   final Future<void> Function(String violationId, String newStatus) updateStatus;
   final bool isTablet;
@@ -769,7 +817,7 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
   @override
   void initState() {
     super.initState();
-    _currentStatus = widget.reportData['status']?.toString() ?? 'New';
+    _currentStatus = widget.status;
   }
 
   Color _getStatusColor(String status) {
@@ -923,25 +971,11 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
         .width;
     final isMobile = screenWidth < 600;
 
-    final reportedName = widget.reportData['reportedName']?.toString() ??
-        'Unknown';
-    final employeeId = widget.reportData['reportedEmployeeId']?.toString() ??
-        'Unknown';
-    final position = widget.reportData['reportedPosition']?.toString() ??
-        'Unknown';
-    final location = widget.reportData['location']?.toString() ?? 'N/A';
-    final violationType = widget.reportData['violation']?.toString() ??
-        'No description';
-    final time = widget.reportData['time']?.toString() ?? 'N/A';
-    final submittedAt = widget.reportData['submittedAt'];
-    final reporterEmployeeId = widget.reportData['reporterEmployeeId']
-        ?.toString() ?? 'Unknown';
-
     return Dialog(
       insetPadding: EdgeInsets.all(isMobile ? 16 : 20),
       child: Container(
         constraints: BoxConstraints(
-          maxWidth: isMobile ? double.infinity : 600,
+          maxWidth: isMobile ? double.infinity : 800,
           maxHeight: MediaQuery
               .of(context)
               .size
@@ -957,7 +991,7 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
               children: [
                 Expanded(
                   child: Text(
-                    'VIOLATION REPORT - $reportedName',
+                    'VIOLATION REPORT - ${widget.name}',
                     style: TextStyle(
                       fontSize: isMobile ? 14 : 18,
                       fontWeight: FontWeight.bold,
@@ -982,8 +1016,11 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildSummaryItem('EMP ID', employeeId),
-                  _buildSummaryItem('Position', position),
+                  _buildSummaryItem('EMP ID', widget.employeeId),
+                  _buildSummaryItem(
+                    'Total Reports',
+                    widget.violations.length.toString(),
+                  ),
                   _buildSummaryItem('Current Status', _currentStatus),
                 ],
               ),
@@ -1018,86 +1055,105 @@ class _ViolationReportDialogState extends State<_ViolationReportDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Card(
-                      margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
-                      elevation: 1,
-                      child: Padding(
-                        padding: EdgeInsets.all(isMobile ? 12 : 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    violationType,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: isMobile ? 14 : 16,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 2,
+              child: widget.violations.isEmpty
+                  ? Center(
+                child: Text(
+                  'No violation details found',
+                  style: TextStyle(
+                    fontSize: isMobile ? 14 : 16,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              )
+                  : ListView.builder(
+                itemCount: widget.violations.length,
+                itemBuilder: (context, index) {
+                  final violation = widget.violations[index];
+                  final violationType = violation['violation']?.toString() ??
+                      'No description';
+                  final location = violation['location']?.toString() ?? 'N/A';
+                  final time = violation['time']?.toString() ?? 'N/A';
+                  final violationStatus = violation['status']?.toString() ??
+                      _currentStatus;
+                  final submittedAt = violation['submittedAt'];
+                  final reporterEmployeeId = violation['reporterEmployeeId']
+                      ?.toString() ?? 'Unknown';
+
+                  return Card(
+                    margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
+                    elevation: 1,
+                    child: Padding(
+                      padding: EdgeInsets.all(isMobile ? 12 : 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  violationType,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: isMobile ? 14 : 16,
                                   ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 2,
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _getStatusColor(_currentStatus),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    _currentStatus,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: isMobile ? 10 : 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: isMobile ? 8 : 12),
-                            _buildViolationDetail(
-                              Icons.location_on,
-                              'Location',
-                              location,
-                              isMobile,
-                            ),
-                            _buildViolationDetail(
-                              Icons.access_time,
-                              'Time',
-                              time,
-                              isMobile,
-                            ),
-                            if (submittedAt != null)
-                              _buildViolationDetail(
-                                Icons.calendar_today,
-                                'Reported Date',
-                                _formatDate(submittedAt),
-                                isMobile,
                               ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(violationStatus),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  violationStatus,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isMobile ? 10 : 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: isMobile ? 8 : 12),
+                          _buildViolationDetail(
+                            Icons.location_on,
+                            'Location',
+                            location,
+                            isMobile,
+                          ),
+                          _buildViolationDetail(
+                            Icons.access_time,
+                            'Time',
+                            time,
+                            isMobile,
+                          ),
+                          if (submittedAt != null)
                             _buildViolationDetail(
-                              Icons.person,
-                              'Reported By (EMP ID)',
-                              reporterEmployeeId,
+                              Icons.calendar_today,
+                              'Reported Date',
+                              _formatDate(submittedAt),
                               isMobile,
                             ),
-                          ],
-                        ),
+                          _buildViolationDetail(
+                            Icons.person,
+                            'Reported By (EMP ID)',
+                            reporterEmployeeId,
+                            isMobile,
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ],
