@@ -225,18 +225,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Attendance - ${getDisplayDate()}',
-          style: const TextStyle(fontSize: 18),
-        ),
-        backgroundColor: const Color(0xFF0D2364),
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: widget.onBackPressed,
-        ),
-      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
