@@ -9,7 +9,7 @@
     <application
         android:label="jeepez"
         android:name="${applicationName}"
-        android:icon="@mipmap/jeepEZ.png">
+        android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"

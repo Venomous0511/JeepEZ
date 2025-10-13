@@ -83,7 +83,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               groupedByName.putIfAbsent(name, () => []).add(log);
             }
           } catch (e) {
-            print('Error parsing log: $e');
+            debugPrint('Error parsing log: $e');
           }
         }
 
@@ -156,7 +156,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         throw Exception("Failed to load attendance: ${response.statusCode}");
       }
     } catch (e) {
-      print('Error fetching attendance: $e');
+      debugPrint('Error fetching attendance: $e');
       throw Exception("Network error: $e");
     }
   }
@@ -172,10 +172,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final name = attendance['name']?.toString().toLowerCase() ?? '';
       final unit = attendance['unit']?.toString().toLowerCase() ?? '';
       final trip = _getTripText(attendance['tripNumber']).toLowerCase();
+      final employeeId =
+          attendance['employeeId']?.toString().toLowerCase() ?? '';
 
       return name.contains(query) ||
           unit.contains(query) ||
-          trip.contains(query);
+          trip.contains(query) ||
+          employeeId.contains(query);
     }).toList();
   }
 
@@ -186,6 +189,39 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         .where('role', whereIn: ['driver', 'conductor'])
         .orderBy('name')
         .snapshots();
+  }
+
+  // Get employee data with ID mapping
+  Map<String, Map<String, dynamic>> _getEmployeeMap(
+    List<QueryDocumentSnapshot> docs,
+  ) {
+    final employeeMap = <String, Map<String, dynamic>>{};
+    for (var doc in docs) {
+      final user = doc.data() as Map<String, dynamic>;
+      final name = user['name']?.toString() ?? '';
+      if (name.isNotEmpty) {
+        employeeMap[name] = user;
+      }
+    }
+    return employeeMap;
+  }
+
+  // Enhance attendance data with employee IDs
+  List<Map<String, dynamic>> _enhanceAttendanceWithEmployeeData(
+    List<Map<String, dynamic>> attendanceData,
+    Map<String, Map<String, dynamic>> employeeMap,
+  ) {
+    return attendanceData.map((attendance) {
+      final name = attendance['name']?.toString() ?? '';
+      final employeeData = employeeMap[name] ?? {};
+      return {
+        ...attendance,
+        'employeeId': employeeData['employeeId']?.toString() ?? 'N/A',
+        'assignedVehicle': employeeData['assignedVehicle']?.toString() ?? 'N/A',
+        'employmentType': employeeData['employmentType']?.toString() ?? 'N/A',
+        'role': employeeData['role']?.toString() ?? 'N/A',
+      };
+    }).toList();
   }
 
   String formatTime(String timestamp) {
@@ -207,7 +243,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   String getDisplayDate() {
-    final targetDate = _getTargetDate();
     if (mode == "today") return "Today";
     if (mode == "yesterday") return "Yesterday";
     return DateFormat("MMMM d, yyyy").format(selectedDate);
@@ -293,7 +328,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       child: TextField(
                         controller: _searchController,
                         decoration: InputDecoration(
-                          hintText: 'Search by name, unit, or trip...',
+                          hintText: 'Search by name, ID, unit, or trip...',
                           border: InputBorder.none,
                           prefixIcon: const Icon(
                             Icons.search,
@@ -342,7 +377,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   }
 
                   final attendanceData = attendanceSnapshot.data ?? [];
-                  final filteredData = _filterAttendanceData(attendanceData);
 
                   return StreamBuilder<QuerySnapshot>(
                     stream: employeesStream,
@@ -355,6 +389,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       }
 
                       final docs = snapshot.data?.docs ?? [];
+                      final employeeMap = _getEmployeeMap(docs);
+                      final enhancedAttendanceData =
+                          _enhanceAttendanceWithEmployeeData(
+                            attendanceData,
+                            employeeMap,
+                          );
+                      final filteredData = _filterAttendanceData(
+                        enhancedAttendanceData,
+                      );
 
                       if (attendanceData.isEmpty) {
                         return _buildEmptyWidget();
@@ -365,7 +408,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       }
 
                       return _buildAttendanceContent(
-                        docs,
+                        employeeMap,
                         filteredData,
                         isMobile,
                       );
@@ -516,12 +559,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildAttendanceContent(
-    List<QueryDocumentSnapshot> docs,
+    Map<String, Map<String, dynamic>> employeeMap,
     List<Map<String, dynamic>> attendanceData,
     bool isMobile,
   ) {
     if (isMobile) {
-      return _buildMobileView(docs, attendanceData);
+      return _buildMobileView(employeeMap, attendanceData);
     } else {
       return _buildDesktopView(attendanceData);
     }
@@ -529,7 +572,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   /// Mobile View - Grouped by employee name
   Widget _buildMobileView(
-    List<QueryDocumentSnapshot> docs,
+    Map<String, Map<String, dynamic>> employeeMap,
     List<Map<String, dynamic>> attendanceData,
   ) {
     // Group attendance by employee name
@@ -537,14 +580,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     for (var attendance in attendanceData) {
       final name = attendance['name']?.toString() ?? 'Unknown';
       groupedAttendance.putIfAbsent(name, () => []).add(attendance);
-    }
-
-    // Get employee details
-    final employeeMap = <String, Map<String, dynamic>>{};
-    for (var doc in docs) {
-      final user = doc.data() as Map<String, dynamic>;
-      final name = user['name']?.toString() ?? '';
-      employeeMap[name] = user;
     }
 
     final employeeNames = groupedAttendance.keys.toList();
@@ -569,16 +604,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 // Employee Header
                 Row(
                   children: [
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundColor: const Color(0xFF0D2364),
-                      child: Text(
-                        user['employeeId']?.toString().isNotEmpty == true
-                            ? user['employeeId'].toString().substring(0, 1)
-                            : 'U',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D2364),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          (index + 1).toString(),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                     ),
@@ -630,7 +670,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 const Divider(height: 1),
 
                 // Trips List
-                ...trips.map((trip) => _buildMobileTripCard(trip)).toList(),
+                ...trips.map((trip) => _buildMobileTripCard(trip)),
               ],
             ),
           ),
@@ -648,6 +688,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         : 'N/A';
 
     final isCompleted = trip['timeOut'] != null;
+    final vehicleUnit =
+        trip['assignedVehicle'] != null && trip['assignedVehicle'] != 'N/A'
+        ? 'UNIT ${trip['assignedVehicle']}'
+        : (trip['unit']?.toString().isNotEmpty == true ? trip['unit'] : 'N/A');
 
     return Container(
       margin: const EdgeInsets.only(top: 8),
@@ -684,14 +728,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Unit
+                // Vehicle Unit
                 Row(
                   children: [
                     Icon(Icons.directions_bus, size: 12, color: Colors.blue),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        'Unit: ${trip['unit']?.toString().isNotEmpty == true ? trip['unit'] : 'N/A'}',
+                        'Vehicle: $vehicleUnit',
                         style: const TextStyle(fontSize: 12),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -707,7 +751,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        'In: $timeInString',
+                        'Tap In: $timeInString',
                         style: const TextStyle(fontSize: 12),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -723,7 +767,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        'Out: $timeOutString',
+                        'Tap Out: $timeOutString',
                         style: const TextStyle(fontSize: 12),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -739,7 +783,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  /// Desktop View - Clean table format
+  /// Desktop View - Following the specified format
   Widget _buildDesktopView(List<Map<String, dynamic>> attendanceData) {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -747,7 +791,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         elevation: 4,
         child: Column(
           children: [
-            // Table Header
+            // Table Header - Following the specified format
             Container(
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
@@ -760,6 +804,26 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               child: const Row(
                 children: [
                   Expanded(
+                    flex: 1,
+                    child: Text(
+                      "No.",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      "Employee ID",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Expanded(
                     flex: 2,
                     child: Text(
                       "Employee Name",
@@ -770,8 +834,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     ),
                   ),
                   Expanded(
+                    flex: 2,
                     child: Text(
-                      "Unit",
+                      "Vehicle Unit",
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -779,8 +844,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     ),
                   ),
                   Expanded(
+                    flex: 2,
                     child: Text(
-                      "Time In",
+                      "Tap In",
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -788,8 +854,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     ),
                   ),
                   Expanded(
+                    flex: 2,
                     child: Text(
-                      "Time Out",
+                      "Tap Out",
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -797,8 +864,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     ),
                   ),
                   Expanded(
+                    flex: 1,
                     child: Text(
-                      "Trip",
+                      "Trips",
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -815,6 +883,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 itemCount: attendanceData.length,
                 itemBuilder: (context, index) {
                   final attendance = attendanceData[index];
+                  final vehicleUnit =
+                      attendance['assignedVehicle'] != null &&
+                          attendance['assignedVehicle'] != 'N/A'
+                      ? 'UNIT ${attendance['assignedVehicle']}'
+                      : (attendance['unit']?.toString().isNotEmpty == true
+                            ? attendance['unit']
+                            : 'N/A');
 
                   return Container(
                     padding: const EdgeInsets.all(16),
@@ -829,6 +904,26 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     ),
                     child: Row(
                       children: [
+                        // No.
+                        Expanded(
+                          flex: 1,
+                          child: Text(
+                            (index + 1).toString(),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0D2364),
+                            ),
+                          ),
+                        ),
+                        // Employee ID
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            attendance['employeeId']?.toString() ?? 'N/A',
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                        // Employee Name
                         Expanded(
                           flex: 2,
                           child: Text(
@@ -836,24 +931,35 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             style: const TextStyle(fontWeight: FontWeight.w500),
                           ),
                         ),
+                        // Vehicle Unit
                         Expanded(
-                          child: Text(attendance['unit']?.toString() ?? 'N/A'),
+                          flex: 2,
+                          child: Text(
+                            vehicleUnit,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
                         ),
+                        // Tap In
                         Expanded(
+                          flex: 2,
                           child: Text(
                             attendance['timeIn'] != null
                                 ? formatTime(attendance['timeIn'].toString())
                                 : 'N/A',
                           ),
                         ),
+                        // Tap Out
                         Expanded(
+                          flex: 2,
                           child: Text(
                             attendance['timeOut'] != null
                                 ? formatTime(attendance['timeOut'].toString())
                                 : 'N/A',
                           ),
                         ),
+                        // Trips
                         Expanded(
+                          flex: 1,
                           child: Text(
                             _getTripText(attendance['tripNumber']),
                             style: const TextStyle(
@@ -880,9 +986,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ? tripNumber
         : int.tryParse(tripNumber.toString()) ?? 1;
 
-    if (number == 1) return "1st Trip";
-    if (number == 2) return "2nd Trip";
-    if (number == 3) return "3rd Trip";
-    return "${number}th Trip";
+    if (number == 1) return "1st";
+    if (number == 2) return "2nd";
+    if (number == 3) return "3rd";
+    return "${number}th";
   }
 }

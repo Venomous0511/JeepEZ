@@ -11,22 +11,32 @@ class TicketTable extends StatefulWidget {
 
 class _TicketTableState extends State<TicketTable> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final TextEditingController _searchController = TextEditingController();
-  String _selectedVehicle = 'All';
-  DateTime? _selectedDate;
+  final TextEditingController _unitNumberController = TextEditingController();
+  final TextEditingController _conductorNameController = TextEditingController();
+
+  bool isLoading = false;
+  String noOfPass = '0';
+  String inspectionTime = '';
+  String conductorName = '';
+  String driverName = '';
+  String location = '';
+  String unitNumber = '';
+  List<String> ticketHeaders = ['20', '15', '10', '5', '2', '1'];
+  List<List<String>> ticketData = [];
+  bool showTicketTable = false;
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _unitNumberController.dispose();
+    _conductorNameController.dispose();
     super.dispose();
   }
 
   Stream<List<TicketData>> _getTicketsStream() {
     return _firestore.collection('ticket_report').snapshots().asyncMap((ticketSnapshot) async {
-
       // Get inspector trips for passenger count
       final inspectorSnapshot = await _firestore.collection('inspector_trip').get();
-      Map<String, Map<String, int>> inspectorData = {}; // key: date-unit-conductor-tripNo, value: passengers
+      Map<String, int> inspectorData = {}; // key: date-unit-conductor, value: passengers
 
       for (var doc in inspectorSnapshot.docs) {
         final data = doc.data();
@@ -35,25 +45,21 @@ class _TicketTableState extends State<TicketTable> {
           final dateKey = DateFormat('yyyy-MM-dd').format(timestamp);
           final unitNumber = data['unitNumber']?.toString() ?? '';
           final conductorName = data['conductorName'] ?? '';
-          final tripNo = data['noOfTrips']?.toString() ?? '1';
           final passengers = int.tryParse(data['noOfPass'].toString()) ?? 0;
 
-          final key = '$dateKey-$unitNumber-$conductorName-$tripNo';
-          if (!inspectorData.containsKey(key)) {
-            inspectorData[key] = {};
-          }
-          inspectorData[key]![tripNo] = passengers;
+          final key = '$dateKey-$unitNumber-$conductorName';
+          inspectorData[key] = passengers;
         }
       }
 
-      // Group tickets by date, vehicle, and conductor
-      Map<String, List<Map<String, dynamic>>> groupedTickets = {};
+      List<TicketData> tickets = [];
 
       for (var doc in ticketSnapshot.docs) {
         final data = doc.data();
 
-        // Skip if timestamp is null
+        // Skip if required fields are null
         if (data['timestamp'] == null) {
+          debugPrint('Skipping document ${doc.id}: missing timestamp');
           continue;
         }
 
@@ -61,130 +67,224 @@ class _TicketTableState extends State<TicketTable> {
         final dateKey = DateFormat('yyyy-MM-dd').format(timestamp);
         final unitNumber = data['unitNumber']?.toString() ?? 'Unknown';
         final conductorName = data['conductorName'] ?? 'Unknown';
+        final employeeId = data['employeeId'] ?? '';
 
-        final key = '$dateKey-$unitNumber-$conductorName';
+        // Get opening and closing tickets
+        final openingTickets = data['openingTickets'] as List<dynamic>? ?? [];
+        final closingTickets = data['closingTickets'] as List<dynamic>? ?? [];
 
-        if (!groupedTickets.containsKey(key)) {
-          groupedTickets[key] = [];
-        }
-        groupedTickets[key]!.add({
-          'type': data['type'] ?? 'opening',
-          'ticketNumber': data['ticketNumber'] ?? 0,
-          'timestamp': timestamp,
-          'conductorName': conductorName,
-          'employeeId': data['employeeId'] ?? '',
-          'unitNumber': unitNumber,
-        });
-      }
+        debugPrint('Processing doc ${doc.id}: unit=$unitNumber, conductor=$conductorName');
+        debugPrint('Opening tickets: ${openingTickets.length}, Closing tickets: ${closingTickets.length}');
 
-      // Process grouped tickets into trips
-      List<TicketData> tickets = [];
+        // Process each row (each row is a trip)
+        int maxRows = openingTickets.length > closingTickets.length
+            ? openingTickets.length
+            : closingTickets.length;
 
-      groupedTickets.forEach((key, ticketList) {
+        for (int rowIndex = 0; rowIndex < maxRows; rowIndex++) {
+          final openingMap = rowIndex < openingTickets.length
+              ? openingTickets[rowIndex] as Map<String, dynamic>? ?? {}
+              : {};
+          final closingMap = rowIndex < closingTickets.length
+              ? closingTickets[rowIndex] as Map<String, dynamic>? ?? {}
+              : {};
 
-        // Sort by timestamp
-        ticketList.sort((a, b) => a['timestamp'].compareTo(b['timestamp']));
+          // Denominations to process
+          List<String> denominations = ['20', '15', '10', '5', '2', '1'];
 
-        // Separate opening and closing tickets
-        List<Map<String, dynamic>> openings = ticketList.where((t) => t['type'] == 'opening').toList();
-        List<Map<String, dynamic>> closings = ticketList.where((t) => t['type'] == 'closing').toList();
+          int totalPassengers = 0;
+          int? firstOpeningTicket;
+          int? firstClosingTicket;
+          bool hasData = false;
 
-        // Parse the key: format is yyyy-MM-dd-unitNumber-conductorName
-        // We need to extract date (first 10 chars), then split the rest
-        final dateStr = key.substring(0, 10); // yyyy-MM-dd
-        final remaining = key.substring(11); // everything after date
-        final remainingParts = remaining.split('-');
+          // Calculate passengers for each denomination and sum them up
+          for (String denom in denominations) {
+            final openingStr = openingMap[denom]?.toString();
+            final closingStr = closingMap[denom]?.toString();
 
-        DateTime date;
-        try {
-          date = DateTime.parse(dateStr);
-        } catch (e) {
-          return;
-        }
+            if (openingStr != null && openingStr.isNotEmpty) {
+              hasData = true;
+              final opening = int.tryParse(openingStr.replaceAll('"', '')) ?? 0;
 
-        final unitNumber = remainingParts.isNotEmpty ? remainingParts[0] : 'Unknown';
-        final conductorName = remainingParts.length > 1 ? remainingParts.sublist(1).join('-') : 'Unknown';
+              // Store the first opening ticket for display
+              firstOpeningTicket ??= opening;
 
-        // Create trips (max 4 per day)
-        int maxTrips = openings.length > 4 ? 4 : openings.length;
+              if (closingStr != null && closingStr.isNotEmpty) {
+                final closing = int.tryParse(closingStr.replaceAll('"', '')) ?? 0;
 
-        for (int i = 0; i < maxTrips; i++) {
-          final opening = openings[i];
-          final closing = i < closings.length ? closings[i] : null;
-          final tripNo = '${i + 1}';
+                // Store the first closing ticket for display
+                firstClosingTicket ??= closing;
 
-          // Look up passenger count from inspector data
-          final inspectorKey = '$dateStr-$unitNumber-$conductorName-$tripNo';
-          final passengers = inspectorData[inspectorKey]?[tripNo] ?? 0;
+                // Calculate passengers for this denomination
+                final passengersForDenom = (closing - opening).abs();
+                totalPassengers += passengersForDenom;
 
+                debugPrint('Row ${rowIndex + 1}, ₱$denom: Opening=$opening, Closing=$closing, Passengers=$passengersForDenom');
+              }
+            }
+          }
+
+          // Skip if no valid data found
+          if (!hasData || firstOpeningTicket == null) {
+            debugPrint('Skipping row $rowIndex: no valid ticket data');
+            continue;
+          }
+
+          // Create a ticket entry for this trip
           tickets.add(TicketData(
-            tripNo: tripNo,
+            tripNo: '${rowIndex + 1}',
             vehicle: unitNumber,
             conductorName: conductorName,
-            employeeId: opening['employeeId'] ?? '',
-            date: date,
-            openingTicketNo: opening['ticketNumber'],
-            closingTicketNo: closing?['ticketNumber'],
-            passengers: passengers,
+            employeeId: employeeId,
+            date: timestamp,
+            openingTicketNo: firstOpeningTicket,
+            closingTicketNo: firstClosingTicket,
+            passengers: totalPassengers,
             submittedBy: conductorName,
-            openingTimestamp: opening['timestamp'],
-            closingTimestamp: closing?['timestamp'],
+            openingTimestamp: timestamp,
+            closingTimestamp: firstClosingTicket != null ? timestamp : null,
           ));
+
+          debugPrint('Added Trip ${rowIndex + 1}: unit=$unitNumber, Total Passengers=$totalPassengers');
         }
+      }
+
+      // Sort by date descending, then by trip number
+      tickets.sort((a, b) {
+        final dateCompare = b.date.compareTo(a.date);
+        if (dateCompare != 0) return dateCompare;
+
+        // Extract numeric part of trip number for sorting
+        final aNum = int.tryParse(a.tripNo) ?? 0;
+        final bNum = int.tryParse(b.tripNo) ?? 0;
+        return aNum.compareTo(bNum);
       });
 
-      // Sort by date descending
-      tickets.sort((a, b) => b.date.compareTo(a.date));
-
+      debugPrint('Total trips found: ${tickets.length}');
       return tickets;
     });
   }
 
+  Future<void> _fetchInspectorTripData() async {
+    if (_unitNumberController.text.isEmpty ||
+        _conductorNameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter both Unit Number and Conductor Name'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      QuerySnapshot querySnapshot = await _firestore
+          .collection('inspector_trip')
+          .where('unitNumber', isEqualTo: _unitNumberController.text.trim())
+          .where('conductorName', isEqualTo: _conductorNameController.text.trim())
+          .orderBy('timestamp', descending: true)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        QuerySnapshot alternativeQuery = await _firestore
+            .collection('inspector_trip')
+            .where('unitNumber', isEqualTo: _unitNumberController.text.trim())
+            .orderBy('timestamp', descending: true)
+            .limit(1)
+            .get();
+
+        if (alternativeQuery.docs.isNotEmpty) {
+          querySnapshot = alternativeQuery;
+        }
+      }
+
+      if (querySnapshot.docs.isNotEmpty) {
+        DocumentSnapshot doc = querySnapshot.docs.first;
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+        List<dynamic> ticketSalesDataRaw = data['ticketSalesData'] ?? [];
+
+        setState(() {
+          ticketData.clear();
+
+          for (var row in ticketSalesDataRaw) {
+            if (row is Map) {
+              List<String> rowData = [];
+              for (String header in ticketHeaders) {
+                String value = row[header]?.toString() ?? '0';
+                rowData.add(value);
+              }
+              ticketData.add(rowData);
+            } else if (row is List) {
+              ticketData.add(List<String>.from(row.map((e) => e.toString())));
+            }
+          }
+
+          noOfPass = data['noOfPass']?.toString() ?? '0';
+          inspectionTime = data['inspectionTime']?.toString() ?? '';
+          conductorName = data['conductorName']?.toString() ?? '';
+          driverName = data['driverName']?.toString() ?? '';
+          location = data['location']?.toString() ?? '';
+          unitNumber = data['unitNumber']?.toString() ?? '';
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Data loaded successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        setState(() {
+          ticketData.clear();
+          noOfPass = '0';
+          inspectionTime = '';
+          conductorName = '';
+          driverName = '';
+          location = '';
+          unitNumber = '';
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No data found for this Unit Number'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching data: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
   List<TicketData> _applyFilters(List<TicketData> tickets) {
-    return tickets.where((ticket) {
-      final matchesSearch =
-          _searchController.text.isEmpty ||
-              ticket.tripNo.toLowerCase().contains(
-                _searchController.text.toLowerCase(),
-              ) ||
-              ticket.vehicle.toLowerCase().contains(
-                _searchController.text.toLowerCase(),
-              ) ||
-              ticket.conductorName.toLowerCase().contains(
-                _searchController.text.toLowerCase(),
-              );
-
-      final matchesVehicle =
-          _selectedVehicle == 'All' || ticket.vehicle == _selectedVehicle;
-
-      final matchesDate =
-          _selectedDate == null ||
-              (ticket.date.year == _selectedDate!.year &&
-                  ticket.date.month == _selectedDate!.month &&
-                  ticket.date.day == _selectedDate!.day);
-
-      return matchesSearch && matchesVehicle && matchesDate;
-    }).toList();
+    return tickets;
   }
 
   List<String> _getVehicleOptions(List<TicketData> tickets) {
-    final vehicles = tickets.map((ticket) => ticket.vehicle).toSet().toList();
-    vehicles.sort();
-    return ['All', ...vehicles];
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2023),
-      lastDate: DateTime(2026),
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
+    return ['All'];
   }
 
   String _formatTicketNumber(int? number) {
@@ -512,7 +612,7 @@ class _TicketTableState extends State<TicketTable> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Color(0xFF0D2364).withAlpha(1),
+                        color: Color(0xFF0D2364).withAlpha(25),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -633,182 +733,453 @@ class _TicketTableState extends State<TicketTable> {
   }
 
   Widget _buildSearchAndFilterSection(bool isMobile, List<String> vehicleOptions) {
-    return Container(
-      padding: EdgeInsets.all(isMobile ? 12 : 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withAlpha(1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: isMobile
-                  ? 'Search tickets...'
-                  : 'Search by Trip No, Vehicle, or Conductor...',
-              prefixIcon: const Icon(Icons.search, color: Colors.grey),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.0),
-                borderSide: BorderSide.none,
+    Color customBlueColor = const Color(0xFF0D2364);
+
+    return Column(
+      children: [
+        // Search Section
+        Container(
+          padding: EdgeInsets.all(isMobile ? 12 : 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withAlpha(50),
+                blurRadius: 5,
+                offset: const Offset(0, 2),
               ),
-              filled: true,
-              fillColor: Colors.grey[100],
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: isMobile ? 12 : 14,
-              ),
-            ),
-            onChanged: (value) => setState(() {}),
+            ],
           ),
-          SizedBox(height: isMobile ? 8 : 12),
-          if (isMobile)
-            Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedVehicle,
-                      isExpanded: true,
-                      icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
-                      items: vehicleOptions.map((String vehicle) {
-                        return DropdownMenuItem<String>(
-                          value: vehicle,
-                          child: Text(vehicle, style: TextStyle(fontSize: 14)),
-                        );
-                      }).toList(),
-                      onChanged: (String? value) {
-                        setState(() {
-                          _selectedVehicle = value!;
-                        });
-                      },
-                    ),
-                  ),
-                ),
-                SizedBox(height: 8),
-                InkWell(
-                  onTap: () => _selectDate(context),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _selectedDate == null
-                              ? 'Select Date'
-                              : _formatDate(_selectedDate!),
-                          style: TextStyle(
-                            color: _selectedDate == null ? Colors.grey : Colors.black87,
-                            fontSize: 14,
-                          ),
-                        ),
-                        Icon(Icons.calendar_today, size: 18, color: Colors.grey[600]),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            )
-          else
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _selectedVehicle,
-                        isExpanded: true,
-                        icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
-                        items: vehicleOptions.map((String vehicle) {
-                          return DropdownMenuItem<String>(
-                            value: vehicle,
-                            child: Text(vehicle, style: const TextStyle(fontSize: 14)),
-                          );
-                        }).toList(),
-                        onChanged: (String? value) {
-                          setState(() {
-                            _selectedVehicle = value!;
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: InkWell(
-                    onTap: () => _selectDate(context),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _selectedDate == null
-                                ? 'Select Date'
-                                : _formatDate(_selectedDate!),
-                            style: TextStyle(
-                              color: _selectedDate == null ? Colors.grey : Colors.black87,
-                              fontSize: 14,
-                            ),
-                          ),
-                          Icon(Icons.calendar_today, size: 18, color: Colors.grey[600]),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          SizedBox(height: isMobile ? 8 : 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _searchController.clear();
-                    _selectedVehicle = 'All';
-                    _selectedDate = null;
-                  });
-                },
-                child: Text(
-                  'Clear Filters',
-                  style: TextStyle(fontSize: isMobile ? 12 : 14),
+              Text(
+                'Search Ticket Data',
+                style: TextStyle(
+                  fontSize: isMobile ? 18 : 20,
+                  fontWeight: FontWeight.bold,
+                  color: customBlueColor,
+                ),
+              ),
+              const SizedBox(height: 15),
+              _buildSearchField(
+                'Unit Number',
+                _unitNumberController,
+                'Enter unit number',
+                isMobile,
+              ),
+              const SizedBox(height: 12),
+              _buildSearchField(
+                'Conductor Name',
+                _conductorNameController,
+                'Enter conductor name',
+                isMobile,
+              ),
+              const SizedBox(height: 15),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _fetchInspectorTripData,
+                  icon: const Icon(Icons.search),
+                  label: const Text('Search'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: customBlueColor,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
+        ),
+
+        if (isLoading)
+          const Padding(
+            padding: EdgeInsets.all(20.0),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+
+        // Ticket Report Summary - Wrapped in scrollable container
+        if (unitNumber.isNotEmpty) ...[
+          SizedBox(height: isMobile ? 12 : 16),
+          Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.6,
+            ),
+            padding: EdgeInsets.all(isMobile ? 12 : 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withAlpha(50),
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Ticket Report Summary',
+                    style: TextStyle(
+                      fontSize: isMobile ? 18 : 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  _buildInfoRow('Unit Number:', unitNumber, isMobile),
+                  _buildInfoRow('Driver:', driverName, isMobile),
+                  _buildInfoRow('Conductor:', conductorName, isMobile),
+                  _buildInfoRow('Location:', location, isMobile),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Total passenger from latest ticket inspection:',
+                    style: TextStyle(
+                      fontSize: isMobile ? 14 : 16,
+                      color: Colors.black87,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[400]!),
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.grey[50],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: Colors.grey[300]!),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '$noOfPass passengers',
+                            style: TextStyle(
+                              fontSize: isMobile ? 14 : 16,
+                              fontWeight: FontWeight.w600,
+                              color: customBlueColor,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: Colors.grey[300]!),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            inspectionTime.isNotEmpty ? inspectionTime : '--:--',
+                            style: TextStyle(
+                              fontSize: isMobile ? 14 : 16,
+                              fontWeight: FontWeight.w600,
+                              color: customBlueColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (ticketData.isNotEmpty) ...[
+                    const SizedBox(height: 15),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            showTicketTable = !showTicketTable;
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: customBlueColor,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          showTicketTable ? 'Hide Ticket Table' : 'Show Ticket Table',
+                          style: TextStyle(
+                            fontSize: isMobile ? 14 : 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (showTicketTable && ticketData.isNotEmpty) ...[
+                    const SizedBox(height: 15),
+                    _buildTicketTable(isMobile),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSearchField(
+      String label,
+      TextEditingController controller,
+      String hint,
+      bool isSmallScreen,
+      ) {
+    Color customBlueColor = const Color(0xFF0D2364);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: isSmallScreen ? 14 : 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: Colors.grey[600]),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[400]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: customBlueColor),
+            ),
+            contentPadding: EdgeInsets.all(isSmallScreen ? 12 : 14),
+          ),
+          style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value, bool isSmallScreen) {
+    Color customBlueColor = const Color(0xFF0D2364);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: isSmallScreen ? 14 : 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 14 : 16,
+                color: customBlueColor,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  Widget _buildTicketTable(bool isSmallScreen) {
+    Color customBlueColor = const Color(0xFF0D2364);
+    return Container(
+      width: double.infinity,
+      constraints: BoxConstraints(
+        maxHeight: 300,
+      ),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey[400]!),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.vertical,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: isSmallScreen ? 500 : 600),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    vertical: isSmallScreen ? 8 : 10,
+                    horizontal: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: customBlueColor,
+                    border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: isSmallScreen ? 50 : 60,
+                        child: Text(
+                          '#',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: isSmallScreen ? 12 : 14,
+                            color: Colors.white,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      for (String header in ticketHeaders)
+                        SizedBox(
+                          width: isSmallScreen ? 80 : 100,
+                          child: Text(
+                            header,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: isSmallScreen ? 12 : 14,
+                              color: Colors.white,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                for (int rowIndex = 0; rowIndex < ticketData.length; rowIndex++)
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      vertical: isSmallScreen ? 8 : 10,
+                      horizontal: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: rowIndex % 2 == 0 ? Colors.grey[50] : Colors.white,
+                      border: Border(
+                        bottom: rowIndex == ticketData.length - 1
+                            ? BorderSide.none
+                            : BorderSide(color: Colors.grey[300]!),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: isSmallScreen ? 50 : 60,
+                          child: Text(
+                            '${rowIndex + 1}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: isSmallScreen ? 12 : 14,
+                              color: customBlueColor,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        for (int colIndex = 0;
+                        colIndex < ticketData[rowIndex].length;
+                        colIndex++)
+                          SizedBox(
+                            width: isSmallScreen ? 80 : 100,
+                            child: Text(
+                              ticketData[rowIndex][colIndex],
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 12 : 14,
+                                color: Colors.black87,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // FIXED: Updated to match actual Firestore structure
+  Future<int> _calculateTotalPassengersFromTicketReport() async {
+    try {
+      final querySnapshot = await _firestore.collection('ticket_report').get();
+
+      int totalPassengers = 0;
+
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+
+        // Get opening and closing tickets arrays
+        final openingTickets = data['openingTickets'] as List<dynamic>? ?? [];
+        final closingTickets = data['closingTickets'] as List<dynamic>? ?? [];
+
+        debugPrint('Processing doc: ${doc.id}');
+        debugPrint('Opening tickets length: ${openingTickets.length}');
+        debugPrint('Closing tickets length: ${closingTickets.length}');
+
+        // Process each item in the arrays (each item is a map with denominations)
+        for (int i = 0; i < openingTickets.length && i < closingTickets.length; i++) {
+          final openingMap = openingTickets[i] as Map<String, dynamic>? ?? {};
+          final closingMap = closingTickets[i] as Map<String, dynamic>? ?? {};
+
+          debugPrint('Row $i - Opening: $openingMap');
+          debugPrint('Row $i - Closing: $closingMap');
+
+          // Sum up tickets for all denominations (1, 2, 5, 10, 15, 20)
+          for (String denomination in ['1', '2', '5', '10', '15', '20']) {
+            // Remove leading zeros and parse as int
+            final openingStr = openingMap[denomination]?.toString() ?? '0';
+            final closingStr = closingMap[denomination]?.toString() ?? '0';
+
+            // Remove leading zeros by parsing as int
+            final opening = int.tryParse(openingStr.replaceAll('"', '')) ?? 0;
+            final closing = int.tryParse(closingStr.replaceAll('"', '')) ?? 0;
+
+            debugPrint('Denomination $denomination: Opening=$opening, Closing=$closing');
+
+            // Calculate tickets used for this denomination
+            final ticketsUsed = (closing - opening).abs();
+            totalPassengers += ticketsUsed;
+
+            if (ticketsUsed > 0) {
+              debugPrint('Added $ticketsUsed tickets from denomination $denomination');
+            }
+          }
+        }
+      }
+
+      debugPrint('Total passengers calculated: $totalPassengers');
+      return totalPassengers;
+    } catch (e) {
+      debugPrint('Error calculating total passengers: $e');
+      return 0;
+    }
   }
 
   Widget _buildResultsFooter(List<TicketData> tickets, int totalTickets, bool isMobile) {
@@ -822,7 +1193,7 @@ class _TicketTableState extends State<TicketTable> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withAlpha(1),
+            color: Colors.grey.withAlpha(50),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -839,13 +1210,28 @@ class _TicketTableState extends State<TicketTable> {
             ),
           ),
           if (tickets.isNotEmpty)
-            Text(
-              'Total Passengers: ${tickets.fold(0, (total, ticket) => total + ticket.passengers)}',
-              style: TextStyle(
-                color: const Color(0xFF0D2364),
-                fontSize: isMobile ? 10 : 12,
-                fontWeight: FontWeight.bold,
-              ),
+            FutureBuilder<int>(
+              future: _calculateTotalPassengersFromTicketReport(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  );
+                }
+
+                final totalPassengers = snapshot.data ?? 0;
+
+                return Text(
+                  'Total Passengers: $totalPassengers',
+                  style: TextStyle(
+                    color: const Color(0xFF0D2364),
+                    fontSize: isMobile ? 10 : 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                );
+              },
             ),
         ],
       ),
@@ -877,38 +1263,44 @@ class _TicketTableState extends State<TicketTable> {
             final filteredTickets = _applyFilters(allTickets);
             final vehicleOptions = _getVehicleOptions(allTickets);
 
-            return Padding(
-              padding: EdgeInsets.all(isMobile ? 8.0 : 16.0),
-              child: Column(
-                children: [
-                  _buildSearchAndFilterSection(isMobile, vehicleOptions),
-                  SizedBox(height: isMobile ? 12 : 16),
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withAlpha(1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
+            return Column(
+              children: [
+                // Scrollable content
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: EdgeInsets.all(isMobile ? 8.0 : 16.0),
                       child: Column(
                         children: [
-                          Expanded(
+                          _buildSearchAndFilterSection(isMobile, vehicleOptions),
+                          SizedBox(height: isMobile ? 12 : 16),
+                          Container(
+                            constraints: BoxConstraints(
+                              minHeight: 400,
+                              maxHeight: MediaQuery.of(context).size.height * 0.6,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.withAlpha(50),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
                             child: isMobile
                                 ? _buildMobileList(filteredTickets)
                                 : _buildDesktopTable(filteredTickets),
                           ),
-                          _buildResultsFooter(filteredTickets, allTickets.length, isMobile),
                         ],
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+                // Fixed footer at bottom
+                _buildResultsFooter(filteredTickets, allTickets.length, isMobile),
+              ],
             );
           },
         ),

@@ -28,7 +28,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   bool _isLoggingOut = false;
   int _currentScreenIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  bool _hasShownPasswordReminder = false;
 
   // Password change variables
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -59,69 +58,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
       const DriverConductorManagementScreen(),
       const MaintenanceScreen(),
     ]);
-
-    _checkIfNewAccount();
-  }
-
-  // Check if new account (created within 24 hours)
-  Future<void> _checkIfNewAccount() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final creationTime = user.metadata.creationTime;
-        if (creationTime != null &&
-            DateTime.now().difference(creationTime).inHours < 24 &&
-            !_hasShownPasswordReminder) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showPasswordChangeReminder();
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Error checking account status: $e');
-    }
-  }
-
-  // Show password change reminder
-  void _showPasswordChangeReminder() {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              'Password Change Required',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontSize: 16,
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'For security reasons, please change your password in the Change Password section.',
-              style: TextStyle(color: Colors.white, fontSize: 14),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.orange,
-        duration: const Duration(seconds: 6),
-        action: SnackBarAction(
-          label: 'Change Now',
-          textColor: Colors.white,
-          onPressed: () {
-            _showChangePasswordDialog();
-          },
-        ),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-
-    setState(() => _hasShownPasswordReminder = true);
   }
 
   void _navigateToScreen(int index) {
@@ -139,7 +75,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case 0:
         return 'Admin Dashboard';
       case 1:
-        return 'Employee List Management';
+        return 'Employee Account Management';
       case 2:
         return 'Attendance Records';
       case 3:
@@ -147,7 +83,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case 4:
         return 'Driver & Conductor Management';
       case 5:
-        return 'Maintenance';
+        return 'Vehicle Maintenance';
       default:
         return 'Admin Dashboard';
     }
@@ -228,9 +164,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
       _currentPasswordController.clear();
       _newPasswordController.clear();
       _confirmPasswordController.clear();
-
-      // Update the flag to indicate password has been changed
-      setState(() => _hasShownPasswordReminder = true);
 
       Navigator.of(context).pop();
     } on FirebaseAuthException catch (e) {
@@ -793,6 +726,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               "timeIn": currentIn['timestamp'],
               "timeOut": log['timestamp'],
               "unit": log["unit"] ?? "",
+              "status": "Completed",
             });
             outCount++;
             currentIn = null;
@@ -806,6 +740,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             "timeIn": currentIn['timestamp'],
             "timeOut": null,
             "unit": currentIn["unit"] ?? "",
+            "status": "Active",
           });
         }
       });
@@ -926,15 +861,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
               child: ListView(
                 children: [
                   _drawerItem('Home', 0, Icons.home),
-                  _drawerItem('Account Management', 1, Icons.people),
-                  _drawerItem('Attendance', 2, Icons.calendar_today),
+                  _drawerItem('Employee Account Management', 1, Icons.people),
+                  _drawerItem('Attendance Records', 2, Icons.calendar_today),
                   _drawerItem('Leave Management', 3, Icons.event_busy),
                   _drawerItem(
                     'Driver & Conductor Management',
                     4,
                     Icons.directions_car,
                   ),
-                  _drawerItem('Maintenance', 5, Icons.build),
+                  _drawerItem('Vehicle Maintenance', 5, Icons.build),
                 ],
               ),
             ),
@@ -1211,6 +1146,7 @@ class _HomeScreenState extends State<HomeScreen>
                   "timeIn": currentIn['timestamp'],
                   "timeOut": log['timestamp'],
                   "unit": log["unit"] ?? "",
+                  "status": "Completed",
                 });
                 outCount++;
                 currentIn = null;
@@ -1224,6 +1160,7 @@ class _HomeScreenState extends State<HomeScreen>
                 "timeIn": currentIn['timestamp'],
                 "timeOut": null,
                 "unit": currentIn["unit"] ?? "",
+                "status": "Active",
               });
             }
           });
@@ -1244,46 +1181,6 @@ class _HomeScreenState extends State<HomeScreen>
       'Sunday',
     ];
     return 'Today | ${weekdays[now.weekday - 1]}';
-  }
-
-  TableRow _buildEmployeeRow(String name, String time) {
-    return TableRow(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Row(
-            children: [
-              const Icon(Icons.email, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  name,
-                  style: const TextStyle(fontSize: 16, color: Colors.white),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Row(
-            children: [
-              const Icon(Icons.access_time, color: Colors.white, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                time,
-                style: const TextStyle(fontSize: 14, color: Colors.white),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMapSection() {
-    return const LiveMapWidget();
   }
 
   @override
@@ -1479,6 +1376,52 @@ class _HomeScreenState extends State<HomeScreen>
                 style: TextStyle(fontSize: 14, color: Colors.grey),
               ),
               const SizedBox(height: 12),
+              // Table Header
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        'Employee',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        'Tap In',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        'Tap Out',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
               Expanded(
                 child: StreamBuilder<List<Map<String, dynamic>>>(
                   stream: _attendanceStream,
@@ -1492,30 +1435,125 @@ class _HomeScreenState extends State<HomeScreen>
                     if (!snapshot.hasData || snapshot.data!.isEmpty) {
                       return Center(
                         child: Text(
-                          "No tap-in records yet",
+                          "No attendance records yet",
                           style: TextStyle(color: Colors.white70, fontSize: 14),
                         ),
                       );
                     }
 
                     final attendance = snapshot.data!;
-                    return SingleChildScrollView(
-                      child: Table(
-                        columnWidths: const {
-                          0: FlexColumnWidth(2),
-                          1: FlexColumnWidth(1),
-                        },
-                        children: attendance.map((log) {
-                          final name = log['name'] ?? '';
-                          final timeIn = DateTime.parse(
-                            log['timeIn'],
-                          ).toLocal();
-                          final formattedTime = TimeOfDay.fromDateTime(
-                            timeIn,
-                          ).format(context);
-                          return _buildEmployeeRow(name, formattedTime);
-                        }).toList(),
-                      ),
+                    return ListView.builder(
+                      itemCount: attendance.length,
+                      itemBuilder: (context, index) {
+                        final log = attendance[index];
+                        final name = log['name'] ?? 'Unknown';
+                        final timeIn = log['timeIn'] != null
+                            ? DateTime.parse(log['timeIn']).toLocal()
+                            : null;
+                        final timeOut = log['timeOut'] != null
+                            ? DateTime.parse(log['timeOut']).toLocal()
+                            : null;
+
+                        final tapInTime = timeIn != null
+                            ? TimeOfDay.fromDateTime(timeIn).format(context)
+                            : '--:--';
+
+                        final tapOutTime = timeOut != null
+                            ? TimeOfDay.fromDateTime(timeOut).format(context)
+                            : '--:--';
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              // Employee Name
+                              Expanded(
+                                flex: 2,
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.person,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        name,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.white,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Tap In Time
+                              Expanded(
+                                flex: 1,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.login,
+                                      color: Colors.green[300],
+                                      size: 14,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      tapInTime,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: timeIn != null
+                                            ? Colors.green[300]
+                                            : Colors.grey,
+                                        fontWeight: timeIn != null
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Tap Out Time
+                              Expanded(
+                                flex: 1,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.logout,
+                                      color: Colors.red[300],
+                                      size: 14,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      tapOutTime,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: timeOut != null
+                                            ? Colors.red[300]
+                                            : Colors.grey,
+                                        fontWeight: timeOut != null
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -1525,5 +1563,9 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       ),
     );
+  }
+
+  Widget _buildMapSection() {
+    return const LiveMapWidget();
   }
 }

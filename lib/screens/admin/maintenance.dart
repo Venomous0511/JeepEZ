@@ -347,73 +347,34 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                                               maxLines: 2,
                                             ),
                                           ),
-                                          // 3-dot status menu
+                                          // 3-dot menu with only "Change Status"
                                           PopupMenuButton<String>(
                                             icon: Icon(
                                               Icons.more_vert,
                                               size: isMobile ? 18 : 20,
                                             ),
                                             onSelected: (value) {
-                                              if (value == 'status') {
+                                              if (value == 'change_status') {
                                                 _showStatusMenu(
                                                   context,
                                                   selectedVehicle,
                                                   issue['id'],
                                                   issue['status'],
                                                 );
-                                              } else if (value == 'updates') {
-                                                _showUpdatesDialog(
-                                                  context,
-                                                  issue['updates'],
-                                                  issue['title'],
-                                                );
-                                              } else if (value ==
-                                                  'add_update') {
-                                                _showAddUpdateDialog(
-                                                  context,
-                                                  selectedVehicle,
-                                                  issue['id'],
-                                                );
                                               }
                                             },
                                             itemBuilder:
                                                 (BuildContext context) => [
                                                   PopupMenuItem<String>(
-                                                    value: 'status',
+                                                    value: 'change_status',
                                                     child: Row(
                                                       children: [
                                                         Icon(
-                                                          Icons.build,
+                                                          Icons.edit,
                                                           size: 20,
                                                         ),
                                                         SizedBox(width: 8),
                                                         Text('Change Status'),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                  PopupMenuItem<String>(
-                                                    value: 'updates',
-                                                    child: Row(
-                                                      children: [
-                                                        Icon(
-                                                          Icons.history,
-                                                          size: 20,
-                                                        ),
-                                                        SizedBox(width: 8),
-                                                        Text('View Updates'),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                  PopupMenuItem<String>(
-                                                    value: 'add_update',
-                                                    child: Row(
-                                                      children: [
-                                                        Icon(
-                                                          Icons.add,
-                                                          size: 20,
-                                                        ),
-                                                        SizedBox(width: 8),
-                                                        Text('Add Update'),
                                                       ],
                                                     ),
                                                   ),

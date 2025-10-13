@@ -27,7 +27,6 @@ class _LegalOfficerDashboardScreenState
   int _selectedIndex = 0;
   Widget? _currentScreen;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  bool _hasShownPasswordReminder = false; // ADDED: Password reminder flag
 
   // Hiring Management dropdown state
   bool _isHiringExpanded = false;
@@ -47,68 +46,6 @@ class _LegalOfficerDashboardScreenState
   void initState() {
     super.initState();
     _currentScreen = null; // Start with main dashboard
-    _checkIfNewAccount(); // ADDED: Check if new account on init
-  }
-
-  // ADDED: Check if new account (created within 24 hours)
-  Future<void> _checkIfNewAccount() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final creationTime = user.metadata.creationTime;
-        if (creationTime != null &&
-            DateTime.now().difference(creationTime).inHours < 24 &&
-            !_hasShownPasswordReminder) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showPasswordChangeReminder();
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Error checking account status: $e');
-    }
-  }
-
-  // ADDED: Show password change reminder
-  void _showPasswordChangeReminder() {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              'Password Change Required',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontSize: 16,
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'For security reasons, please change your password in the Change Password section.',
-              style: TextStyle(color: Colors.white, fontSize: 14),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.orange,
-        duration: const Duration(seconds: 6),
-        action: SnackBarAction(
-          label: 'Change Now',
-          textColor: Colors.white,
-          onPressed: () {
-            _showChangePasswordDialog(); // Open password change dialog directly
-          },
-        ),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-
-    setState(() => _hasShownPasswordReminder = true);
   }
 
   // Stream to get inspectors with their inspection counts
@@ -259,9 +196,6 @@ class _LegalOfficerDashboardScreenState
       _currentPasswordController.clear();
       _newPasswordController.clear();
       _confirmPasswordController.clear();
-
-      // Update the flag to indicate password has been changed
-      setState(() => _hasShownPasswordReminder = true);
 
       Navigator.of(context).pop(); // Close the dialog
     } on FirebaseAuthException catch (e) {
@@ -465,15 +399,15 @@ class _LegalOfficerDashboardScreenState
     setState(() => _isLoggingOut = true);
 
     try {
-      // If you actually want to wait (e.g., show spinner), keep the delay. Otherwise remove.
-      await Future.delayed(const Duration(seconds: 1));
+      await Future.delayed(const Duration(milliseconds: 3000));
       await AuthService().logout();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to sign out: $e')));
-      setState(() => _isLoggingOut = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to sign out: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoggingOut = false);
     }
   }
 
@@ -769,6 +703,15 @@ class _LegalOfficerDashboardScreenState
                   },
                 ),
                 _buildDrawerItem(
+                  icon: Icons.confirmation_number,
+                  title: 'Ticket Log History',
+                  isSelected: _currentScreen is TicketTable,
+                  onTap: () {
+                    _navigateToScreen(const TicketTable());
+                    Navigator.pop(context);
+                  },
+                ),
+                _buildDrawerItem(
                   icon: Icons.report_problem,
                   title: 'Violation Report Management',
                   isSelected: _currentScreen is ViolationReportHistoryScreen,
@@ -792,7 +735,7 @@ class _LegalOfficerDashboardScreenState
                 ),
                 _buildDrawerItem(
                   icon: Icons.people,
-                  title: 'Employee List View',
+                  title: 'Employee List',
                   isSelected: _currentScreen is EmployeeListViewScreen,
                   onTap: () {
                     _navigateToScreen(
@@ -804,16 +747,6 @@ class _LegalOfficerDashboardScreenState
 
                 // HIRING MANAGEMENT DROPDOWN SECTION
                 _buildHiringManagementDropdown(),
-
-                _buildDrawerItem(
-                  icon: Icons.confirmation_number,
-                  title: 'Ticket Logs',
-                  isSelected: _currentScreen is TicketTable,
-                  onTap: () {
-                    _navigateToScreen(const TicketTable());
-                    Navigator.pop(context);
-                  },
-                ),
               ],
             ),
           ),
@@ -850,6 +783,7 @@ class _LegalOfficerDashboardScreenState
   }
 
   // UPDATED METHOD: Hiring Management Dropdown with only Applicant Management
+  // UPDATED METHOD: Hiring Management Dropdown with only Applicant Management and icon
   Widget _buildHiringManagementDropdown() {
     return ExpansionTile(
       leading: const Icon(Icons.work, color: Color(0xFF0D2364)),
@@ -872,24 +806,26 @@ class _LegalOfficerDashboardScreenState
         });
       },
       children: [
-        // Applicant Management Option ONLY
+        // Applicant Management Option WITH ICON
         _buildDropdownItem(
-          title: 'Applicant Management',
+          title: 'Applicant management',
           isSelected: _currentScreen is ApplicantManagementScreen,
           onTap: () {
             _navigateToScreen(const ApplicantManagementScreen());
             Navigator.pop(context);
           },
+          icon: Icons.person_search, // Icon for Applicant Management
         ),
       ],
     );
   }
 
-  // ADD THIS METHOD: Dropdown item widget
+  // UPDATED METHOD: Dropdown item widget with icon support
   Widget _buildDropdownItem({
     required String title,
     required bool isSelected,
     required VoidCallback onTap,
+    IconData? icon, // New parameter for custom icon
   }) {
     return Container(
       margin: const EdgeInsets.only(left: 16, right: 8, bottom: 4),
@@ -900,11 +836,17 @@ class _LegalOfficerDashboardScreenState
       child: ListTile(
         dense: true,
         contentPadding: const EdgeInsets.only(left: 32, right: 16),
-        leading: Icon(
-          Icons.circle,
-          size: 8,
-          color: isSelected ? const Color(0xFF0D2364) : Colors.grey,
-        ),
+        leading: icon != null
+            ? Icon(
+                icon,
+                size: 20,
+                color: isSelected ? const Color(0xFF0D2364) : Colors.grey,
+              )
+            : Icon(
+                Icons.circle,
+                size: 8,
+                color: isSelected ? const Color(0xFF0D2364) : Colors.grey,
+              ),
         title: Text(
           title,
           style: TextStyle(

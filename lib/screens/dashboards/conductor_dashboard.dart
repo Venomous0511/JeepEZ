@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../../models/app_user.dart';
 import '../Personaldetailed/conductor.dart';
@@ -20,7 +19,6 @@ class ConductorDashboard extends StatefulWidget {
 class _ConductorDashboardState extends State<ConductorDashboard> {
   int _currentIndex = 0;
   late List<Widget> _screens;
-  bool _hasShownPasswordReminder = false;
 
   int latestPassengerCount = 0;
   String latestTripTime = '';
@@ -30,7 +28,6 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
   void initState() {
     super.initState();
     _screens = [];
-    _checkIfNewAccount();
     _fetchLatestPassengerCount();
   }
 
@@ -44,71 +41,6 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
       const IncidentReportScreen(),
       const LeaveApplicationScreen(),
     ];
-  }
-
-  // ----------------- ACCOUNT CHECK -----------------
-  Future<void> _checkIfNewAccount() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final creationTime = user.metadata.creationTime;
-        if (creationTime != null &&
-            DateTime.now().difference(creationTime).inHours < 24 &&
-            !_hasShownPasswordReminder) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showPasswordChangeReminder();
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Error checking account status: $e');
-    }
-  }
-
-  void _showPasswordChangeReminder() {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              'Password Change Required',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontSize: 16,
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'For security reasons, please change your password in the Personal Details section.',
-              style: TextStyle(color: Colors.white, fontSize: 14),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.orange,
-        duration: const Duration(seconds: 6),
-        action: SnackBarAction(
-          label: 'Change Now',
-          textColor: Colors.white,
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PersonalDetails(user: widget.user),
-              ),
-            );
-          },
-        ),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-
-    setState(() => _hasShownPasswordReminder = true);
   }
 
   // ----------------- FETCH PASSENGER COUNT -----------------
@@ -128,13 +60,13 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
       final snapshot = await FirebaseFirestore.instance
           .collection('inspector_trip')
           .where(
-            'unitNumber',
-            isEqualTo: vehicleNumber.toString(),
-          ) // <- convert to string
+        'unitNumber',
+        isEqualTo: vehicleNumber.toString(),
+      )
           .where(
-            'conductorName',
-            isEqualTo: widget.user.name?.trim(),
-          ) // keep as lowercase as in Firestore
+        'conductorName',
+        isEqualTo: widget.user.name?.trim(),
+      )
           .orderBy('timestamp', descending: true)
           .limit(1)
           .get();
@@ -178,13 +110,13 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
         .snapshots()
         .map(
           (snapshot) => snapshot.docs.isNotEmpty ? snapshot.docs.first : null,
-        );
+    );
   }
 
   // ----------------- NOTIFICATIONS -----------------
   Stream<QuerySnapshot<Map<String, dynamic>>> getNotificationsStream(
-    String role,
-  ) {
+      String role,
+      ) {
     final collection = FirebaseFirestore.instance.collection('notifications');
     if (role == 'super_admin' || role == 'admin') {
       return collection
@@ -425,7 +357,7 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
                           stream: latestTripStream(),
                           builder: (context, snapshot) {
                             int passengerCount = latestPassengerCount;
-                            String tripTime = latestTripTime;
+                            String tripTime = "N/A";
 
                             if (snapshot.hasData &&
                                 snapshot.data != null &&
@@ -437,7 +369,7 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
                               if (timestamp != null) {
                                 final time = timestamp.toDate();
                                 tripTime =
-                                    "${time.hour % 12 == 0 ? 12 : time.hour % 12}:${time.minute.toString().padLeft(2, '0')} ${time.hour >= 12 ? 'PM' : 'AM'}";
+                                "${time.hour % 12 == 0 ? 12 : time.hour % 12}:${time.minute.toString().padLeft(2, '0')} ${time.hour >= 12 ? 'PM' : 'AM'}";
                               }
                             } else if (snapshot.connectionState ==
                                 ConnectionState.waiting) {
@@ -458,7 +390,7 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
                               ),
                               child: Row(
                                 mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                MainAxisAlignment.spaceBetween,
                                 children: [
                                   _buildCountBox(passengerCount, isMobile),
                                   _buildCountBox(tripTime, isMobile),
