@@ -105,7 +105,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                           (doc) => !firstPageDocs.any(
                             (newDoc) => newDoc.id == doc.id,
                           ),
-                        )
+                        ),
                   ];
                 }
 

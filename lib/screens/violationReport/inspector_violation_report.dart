@@ -50,6 +50,9 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
     'Other/s',
   ];
 
+  // Position dropdown options
+  final List<String> _positionOptions = ['Driver', 'Conductor'];
+
   @override
   void initState() {
     super.initState();
@@ -123,6 +126,40 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
     }
   }
 
+  // Validation functions
+  String? _validateName(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Name of violator is required';
+    }
+    if (!RegExp(r'^[a-zA-Z\s]*$').hasMatch(value)) {
+      return 'Only letters and spaces are allowed';
+    }
+    if (value.length > 36) {
+      return 'Maximum 36 letters only';
+    }
+    return null;
+  }
+
+  String? _validateViolation(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Violation committed is required';
+    }
+    if (value.length > 100) {
+      return 'Maximum 100 characters only';
+    }
+    return null;
+  }
+
+  String? _validateLocation(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Location is required';
+    }
+    if (value.length > 36) {
+      return 'Maximum 36 characters only';
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -174,6 +211,8 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _nameController,
+                    maxLength: 36,
+                    validator: _validateName,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(4),
@@ -183,14 +222,31 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                         vertical: 8,
                       ),
                       hintText: 'Enter violator name',
+                      counterText: '',
                     ),
+                    onChanged: (value) {
+                      // Filter out numbers and allow only letters and spaces
+                      if (value.isNotEmpty &&
+                          !RegExp(r'^[a-zA-Z\s]*$').hasMatch(value)) {
+                        final filteredValue = value.replaceAll(
+                          RegExp(r'[^a-zA-Z\s]'),
+                          '',
+                        );
+                        _nameController.value = _nameController.value.copyWith(
+                          text: filteredValue,
+                          selection: TextSelection.collapsed(
+                            offset: filteredValue.length,
+                          ),
+                        );
+                      }
+                    },
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
 
-            // Position field
+            // Position field - CHANGED TO DROPDOWN
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Column(
@@ -201,17 +257,56 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _positionController,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(4),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Colors.grey.shade400,
+                        width: 1.0,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                      borderRadius: BorderRadius.circular(4.0),
+                    ),
+                    child: DropdownButtonFormField<String>(
+                      value: _positionController.text.isNotEmpty
+                          ? _positionController.text
+                          : null,
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _positionController.text = newValue ?? '';
+                        });
+                      },
+                      items: _positionOptions.map<DropdownMenuItem<String>>((
+                        String value,
+                      ) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(
+                            value,
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 14,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12.0,
+                          vertical: 8.0,
+                        ),
+                        isDense: true,
                       ),
-                      hintText: 'e.g., Driver, Manager, etc.',
+                      validator: (value) =>
+                          value == null ? 'Please select position' : null,
+                      isExpanded: true,
+                      hint: Text(
+                        'Select position...',
+                        style: TextStyle(color: Colors.grey.shade500),
+                      ),
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 ],
@@ -219,7 +314,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
             ),
             const SizedBox(height: 16),
 
-            // Violation Type Dropdown - NEW FIELD
+            // Violation Type Dropdown
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Column(
@@ -295,6 +390,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _otherViolationController,
+                      maxLength: 36,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(4),
@@ -305,6 +401,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                         ),
                         hintText: 'Specify other violation type...',
                         labelText: 'Other Violation Type',
+                        counterText: '',
                       ),
                       onChanged: (value) {
                         // Auto-fill the violation description with other type
@@ -317,7 +414,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
             ),
             const SizedBox(height: 16),
 
-            // Violation Committed field (Description)
+            // Violation Committed field (Description) - UPDATED TO 100 CHARACTERS
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Column(
@@ -331,6 +428,8 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                   TextFormField(
                     controller: _violationController,
                     maxLines: 3,
+                    maxLength: 100, // CHANGED FROM 36 TO 100
+                    validator: _validateViolation,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(4),
@@ -339,7 +438,9 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                         horizontal: 12,
                         vertical: 8,
                       ),
-                      hintText: 'Describe the violation in detail',
+                      hintText:
+                          'Describe the violation in detail (max 100 characters)',
+                      counterText: '',
                     ),
                   ),
                 ],
@@ -360,6 +461,8 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _locationController,
+                    maxLength: 36,
+                    validator: _validateLocation,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(4),
@@ -369,6 +472,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                         vertical: 8,
                       ),
                       hintText: 'Enter location',
+                      counterText: '',
                     ),
                   ),
                 ],
@@ -470,6 +574,19 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
   }
 
   void _saveAndSubmit() async {
+    // Validate all fields
+    final nameError = _validateName(_nameController.text);
+    final violationError = _validateViolation(_violationController.text);
+    final locationError = _validateLocation(_locationController.text);
+
+    if (nameError != null || violationError != null || locationError != null) {
+      _showDialog(
+        'Error',
+        'Please fix all validation errors before submitting',
+      );
+      return;
+    }
+
     // Validation for violation type field
     if (_selectedViolationType == null) {
       _showDialog('Error', 'Please select a violation type');

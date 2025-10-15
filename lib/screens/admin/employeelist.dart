@@ -1369,7 +1369,14 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           child: DataTable(
             columnSpacing: 12,
             horizontalMargin: 8,
-            headingRowColor: WidgetStateProperty.all(const Color(0xFFF5F7FA)),
+            headingRowColor: WidgetStateProperty.all(
+              const Color(0xFF0D2364),
+            ), // Blue background
+            headingTextStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.white, // White text
+              fontSize: 14,
+            ),
             columns: const [
               DataColumn(label: Text("No.")),
               DataColumn(label: Text("Employee ID")),
@@ -1410,7 +1417,14 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           child: DataTable(
             columnSpacing: 20,
             horizontalMargin: 12,
-            headingRowColor: WidgetStateProperty.all(const Color(0xFFF5F7FA)),
+            headingRowColor: WidgetStateProperty.all(
+              const Color(0xFF0D2364),
+            ), // Blue background
+            headingTextStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.white, // White text
+              fontSize: 14,
+            ),
             columns: const [
               DataColumn(label: Text("No.")),
               DataColumn(label: Text("Employee ID")),
@@ -2563,21 +2577,25 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   // Basic validation
                   final firstNameError = _validateName(firstName, 'First name');
                   if (firstNameError != null) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text(firstNameError)));
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(firstNameError)));
                     return;
                   }
 
                   final lastNameError = _validateName(lastName, 'Last name');
                   if (lastNameError != null) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text(lastNameError)));
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(lastNameError)));
                     return;
                   }
 
                   if (email.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please enter email address')),
+                      const SnackBar(
+                        content: Text('Please enter email address'),
+                      ),
                     );
                     return;
                   }
@@ -2585,7 +2603,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   if (!_isValidGmail(email)) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text('Only Gmail accounts are allowed')),
+                        content: Text('Only Gmail accounts are allowed'),
+                      ),
                     );
                     return;
                   }
@@ -2593,7 +2612,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   if (role == "inspector" && (area == null || area!.isEmpty)) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text('Please select an area for inspector')),
+                        content: Text('Please select an area for inspector'),
+                      ),
                     );
                     return;
                   }
@@ -2628,8 +2648,9 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     // Update email in Firebase Auth if changed
                     if (email != data['email']) {
                       final secondaryApp = await _getOrCreateSecondaryApp();
-                      final secondaryAuth =
-                      FirebaseAuth.instanceFor(app: secondaryApp);
+                      final secondaryAuth = FirebaseAuth.instanceFor(
+                        app: secondaryApp,
+                      );
 
                       final tempPassword = data['tempPassword'] as String?;
                       if (tempPassword != null) {
@@ -2657,13 +2678,13 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     await FirebaseFirestore.instance
                         .collection('notifications')
                         .add({
-                      'title': 'Updated Account',
-                      'message': 'Updated account for $displayName',
-                      'time': FieldValue.serverTimestamp(),
-                      'dismissed': false,
-                      'type': 'updates',
-                      'createdBy': widget.user.email,
-                    });
+                          'title': 'Updated Account',
+                          'message': 'Updated account for $displayName',
+                          'time': FieldValue.serverTimestamp(),
+                          'dismissed': false,
+                          'type': 'updates',
+                          'createdBy': widget.user.email,
+                        });
 
                     if (context.mounted) {
                       Navigator.pop(context);

@@ -31,7 +31,7 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
   final TextEditingController driverNameController = TextEditingController();
   final TextEditingController conductorNameController = TextEditingController();
   final TextEditingController inspectionTimeController =
-  TextEditingController();
+      TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController noOfPassController = TextEditingController();
   final TextEditingController noOfTripsController = TextEditingController();
@@ -61,6 +61,63 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
     noOfPassController.dispose();
     noOfTripsController.dispose();
     super.dispose();
+  }
+
+  // Validation functions
+  String? _validateUnitNumber(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Unit number is required';
+    }
+    if (!RegExp(r'^[0-9]*$').hasMatch(value)) {
+      return 'Only numbers are allowed';
+    }
+    if (value.length > 36) {
+      return 'Maximum 36 numbers only';
+    }
+    return null;
+  }
+
+  String? _validateName(String? value, String fieldName) {
+    if (value == null || value.isEmpty) {
+      return '$fieldName is required';
+    }
+    if (!RegExp(r'^[a-zA-Z\s]*$').hasMatch(value)) {
+      return 'Only letters and spaces are allowed';
+    }
+    if (value.length > 36) {
+      return 'Maximum 36 letters only';
+    }
+    return null;
+  }
+
+  String? _validateNumber(
+    String? value,
+    String fieldName, {
+    int maxLength = 10,
+  }) {
+    if (value == null || value.isEmpty) {
+      return '$fieldName is required';
+    }
+    if (!RegExp(r'^[0-9]*$').hasMatch(value)) {
+      return 'Only numbers are allowed';
+    }
+    if (value.length > maxLength) {
+      return 'Maximum $maxLength numbers only';
+    }
+    return null;
+  }
+
+  String? _validateLocation(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Location is required';
+    }
+    if (!RegExp(r'^[a-zA-Z\s]*$').hasMatch(value)) {
+      return 'Only letters and spaces are allowed';
+    }
+    if (value.length > 36) {
+      return 'Maximum 36 letters only';
+    }
+    return null;
   }
 
   @override
@@ -149,6 +206,9 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                           unitNumberController,
                           'Enter unit number',
                           textColor: const Color(0xFF0D2364),
+                          validator: _validateUnitNumber,
+                          keyboardType: TextInputType.number,
+                          maxLength: 36,
                         ),
                         const SizedBox(height: 15),
 
@@ -157,6 +217,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                           driverNameController,
                           'Enter driver name',
                           textColor: const Color(0xFF0D2364),
+                          validator: (value) =>
+                              _validateName(value, 'Driver name'),
+                          keyboardType: TextInputType.text,
+                          maxLength: 36,
                         ),
                         const SizedBox(height: 15),
 
@@ -165,6 +229,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                           conductorNameController,
                           'Enter conductor name',
                           textColor: const Color(0xFF0D2364),
+                          validator: (value) =>
+                              _validateName(value, 'Conductor name'),
+                          keyboardType: TextInputType.text,
+                          maxLength: 36,
                         ),
                         const SizedBox(height: 15),
 
@@ -180,6 +248,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                           noOfPassController,
                           'Enter number of passengers',
                           textColor: const Color(0xFF0D2364),
+                          validator: (value) =>
+                              _validateNumber(value, 'Number of passengers'),
+                          keyboardType: TextInputType.number,
+                          maxLength: 10,
                         ),
                         const SizedBox(height: 15),
 
@@ -188,6 +260,9 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                           locationController,
                           'Enter location',
                           textColor: Colors.black,
+                          validator: _validateLocation,
+                          keyboardType: TextInputType.text,
+                          maxLength: 36,
                         ),
                         const SizedBox(height: 15),
 
@@ -196,6 +271,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                           noOfTripsController,
                           'Enter number of trips',
                           textColor: Colors.black,
+                          validator: (value) =>
+                              _validateNumber(value, 'Number of trips'),
+                          keyboardType: TextInputType.number,
+                          maxLength: 10,
                         ),
 
                         const SizedBox(height: 20),
@@ -258,7 +337,7 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                                     style: TextStyle(
                                                       fontSize: 16,
                                                       fontWeight:
-                                                      FontWeight.bold,
+                                                          FontWeight.bold,
                                                       color: Colors.white,
                                                     ),
                                                   ),
@@ -272,9 +351,11 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                       Row(
                                         children: [
                                           // Input fields for each denomination
-                                          for (int colIndex = 0;
-                                          colIndex < 6;
-                                          colIndex++)
+                                          for (
+                                            int colIndex = 0;
+                                            colIndex < 6;
+                                            colIndex++
+                                          )
                                             Container(
                                               width: 80,
                                               decoration: BoxDecoration(
@@ -286,25 +367,27 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                               ),
                                               child: Padding(
                                                 padding:
-                                                const EdgeInsets.symmetric(
-                                                  horizontal: 8,
-                                                  vertical: 12,
-                                                ),
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 12,
+                                                    ),
                                                 child: TextField(
                                                   controller:
-                                                  ticketRow[colIndex],
+                                                      ticketRow[colIndex],
                                                   textAlign: TextAlign.center,
                                                   keyboardType:
-                                                  TextInputType.number,
+                                                      TextInputType.number,
+                                                  maxLength: 10,
                                                   decoration:
-                                                  const InputDecoration(
-                                                    border: InputBorder
-                                                        .none,
-                                                    contentPadding:
-                                                    EdgeInsets.zero,
-                                                    isDense: true,
-                                                    hintText: '0',
-                                                  ),
+                                                      const InputDecoration(
+                                                        border:
+                                                            InputBorder.none,
+                                                        contentPadding:
+                                                            EdgeInsets.zero,
+                                                        isDense: true,
+                                                        hintText: '0',
+                                                        counterText: '',
+                                                      ),
                                                   style: const TextStyle(
                                                     fontSize: 14,
                                                     color: Colors.black,
@@ -314,23 +397,19 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                                         !RegExp(
                                                           r'^[0-9]*$',
                                                         ).hasMatch(value)) {
+                                                      ticketRow[colIndex].text =
+                                                          value.replaceAll(
+                                                            RegExp(r'[^0-9]'),
+                                                            '',
+                                                          );
                                                       ticketRow[colIndex]
-                                                          .text = value
-                                                          .replaceAll(
-                                                        RegExp(
-                                                          r'[^0-9]',
-                                                        ),
-                                                        '',
-                                                      );
-                                                      ticketRow[colIndex]
-                                                          .selection =
-                                                          TextSelection
-                                                              .fromPosition(
+                                                              .selection =
+                                                          TextSelection.fromPosition(
                                                             TextPosition(
-                                                              offset: ticketRow[
-                                                              colIndex]
-                                                                  .text
-                                                                  .length,
+                                                              offset:
+                                                                  ticketRow[colIndex]
+                                                                      .text
+                                                                      .length,
                                                             ),
                                                           );
                                                     }
@@ -412,10 +491,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
   }
 
   Widget _buildTimePickerField(
-      String label,
-      TextEditingController controller, {
-        Color textColor = Colors.black,
-      }) {
+    String label,
+    TextEditingController controller, {
+    Color textColor = Colors.black,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -466,12 +545,14 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
   }
 
   Widget _buildFormField(
-      String label,
-      TextEditingController controller,
-      String hintText, {
-        Color textColor = Colors.black,
-        ValueChanged<String>? onChanged,
-      }) {
+    String label,
+    TextEditingController controller,
+    String hintText, {
+    Color textColor = Colors.black,
+    String? Function(String?)? validator,
+    TextInputType keyboardType = TextInputType.text,
+    int? maxLength,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -484,10 +565,12 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        TextField(
+        TextFormField(
           controller: controller,
-          onChanged: onChanged,
           style: TextStyle(color: textColor, fontSize: 16),
+          keyboardType: keyboardType,
+          maxLength: maxLength,
+          validator: validator,
           decoration: InputDecoration(
             hintText: hintText,
             hintStyle: TextStyle(color: Colors.grey[600]),
@@ -503,7 +586,40 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
               horizontal: 15,
               vertical: 15,
             ),
+            counterText: '',
           ),
+          onChanged: (value) {
+            // Real-time validation and filtering
+            if (keyboardType == TextInputType.number) {
+              // Filter out non-numeric characters
+              if (value.isNotEmpty && !RegExp(r'^[0-9]*$').hasMatch(value)) {
+                final filteredValue = value.replaceAll(RegExp(r'[^0-9]'), '');
+                controller.value = controller.value.copyWith(
+                  text: filteredValue,
+                  selection: TextSelection.collapsed(
+                    offset: filteredValue.length,
+                  ),
+                );
+              }
+            } else if (label.contains('Driver') ||
+                label.contains('Conductor') ||
+                label.contains('Location')) {
+              // Filter out numbers and allow only letters and spaces
+              if (value.isNotEmpty &&
+                  !RegExp(r'^[a-zA-Z\s]*$').hasMatch(value)) {
+                final filteredValue = value.replaceAll(
+                  RegExp(r'[^a-zA-Z\s]'),
+                  '',
+                );
+                controller.value = controller.value.copyWith(
+                  text: filteredValue,
+                  selection: TextSelection.collapsed(
+                    offset: filteredValue.length,
+                  ),
+                );
+              }
+            }
+          },
         ),
       ],
     );
@@ -541,9 +657,9 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                     stream: FirebaseFirestore.instance
                         .collection('inspector_trip')
                         .where(
-                      'uid',
-                      isEqualTo: FirebaseAuth.instance.currentUser?.uid,
-                    )
+                          'uid',
+                          isEqualTo: FirebaseAuth.instance.currentUser?.uid,
+                        )
                         .orderBy('timestamp', descending: true)
                         .snapshots(),
                     builder: (context, snapshot) {
@@ -564,7 +680,7 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                         itemCount: docs.length,
                         itemBuilder: (context, index) {
                           final data =
-                          docs[index].data() as Map<String, dynamic>;
+                              docs[index].data() as Map<String, dynamic>;
                           final timestamp = data['timestamp'] as Timestamp?;
                           return Container(
                             margin: const EdgeInsets.only(bottom: 8),
@@ -654,9 +770,48 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
       return;
     }
 
+    // Validate all fields
+    final unitNumberError = _validateUnitNumber(unitNumberController.text);
+    final driverNameError = _validateName(
+      driverNameController.text,
+      'Driver name',
+    );
+    final conductorNameError = _validateName(
+      conductorNameController.text,
+      'Conductor name',
+    );
+    final noOfPassError = _validateNumber(
+      noOfPassController.text,
+      'Number of passengers',
+    );
+    final locationError = _validateLocation(locationController.text);
+    final noOfTripsError = _validateNumber(
+      noOfTripsController.text,
+      'Number of trips',
+    );
+
+    if (unitNumberError != null ||
+        driverNameError != null ||
+        conductorNameError != null ||
+        noOfPassError != null ||
+        locationError != null ||
+        noOfTripsError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fix all validation errors before submitting'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (unitNumberController.text.isEmpty ||
         driverNameController.text.isEmpty ||
-        conductorNameController.text.isEmpty) {
+        conductorNameController.text.isEmpty ||
+        inspectionTimeController.text.isEmpty ||
+        noOfPassController.text.isEmpty ||
+        locationController.text.isEmpty ||
+        noOfTripsController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please fill in all required fields'),
