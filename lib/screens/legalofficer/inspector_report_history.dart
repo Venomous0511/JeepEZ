@@ -148,7 +148,7 @@ class _InspectorReportHistoryScreenState
         final query = _searchQuery.toLowerCase();
 
         return (data['unitNumber']?.toString().toLowerCase().contains(query) ??
-            false) ||
+                false) ||
             (data['driverName']?.toString().toLowerCase().contains(query) ??
                 false) ||
             (data['conductorName']?.toString().toLowerCase().contains(query) ??
@@ -257,12 +257,16 @@ class _InspectorReportHistoryScreenState
     );
   }
 
-  void _showTicketInspectionDetails(BuildContext context, Map<String, dynamic> data) {
+  void _showTicketInspectionDetails(
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
 
     // Extract ticket inspection data
-    final ticketInspection = data['ticketInspection'] as Map<String, dynamic>? ?? {};
+    final ticketInspection =
+        data['ticketInspection'] as Map<String, dynamic>? ?? {};
     final List<String> denominations = ['20', '15', '10', '5', '2', '1'];
 
     showDialog(
@@ -306,13 +310,41 @@ class _InspectorReportHistoryScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildDetailRow('Trip No', data['noOfTrips']?.toString() ?? 'N/A', isMobile),
-                        _buildDetailRow('Unit Number', data['unitNumber']?.toString() ?? 'N/A', isMobile),
-                        _buildDetailRow('Driver', data['driverName']?.toString() ?? 'N/A', isMobile),
-                        _buildDetailRow('Conductor', data['conductorName']?.toString() ?? 'N/A', isMobile),
-                        _buildDetailRow('Location', data['location']?.toString() ?? 'N/A', isMobile),
-                        _buildDetailRow('Inspection Time', data['inspectionTime']?.toString() ?? 'N/A', isMobile),
-                        _buildDetailRow('Passengers', data['noOfPass']?.toString() ?? 'N/A', isMobile),
+                        _buildDetailRow(
+                          'Trip No',
+                          data['noOfTrips']?.toString() ?? 'N/A',
+                          isMobile,
+                        ),
+                        _buildDetailRow(
+                          'Unit Number',
+                          data['unitNumber']?.toString() ?? 'N/A',
+                          isMobile,
+                        ),
+                        _buildDetailRow(
+                          'Driver',
+                          data['driverName']?.toString() ?? 'N/A',
+                          isMobile,
+                        ),
+                        _buildDetailRow(
+                          'Conductor',
+                          data['conductorName']?.toString() ?? 'N/A',
+                          isMobile,
+                        ),
+                        _buildDetailRow(
+                          'Location',
+                          data['location']?.toString() ?? 'N/A',
+                          isMobile,
+                        ),
+                        _buildDetailRow(
+                          'Inspection Time',
+                          data['inspectionTime']?.toString() ?? 'N/A',
+                          isMobile,
+                        ),
+                        _buildDetailRow(
+                          'Passengers',
+                          data['noOfPass']?.toString() ?? 'N/A',
+                          isMobile,
+                        ),
 
                         SizedBox(height: 20),
 
@@ -372,13 +404,17 @@ class _InspectorReportHistoryScreenState
                                 ),
                                 // Rows
                                 ...denominations.map((denom) {
-                                  final ticketNumber = ticketInspection[denom]?.toString() ?? 'N/A';
+                                  final ticketNumber =
+                                      ticketInspection[denom]?.toString() ??
+                                      'N/A';
                                   final index = denominations.indexOf(denom);
 
                                   return Container(
                                     padding: EdgeInsets.all(isMobile ? 8 : 12),
                                     decoration: BoxDecoration(
-                                      color: index.isEven ? Colors.grey[50] : Colors.white,
+                                      color: index.isEven
+                                          ? Colors.grey[50]
+                                          : Colors.white,
                                       border: Border(
                                         bottom: BorderSide(
                                           color: Colors.grey[300]!,
@@ -503,8 +539,12 @@ class _InspectorReportHistoryScreenState
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.visibility, color: Color(0xFF0D2364)),
-                      onPressed: () => _showTicketInspectionDetails(context, data),
+                      icon: const Icon(
+                        Icons.visibility,
+                        color: Color(0xFF0D2364),
+                      ),
+                      onPressed: () =>
+                          _showTicketInspectionDetails(context, data),
                       tooltip: 'View Ticket Details',
                     ),
                   ],
@@ -649,16 +689,18 @@ class _InspectorReportHistoryScreenState
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Container(
-        constraints: BoxConstraints(minWidth: isTablet ? 900 : 1100),
+        constraints: BoxConstraints(minWidth: isTablet ? 800 : 900),
         child: DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
+          headingRowColor: WidgetStateProperty.all(
+            const Color(0xFF0D2364),
+          ), // Blue color for header
           headingTextStyle: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
-            fontSize: isTablet ? 12 : 14,
+            color: Colors.white, // White text for better contrast
+            fontSize: isTablet ? 12 : 13,
           ),
           dataTextStyle: TextStyle(
-            fontSize: isTablet ? 11 : 13,
+            fontSize: isTablet ? 11 : 12,
             color: Colors.black87,
           ),
           dataRowColor: WidgetStateProperty.resolveWith<Color>((states) {
@@ -667,21 +709,131 @@ class _InspectorReportHistoryScreenState
             }
             return Colors.white;
           }),
-          columnSpacing: isTablet ? 16 : 20,
-          horizontalMargin: isTablet ? 16 : 20,
-          dataRowMinHeight: 60,
-          dataRowMaxHeight: 60,
-          columns: const [
-            DataColumn(label: Text('Trip No')),
-            DataColumn(label: Text('Inspector Name')),
-            DataColumn(label: Text('Date')),
-            DataColumn(label: Text('Unit Number')),
-            DataColumn(label: Text('Driver Name')),
-            DataColumn(label: Text('Conductor Name')),
-            DataColumn(label: Text('Ticket Inspection Time')),
-            DataColumn(label: Text('Passengers')),
-            DataColumn(label: Text('Location')),
-            DataColumn(label: Text('Action')),
+          columnSpacing: 60,
+          horizontalMargin: 0,
+          dataRowMinHeight: 50,
+          dataRowMaxHeight: 50,
+          columns: [
+            DataColumn(
+              label: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  'Trip No',
+                  style: TextStyle(
+                    color: Colors.white, // White text for header
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            DataColumn(
+              label: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  'Inspector Name',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            DataColumn(
+              label: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  'Date',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            DataColumn(
+              label: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  'Unit Number',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            DataColumn(
+              label: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  'Driver Name',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            DataColumn(
+              label: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  'Conductor Name',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            DataColumn(
+              label: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  'Ticket Time',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            DataColumn(
+              label: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  'Passengers',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            DataColumn(
+              label: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  'Location',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            DataColumn(
+              label: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  'Action',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
           ],
           rows: trips.map((doc) {
             final data = doc.data() as Map<String, dynamic>;
@@ -692,44 +844,118 @@ class _InspectorReportHistoryScreenState
             return DataRow(
               cells: [
                 DataCell(
-                  Text(
-                    noOfTrips,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      noOfTrips,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
                 DataCell(
-                  SizedBox(
-                    width: isTablet ? 120 : 140,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    width: 100,
                     child: FutureBuilder<String>(
                       future: _getInspectorName(inspectorUid),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
-                          return const Text('Loading...');
+                          return const Text(
+                            'Loading...',
+                            overflow: TextOverflow.ellipsis,
+                          );
                         }
-                        return Text(snapshot.data ?? 'Unknown');
+                        return Text(
+                          snapshot.data ?? 'Unknown',
+                          overflow: TextOverflow.ellipsis,
+                        );
                       },
                     ),
                   ),
                 ),
                 DataCell(
-                  Text(
-                    timestamp != null
-                        ? '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}'
-                        : 'N/A',
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      timestamp != null
+                          ? '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}'
+                          : 'N/A',
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
-                DataCell(Text(data['unitNumber']?.toString() ?? 'N/A')),
-                DataCell(Text(data['driverName']?.toString() ?? 'N/A')),
-                DataCell(Text(data['conductorName']?.toString() ?? 'N/A')),
-                DataCell(Text(data['inspectionTime']?.toString() ?? 'N/A')),
-                DataCell(Text(data['noOfPass']?.toString() ?? 'N/A')),
-                DataCell(Text(data['location']?.toString() ?? 'N/A')),
                 DataCell(
-                  IconButton(
-                    icon: const Icon(Icons.visibility, size: 20, color: Color(0xFF0D2364)),
-                    onPressed: () => _showTicketInspectionDetails(context, data),
-                    tooltip: 'View Ticket Details',
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      data['unitNumber']?.toString() ?? 'N/A',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    width: 100,
+                    child: Text(
+                      data['driverName']?.toString() ?? 'N/A',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    width: 100,
+                    child: Text(
+                      data['conductorName']?.toString() ?? 'N/A',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      data['inspectionTime']?.toString() ?? 'N/A',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      data['noOfPass']?.toString() ?? 'N/A',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      data['location']?.toString() ?? 'N/A',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.visibility,
+                        size: 18,
+                        color: Color(0xFF0D2364),
+                      ),
+                      onPressed: () =>
+                          _showTicketInspectionDetails(context, data),
+                      tooltip: 'View Ticket Details',
+                      padding: EdgeInsets.zero,
+                    ),
                   ),
                 ),
               ],
