@@ -28,11 +28,84 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
   void initState() {
     super.initState();
     _loadLeaveRequests();
+    _startAutoCleanup(); // Add auto-cleanup on init
+  }
+
+  /// ADDED: Auto-cleanup that runs periodically
+  void _startAutoCleanup() {
+    // Run cleanup immediately
+    _cleanupOldLeaveApplications();
+
+    // Schedule periodic cleanup (every hour)
+    Future.delayed(const Duration(hours: 1), () {
+      if (mounted) {
+        _cleanupOldLeaveApplications();
+        _startAutoCleanup(); // Reschedule
+      }
+    });
+  }
+
+  /// ADDED: Clean up old rejected and completed leave applications
+  Future<void> _cleanupOldLeaveApplications() async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+      final now = DateTime.now();
+      final usersSnapshot = await firestore.collection('users').get();
+
+      for (var userDoc in usersSnapshot.docs) {
+        final userId = userDoc.id;
+        final leaveSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('leave_application')
+            .get();
+
+        for (var leaveDoc in leaveSnapshot.docs) {
+          final data = leaveDoc.data();
+          final status = data['status'] ?? '';
+          final rejectedAt = (data['rejectedAt'] as Timestamp?)?.toDate();
+          final endDate = (data['endDate'] as Timestamp?)?.toDate();
+
+          bool shouldDelete = false;
+
+          // Delete rejected applications after 5 days
+          if (status == 'Rejected' && rejectedAt != null) {
+            final daysSinceRejection = now.difference(rejectedAt).inDays;
+            if (daysSinceRejection >= 5) {
+              shouldDelete = true;
+              debugPrint('Deleting rejected leave (${leaveDoc.id}) - $daysSinceRejection days old');
+            }
+          }
+
+          // Delete completed leave applications (end date has passed)
+          if (endDate != null && endDate.isBefore(now)) {
+            shouldDelete = true;
+            debugPrint('Deleting completed leave (${leaveDoc.id}) - ended on $endDate');
+          }
+
+          if (shouldDelete) {
+            await firestore
+                .collection('users')
+                .doc(userId)
+                .collection('leave_application')
+                .doc(leaveDoc.id)
+                .delete();
+          }
+        }
+      }
+
+      debugPrint('Cleanup completed at ${DateTime.now()}');
+    } catch (e) {
+      debugPrint('Error during cleanup: $e');
+    }
   }
 
   /// Load all leave applications from Firestore
   Future<void> _loadLeaveRequests() async {
     try {
+      // Run cleanup before loading
+      await _cleanupOldLeaveApplications();
+
       final data = await _fetchAllLeaveApplications();
       if (mounted) {
         setState(() {
@@ -51,6 +124,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
   Future<List<Map<String, dynamic>>> _fetchAllLeaveApplications() async {
     final firestore = FirebaseFirestore.instance;
     final List<Map<String, dynamic>> allLeaves = [];
+    final now = DateTime.now();
 
     final usersSnapshot = await firestore.collection('users').get();
     for (var userDoc in usersSnapshot.docs) {
@@ -66,15 +140,37 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
 
       for (var leaveDoc in leaveSnapshot.docs) {
         final data = leaveDoc.data();
-        allLeaves.add({
-          ...data,
-          'userId': userId,
-          'leaveId': leaveDoc.id,
-          'name': userData['name'] ?? 'Unknown',
-          'email': userData['email'] ?? 'N/A',
-          'role': userData['role'] ?? '',
-          'employeeId': userData['employeeId'] ?? 'N/A',
-        });
+        final status = data['status'] ?? '';
+        final rejectedAt = (data['rejectedAt'] as Timestamp?)?.toDate();
+        final endDate = (data['endDate'] as Timestamp?)?.toDate();
+
+        // Skip applications that should be deleted
+        bool shouldSkip = false;
+
+        // Skip rejected applications older than 5 days
+        if (status == 'Rejected' && rejectedAt != null) {
+          final daysSinceRejection = now.difference(rejectedAt).inDays;
+          if (daysSinceRejection >= 5) {
+            shouldSkip = true;
+          }
+        }
+
+        // Skip completed leave applications
+        if (endDate != null && endDate.isBefore(now)) {
+          shouldSkip = true;
+        }
+
+        if (!shouldSkip) {
+          allLeaves.add({
+            ...data,
+            'userId': userId,
+            'leaveId': leaveDoc.id,
+            'name': userData['name'] ?? 'Unknown',
+            'email': userData['email'] ?? 'N/A',
+            'role': userData['role'] ?? '',
+            'employeeId': userData['employeeId'] ?? 'N/A',
+          });
+        }
       }
     }
 
@@ -111,7 +207,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
 
     setState(() {
       _filteredRequests = filtered;
-      _currentPage = 0; // Reset to first page when filtering
+      _currentPage = 0;
     });
   }
 
@@ -121,11 +217,11 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     final endIndex = startIndex + _itemsPerPage;
     return _filteredRequests.length > startIndex
         ? _filteredRequests.sublist(
-            startIndex,
-            endIndex > _filteredRequests.length
-                ? _filteredRequests.length
-                : endIndex,
-          )
+      startIndex,
+      endIndex > _filteredRequests.length
+          ? _filteredRequests.length
+          : endIndex,
+    )
         : [];
   }
 
@@ -140,11 +236,14 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         .doc(req['userId'])
         .collection('leave_application')
         .doc(req['leaveId'])
-        .update({'status': 'Approved'});
+        .update({
+      'status': 'Approved',
+      'approvedAt': FieldValue.serverTimestamp(), // ADDED: Track approval time
+    });
 
     if (mounted) {
-      await _loadLeaveRequests(); // Reload to get updated data
-      _filterRequests(); // Reapply filters
+      await _loadLeaveRequests();
+      _filterRequests();
     }
 
     if (mounted) {
@@ -157,7 +256,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     }
   }
 
-  /// Reject request
+  /// Reject request - FIXED: Now properly sets rejectedAt timestamp
   Future<void> _rejectRequest(int index) async {
     final TextEditingController reasonController = TextEditingController();
 
@@ -203,27 +302,30 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
 
     if (result != null && result.isNotEmpty) {
       final req = _paginatedRequests[index];
+
+      // FIXED: Properly set rejectedAt with server timestamp
       await FirebaseFirestore.instance
           .collection('users')
           .doc(req['userId'])
           .collection('leave_application')
           .doc(req['leaveId'])
           .update({
-            'status': 'Rejected',
-            'rejectionReason': result,
-            'rejectedAt': FieldValue.serverTimestamp(),
-          });
+        'status': 'Rejected',
+        'rejectionReason': result,
+        'rejectedAt': FieldValue.serverTimestamp(), // This will set the current server time
+      });
 
       if (mounted) {
-        await _loadLeaveRequests(); // Reload to get updated data
-        _filterRequests(); // Reapply filters
+        await _loadLeaveRequests();
+        _filterRequests();
       }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${req['name']}'s leave request has been declined"),
+            content: Text("${req['name']}'s leave request has been declined. It will be automatically deleted after 5 days."),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -286,10 +388,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
   Widget _buildMainContent() {
     return Column(
       children: [
-        // Search and Filter Section
         _buildSearchFilterSection(),
-
-        // Results count
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
@@ -305,27 +404,23 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
             ],
           ),
         ),
-
-        // Leave Requests List
         Expanded(
           child: _filteredRequests.isEmpty
               ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text(
-                        'No leave requests found',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                )
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text(
+                  'No leave requests found',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+              ],
+            ),
+          )
               : _buildResponsiveLayout(),
         ),
-
-        // Pagination
         if (_totalPages > 1) _buildPagination(),
       ],
     );
@@ -338,7 +433,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
       color: Colors.grey[50],
       child: Column(
         children: [
-          // Search Bar
           TextField(
             onChanged: (value) {
               setState(() {
@@ -356,8 +450,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
             ),
           ),
           const SizedBox(height: 12),
-
-          // Status Filter
           SizedBox(
             height: 40,
             child: ListView.builder(
@@ -396,10 +488,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
           IconButton(
             onPressed: _currentPage > 0
                 ? () {
-                    setState(() {
-                      _currentPage--;
-                    });
-                  }
+              setState(() {
+                _currentPage--;
+              });
+            }
                 : null,
             icon: const Icon(Icons.chevron_left),
           ),
@@ -410,10 +502,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
           IconButton(
             onPressed: _currentPage < _totalPages - 1
                 ? () {
-                    setState(() {
-                      _currentPage++;
-                    });
-                  }
+              setState(() {
+                _currentPage++;
+              });
+            }
                 : null,
             icon: const Icon(Icons.chevron_right),
           ),
@@ -459,7 +551,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         crossAxisCount: columns,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
-        childAspectRatio: 1.3, // Increased aspect ratio to prevent overflow
+        childAspectRatio: 1.3,
       ),
       itemCount: _paginatedRequests.length,
       itemBuilder: (context, index) =>
@@ -475,7 +567,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         crossAxisCount: 4,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
-        childAspectRatio: 1.3, // Increased aspect ratio to prevent overflow
+        childAspectRatio: 1.3,
       ),
       itemCount: _paginatedRequests.length,
       itemBuilder: (context, index) =>
@@ -506,9 +598,8 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min, // Important: prevents overflow
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Header with status badge and menu button
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -554,15 +645,12 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
               ],
             ),
           ),
-
-          // Main content
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min, // Important: prevents overflow
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Employee info with role and ID
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -592,8 +680,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-
-                // Date range
                 Row(
                   children: [
                     Icon(
@@ -612,8 +698,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-
-                // Reason with proper overflow handling
                 if (reason.isNotEmpty) ...[
                   const Text(
                     'REASON:',
@@ -627,7 +711,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                   Container(
                     width: double.infinity,
                     constraints: const BoxConstraints(
-                      maxHeight: 60, // Reduced height to prevent overflow
+                      maxHeight: 60,
                     ),
                     child: SingleChildScrollView(
                       child: Text(
@@ -640,10 +724,8 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8), // Reduced spacing
+                  const SizedBox(height: 8),
                 ],
-
-                // View details button for non-pending
                 if (status != 'Pending') ...[
                   SizedBox(
                     width: double.infinity,
@@ -654,7 +736,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                         side: const BorderSide(color: Colors.blue),
                         padding: const EdgeInsets.symmetric(
                           vertical: 8,
-                        ), // Reduced padding
+                        ),
                       ),
                       child: const Text(
                         'VIEW DETAILS',
@@ -674,7 +756,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  /// Original Tile for Tablet/Desktop - FIXED SIZE
+  /// Original Tile for Tablet/Desktop
   Widget _buildLeaveTile(Map<String, dynamic> request, int index) {
     final status = request['status'] ?? 'Pending';
     final leaveType = request['leaveType'] ?? '';
@@ -682,7 +764,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
 
     return Container(
       constraints: const BoxConstraints(
-        maxHeight: 260, // Further reduced height to prevent overflow
+        maxHeight: 260,
       ),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -697,12 +779,11 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         border: Border.all(color: _getStatusBorderColor(status), width: 1.5),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min, // Important: prevents overflow
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Header with employee info - FIXED HEIGHT
           Container(
-            height: 65, // Further reduced height
-            padding: const EdgeInsets.all(10), // Reduced padding
+            height: 65,
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: _getStatusHeaderColor(status),
               borderRadius: const BorderRadius.only(
@@ -713,23 +794,23 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 14, // Smaller avatar
+                  radius: 14,
                   backgroundColor: Colors.white,
                   child: Text(
                     request['name']?.toString().isNotEmpty == true
                         ? request['name']
-                              .toString()
-                              .substring(0, 1)
-                              .toUpperCase()
+                        .toString()
+                        .substring(0, 1)
+                        .toUpperCase()
                         : 'U',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 11, // Smaller font
+                      fontSize: 11,
                       color: _getStatusTextColor(status),
                     ),
                   ),
                 ),
-                const SizedBox(width: 6), // Reduced spacing
+                const SizedBox(width: 6),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -739,7 +820,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                         request['name'] ?? 'Unknown User',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 12, // Smaller font
+                          fontSize: 12,
                           color: _getStatusTextColor(status),
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -747,7 +828,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                       Text(
                         '${request['role'] ?? 'No role'} • ID: ${request['employeeId'] ?? 'N/A'}',
                         style: TextStyle(
-                          fontSize: 9, // Smaller font
+                          fontSize: 9,
                           color: _getStatusTextColor(status).withOpacity(0.8),
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -759,8 +840,8 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 6, // Reduced padding
-                        vertical: 3, // Reduced padding
+                        horizontal: 6,
+                        vertical: 3,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -770,19 +851,19 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                         status,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 9, // Smaller font
+                          fontSize: 9,
                           color: _getStatusColor(status),
                         ),
                       ),
                     ),
                     if (status == 'Pending') ...[
-                      const SizedBox(width: 2), // Reduced spacing
+                      const SizedBox(width: 2),
                       IconButton(
                         icon: const Icon(
                           Icons.more_vert,
                           size: 14,
-                        ), // Smaller icon
-                        padding: const EdgeInsets.all(2), // Reduced padding
+                        ),
+                        padding: const EdgeInsets.all(2),
                         onPressed: () => _showActionMenu(context, index),
                       ),
                     ],
@@ -791,16 +872,13 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
               ],
             ),
           ),
-
-          // Content - FIXED HEIGHT WITH SCROLL
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(10), // Reduced padding
+              padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min, // Important: prevents overflow
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Leave info
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -809,16 +887,16 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                           children: [
                             Icon(
                               Icons.calendar_today,
-                              size: 11, // Smaller icon
+                              size: 11,
                               color: Colors.grey[600],
                             ),
-                            const SizedBox(width: 3), // Reduced spacing
+                            const SizedBox(width: 3),
                             Expanded(
                               child: Text(
                                 leaveType,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w500,
-                                  fontSize: 11, // Smaller font
+                                  fontSize: 11,
                                   color: _getLeaveTypeColor(leaveType),
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -830,19 +908,18 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                       Text(
                         '${_calculateDays(request['startDate'], request['endDate'])} days',
                         style: TextStyle(
-                          fontSize: 10, // Smaller font
+                          fontSize: 10,
                           color: Colors.grey[600],
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6), // Reduced spacing
-                  // Date range
+                  const SizedBox(height: 6),
                   Container(
-                    height: 35, // Reduced height
+                    height: 35,
                     width: double.infinity,
-                    padding: const EdgeInsets.all(5), // Reduced padding
+                    padding: const EdgeInsets.all(5),
                     decoration: BoxDecoration(
                       color: Colors.grey[50],
                       borderRadius: BorderRadius.circular(5),
@@ -856,7 +933,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                             Text(
                               'FROM',
                               style: TextStyle(
-                                fontSize: 8, // Smaller font
+                                fontSize: 8,
                                 color: Colors.grey[600],
                                 fontWeight: FontWeight.bold,
                               ),
@@ -865,14 +942,14 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                               _formatDate(request['startDate']),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 10, // Smaller font
+                                fontSize: 10,
                               ),
                             ),
                           ],
                         ),
                         Icon(
                           Icons.arrow_forward,
-                          size: 12, // Smaller icon
+                          size: 12,
                           color: Colors.grey[400],
                         ),
                         Column(
@@ -881,7 +958,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                             Text(
                               'TO',
                               style: TextStyle(
-                                fontSize: 8, // Smaller font
+                                fontSize: 8,
                                 color: Colors.grey[600],
                                 fontWeight: FontWeight.bold,
                               ),
@@ -890,7 +967,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                               _formatDate(request['endDate']),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 10, // Smaller font
+                                fontSize: 10,
                               ),
                             ),
                           ],
@@ -898,21 +975,20 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 6), // Reduced spacing
-                  // Reason with scrollable container
+                  const SizedBox(height: 6),
                   const Text(
                     'REASON',
                     style: TextStyle(
-                      fontSize: 9, // Smaller font
+                      fontSize: 9,
                       fontWeight: FontWeight.bold,
                       color: Colors.grey,
                     ),
                   ),
-                  const SizedBox(height: 2), // Reduced spacing
+                  const SizedBox(height: 2),
                   Expanded(
                     child: Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(5), // Reduced padding
+                      padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
                         color: Colors.grey[50],
                         borderRadius: BorderRadius.circular(5),
@@ -921,7 +997,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                         child: Text(
                           reason,
                           style: const TextStyle(
-                            fontSize: 10, // Smaller font
+                            fontSize: 10,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -963,6 +1039,11 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
               ),
               if (request['rejectionReason'] != null)
                 _buildDetailRow('Rejection Reason', request['rejectionReason']),
+              if (request['rejectedAt'] != null)
+                _buildDetailRow(
+                  'Rejected On',
+                  _formatDate(request['rejectedAt']),
+                ),
             ],
           ),
         ),
@@ -1036,9 +1117,9 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
 
   Color _getLeaveTypeColor(String leaveType) {
     switch (leaveType.toLowerCase()) {
-      case 'sick':
+      case 'sick leave':
         return Colors.red.shade700;
-      case 'vacation':
+      case 'vacation leave':
         return Colors.blue.shade700;
       case 'emergency':
         return Colors.orange.shade700;
