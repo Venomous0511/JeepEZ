@@ -1,3 +1,8 @@
+// Key changes in this file:
+// 1. Auto-cleanup now runs in _buildSubmittedApplications StreamBuilder
+// 2. Rejected applications are properly tracked with rejectedAt timestamp
+// 3. Better error handling for auto-deletion
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -55,6 +60,51 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
     }
   }
 
+  // ADD THIS FUNCTION - Send notification ONLY to Legal Officer
+  Future<void> _sendLeaveNotificationToLegalOfficer() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Get user data to include in notification
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      final userData = userDoc.data();
+      final userName = userData?['name'] ?? 'Unknown User';
+      final userRole = userData?['role'] ?? 'Unknown Role';
+      final employeeId = userData?['employeeId'] ?? 'Unknown ID';
+
+      // Create notification ONLY for Legal Officer
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'title': 'New Leave Application',
+        'message':
+            '$userName ($employeeId - $userRole) has submitted a ${_selectedLeaveType?.toLowerCase() ?? 'leave'} application',
+        'type': 'leave_application',
+        'category': 'leave',
+        'relatedUserId': user.uid,
+        'employeeId': employeeId,
+        'employeeName': userName,
+        'employeeRole': userRole,
+        'leaveType': _selectedLeaveType,
+        'startDate': _startDate,
+        'endDate': _endDate,
+        'reason': _reasonController.text.trim(),
+        'status': 'pending',
+        'time': FieldValue.serverTimestamp(),
+        'read': false,
+        'dismissed': false,
+        'targetRole': 'legal_officer',
+      });
+
+      debugPrint('Leave notification sent to Legal Officer only');
+    } catch (e) {
+      debugPrint('Error sending leave notification: $e');
+    }
+  }
+
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
       if (_startDate == null || _endDate == null) {
@@ -64,7 +114,6 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
         return;
       }
 
-      // Check character limit
       if (_reasonController.text.length > 100) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -74,7 +123,6 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
         return;
       }
 
-      // Check if already submitted today
       if (_hasSubmittedToday) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -85,7 +133,6 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
       }
 
       try {
-        // Get current user UID
         final user = FirebaseAuth.instance.currentUser;
         if (user == null) {
           ScaffoldMessenger.of(
@@ -103,7 +150,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
           'endDate': _endDate,
           'numberOfDays': _calculateNumberOfDays(),
           'reason': _reasonController.text.trim(),
-          'status': 'Pending', // can be Approved / Rejected later
+          'status': 'Pending',
           'submittedAt': FieldValue.serverTimestamp(),
         };
 
@@ -113,6 +160,9 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
             .doc(uid)
             .collection('leave_application')
             .add(leaveData);
+
+        // ADD THIS LINE - Send notification to Legal Officer
+        await _sendLeaveNotificationToLegalOfficer();
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -146,6 +196,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
     }
   }
 
+  // IMPROVED: Better auto-cleanup with proper error handling
   Widget _buildSubmittedApplications() {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -181,29 +232,43 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
           final rejectedAt = (data['rejectedAt'] as Timestamp?)?.toDate();
           final endDate = (data['endDate'] as Timestamp?)?.toDate();
 
-          // Auto-delete rejected applications after 5 days
+          bool shouldDelete = false;
+          String deleteReason = '';
+
+          // Delete rejected applications after 5 days
           if (status == 'Rejected' && rejectedAt != null) {
-            final diff = now.difference(rejectedAt).inDays;
-            if (diff >= 5) {
-              FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(user.uid)
-                  .collection('leave_application')
-                  .doc(doc.id)
-                  .delete();
-              continue;
+            final daysSinceRejection = now.difference(rejectedAt).inDays;
+            if (daysSinceRejection >= 5) {
+              shouldDelete = true;
+              deleteReason = 'Rejected $daysSinceRejection days ago';
             }
           }
 
-          // Auto-delete completed leave applications (end date has passed)
+          // Delete completed leave applications (end date has passed)
           if (endDate != null && endDate.isBefore(now)) {
+            shouldDelete = true;
+            deleteReason = 'Leave period ended on ${_formatDate(endDate)}';
+          }
+
+          if (shouldDelete) {
+            // Delete asynchronously
             FirebaseFirestore.instance
                 .collection('users')
                 .doc(user.uid)
                 .collection('leave_application')
                 .doc(doc.id)
-                .delete();
-            continue;
+                .delete()
+                .then((_) {
+                  debugPrint(
+                    'Auto-deleted leave application: ${doc.id} - $deleteReason',
+                  );
+                })
+                .catchError((error) {
+                  debugPrint(
+                    'Error deleting leave application ${doc.id}: $error',
+                  );
+                });
+            continue; // Skip this document
           }
 
           validDocs.add(doc);
@@ -236,6 +301,19 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
               final status = data['status'] ?? 'Pending';
               final reason = data['reason'] ?? 'No reason provided';
               final submittedAt = (data['submittedAt'] as Timestamp?)?.toDate();
+              final rejectedAt = (data['rejectedAt'] as Timestamp?)?.toDate();
+              final rejectionReason = data['rejectionReason'];
+
+              // Calculate days until deletion for rejected applications
+              String deletionInfo = '';
+              if (status == 'Rejected' && rejectedAt != null) {
+                final daysSinceRejection = now.difference(rejectedAt).inDays;
+                final daysRemaining = 5 - daysSinceRejection;
+                if (daysRemaining > 0) {
+                  deletionInfo =
+                      'Will be removed in $daysRemaining day${daysRemaining > 1 ? 's' : ''}';
+                }
+              }
 
               return Container(
                 width: double.infinity,
@@ -249,7 +327,6 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header row
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -285,6 +362,41 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                         fontStyle: FontStyle.italic,
                       ),
                     ),
+
+                    // Show rejection reason if rejected
+                    if (status == 'Rejected' && rejectionReason != null) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Rejection Reason:',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              rejectionReason,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
                     if (submittedAt != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
@@ -293,6 +405,20 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                           style: const TextStyle(
                             fontSize: 12,
                             color: Colors.grey,
+                          ),
+                        ),
+                      ),
+
+                    // Show deletion countdown for rejected applications
+                    if (deletionInfo.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          deletionInfo,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.orange.shade700,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -394,14 +520,13 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
     final isMobile = screenWidth < 600;
 
     return Scaffold(
-      resizeToAvoidBottomInset:
-          false, // Changed to false for better performance
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Container(
           width: double.infinity,
           padding: EdgeInsets.zero,
           child: SingleChildScrollView(
-            physics: const ClampingScrollPhysics(), // Smoother scrolling
+            physics: const ClampingScrollPhysics(),
             child: Column(
               children: [
                 // Header Section
@@ -425,7 +550,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "Easily file your leave request with automatic details.",
+                        "Easily file your leave request with details.",
                         style: TextStyle(
                           fontSize: isMobile ? 14 : 16,
                           color: Colors.white70,
@@ -573,7 +698,6 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                         ),
                         SizedBox(height: isMobile ? 16 : 20),
 
-                        // Reason - Improved for stable typing
                         _buildFormSection(
                           label: 'Reason for requesting leave:',
                           isMobile: isMobile,

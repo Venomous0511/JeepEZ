@@ -60,11 +60,13 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
     }
   }
 
+  // ADD THIS FUNCTION - Send notification ONLY to Legal Officer
   Future<void> _sendLeaveNotificationToLegalOfficer() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
+      // Get user data to include in notification
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -75,10 +77,11 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
       final userRole = userData?['role'] ?? 'Unknown Role';
       final employeeId = userData?['employeeId'] ?? 'Unknown ID';
 
+      // Create notification ONLY for Legal Officer
       await FirebaseFirestore.instance.collection('notifications').add({
         'title': 'New Leave Application',
         'message':
-        '$userName ($employeeId - $userRole) has submitted a ${_selectedLeaveType?.toLowerCase() ?? 'leave'} application',
+            '$userName ($employeeId - $userRole) has submitted a ${_selectedLeaveType?.toLowerCase() ?? 'leave'} application',
         'type': 'leave_application',
         'category': 'leave',
         'relatedUserId': user.uid,
@@ -140,6 +143,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
 
         final String uid = user.uid;
 
+        // Prepare leave data
         final leaveData = {
           'leaveType': _selectedLeaveType,
           'startDate': _startDate,
@@ -150,12 +154,14 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
           'submittedAt': FieldValue.serverTimestamp(),
         };
 
+        // Save inside user's subcollection
         await FirebaseFirestore.instance
             .collection('users')
             .doc(uid)
             .collection('leave_application')
             .add(leaveData);
 
+        // ADD THIS LINE - Send notification to Legal Officer
         await _sendLeaveNotificationToLegalOfficer();
 
         if (mounted) {
@@ -166,10 +172,12 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
           );
         }
 
+        // Update submission status
         setState(() {
           _hasSubmittedToday = true;
         });
 
+        // Clear form after submission
         if (mounted) {
           setState(() {
             _selectedLeaveType = null;
@@ -218,7 +226,6 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
         final now = DateTime.now();
         final List<DocumentSnapshot> validDocs = [];
 
-        // IMPROVED: Auto-delete with better logic
         for (final doc in snapshot.data!.docs) {
           final data = doc.data() as Map<String, dynamic>;
           final status = data['status'] ?? '';
@@ -252,10 +259,15 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                 .doc(doc.id)
                 .delete()
                 .then((_) {
-              debugPrint('Auto-deleted leave application: ${doc.id} - $deleteReason');
-            }).catchError((error) {
-              debugPrint('Error deleting leave application ${doc.id}: $error');
-            });
+                  debugPrint(
+                    'Auto-deleted leave application: ${doc.id} - $deleteReason',
+                  );
+                })
+                .catchError((error) {
+                  debugPrint(
+                    'Error deleting leave application ${doc.id}: $error',
+                  );
+                });
             continue; // Skip this document
           }
 
@@ -298,7 +310,8 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                 final daysSinceRejection = now.difference(rejectedAt).inDays;
                 final daysRemaining = 5 - daysSinceRejection;
                 if (daysRemaining > 0) {
-                  deletionInfo = 'Will be removed in $daysRemaining day${daysRemaining > 1 ? 's' : ''}';
+                  deletionInfo =
+                      'Will be removed in $daysRemaining day${daysRemaining > 1 ? 's' : ''}';
                 }
               }
 
@@ -516,6 +529,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
             physics: const ClampingScrollPhysics(),
             child: Column(
               children: [
+                // Header Section
                 Container(
                   width: double.infinity,
                   padding: EdgeInsets.all(isMobile ? 20.0 : 24.0),
@@ -536,7 +550,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "Easily file your leave request with automatic details.",
+                        "Easily file your leave request with details.",
                         style: TextStyle(
                           fontSize: isMobile ? 14 : 16,
                           color: Colors.white70,
@@ -568,6 +582,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                   ),
                 ),
 
+                // Form Section
                 Container(
                   width: double.infinity,
                   padding: EdgeInsets.all(isMobile ? 20.0 : 24.0),
@@ -587,10 +602,12 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                         ),
                         const SizedBox(height: 20),
 
+                        // Show Submitted Application
                         _buildSubmittedApplications(),
 
                         const SizedBox(height: 24),
 
+                        // Type of Leave
                         _buildFormSection(
                           label: 'Type of Leave',
                           isMobile: isMobile,
@@ -619,10 +636,10 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                             onChanged: _hasSubmittedToday
                                 ? null
                                 : (newValue) {
-                              setState(() {
-                                _selectedLeaveType = newValue;
-                              });
-                            },
+                                    setState(() {
+                                      _selectedLeaveType = newValue;
+                                    });
+                                  },
                             validator: (value) => value == null
                                 ? 'Please select leave type'
                                 : null,
@@ -630,6 +647,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                         ),
                         SizedBox(height: isMobile ? 16 : 20),
 
+                        // Date Range Picker
                         _buildFormSection(
                           label: 'Select Leave Date Range',
                           isMobile: isMobile,
@@ -669,7 +687,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                               if (_startDate != null && _endDate != null)
                                 Text(
                                   '${_formatDate(_startDate!)} - ${_formatDate(_endDate!)} '
-                                      '(${_calculateNumberOfDays()} days)',
+                                  '(${_calculateNumberOfDays()} days)',
                                   style: TextStyle(
                                     fontSize: isMobile ? 14 : 16,
                                     fontWeight: FontWeight.bold,
@@ -703,6 +721,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                                       maxLength: 100,
                                       maxLines: 3,
                                       enabled: !_hasSubmittedToday,
+                                      // Removed the setState listener for stable typing
                                       style: TextStyle(
                                         fontSize: isMobile ? 14 : 16,
                                         color: _hasSubmittedToday

@@ -762,13 +762,19 @@ class _DriverConductorManagementScreenState
                       const SizedBox(height: 2),
                       Text(
                         'No. ${index + 1}',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black, // Changed to black
+                        ),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.more_vert),
+                  icon: const Icon(
+                    Icons.more_vert,
+                    color: Colors.black,
+                  ), // Changed to black
                   onPressed: () => _showActionMenu(context, doc),
                 ),
               ],
@@ -938,55 +944,79 @@ class _DriverConductorManagementScreenState
             columnSpacing: 12,
             horizontalMargin: 8,
             headingRowColor: WidgetStateColor.resolveWith(
-              (states) => Colors.grey.shade100,
+              (states) => Color(0xFF0D2364),
             ),
             columns: const [
               DataColumn(
                 label: Text(
                   'NO.',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               DataColumn(
                 label: Text(
                   'EMPLOYEE ID',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               DataColumn(
                 label: Text(
                   'NAME',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               DataColumn(
                 label: Text(
                   'ROLE',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               DataColumn(
                 label: Text(
                   'EMPLOYEE TYPE',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               DataColumn(
                 label: Text(
                   'VEHICLE',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               DataColumn(
                 label: Text(
                   'SCHEDULE',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               DataColumn(
                 label: Text(
                   'ACTION',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -1015,55 +1045,79 @@ class _DriverConductorManagementScreenState
             columnSpacing: 20,
             horizontalMargin: 12,
             headingRowColor: WidgetStateColor.resolveWith(
-              (states) => Colors.grey.shade100,
+              (states) => Color(0xFF0D2364),
             ),
             columns: const [
               DataColumn(
                 label: Text(
                   'NO.',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               DataColumn(
                 label: Text(
                   'EMPLOYEE ID',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               DataColumn(
                 label: Text(
                   'NAME',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               DataColumn(
                 label: Text(
                   'ROLE',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               DataColumn(
                 label: Text(
                   'EMPLOYEE TYPE',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               DataColumn(
                 label: Text(
                   'VEHICLE',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               DataColumn(
                 label: Text(
                   'SCHEDULE',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               DataColumn(
                 label: Text(
                   'ACTION',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -1098,13 +1152,16 @@ class _DriverConductorManagementScreenState
 
     return DataRow(
       cells: [
-        // NO. (Number)
+        // NO. (Number) - Changed to black
         DataCell(
           SizedBox(
             width: isCompact ? 60 : 80,
             child: Text(
               (index + 1).toString(),
-              style: TextStyle(fontSize: isCompact ? 12 : 14),
+              style: TextStyle(
+                fontSize: isCompact ? 12 : 14,
+                color: Colors.black, // Changed to black
+              ),
             ),
           ),
         ),
@@ -1199,10 +1256,14 @@ class _DriverConductorManagementScreenState
             ),
           ),
         ),
-        // ACTION
+        // ACTION - Changed to black
         DataCell(
           IconButton(
-            icon: Icon(Icons.more_vert, size: isCompact ? 18 : 24),
+            icon: Icon(
+              Icons.more_vert,
+              size: isCompact ? 18 : 24,
+              color: Colors.black, // Changed to black
+            ),
             onPressed: () => _showActionMenu(context, doc),
           ),
         ),

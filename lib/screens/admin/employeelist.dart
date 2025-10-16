@@ -2440,65 +2440,35 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Role Dropdown
-                  DropdownButtonFormField<String>(
-                    value: role,
-                    decoration: const InputDecoration(
-                      labelText: 'Role *',
-                      border: OutlineInputBorder(),
+                  // Role Display (read-only) - CHANGED TO DISPLAY ONLY
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: roleColor),
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                    items: [
-                      _buildRoleDropdownItem("legal_officer", "Legal Officer"),
-                      _buildRoleDropdownItem("driver", "Driver"),
-                      _buildRoleDropdownItem("conductor", "Conductor"),
-                      _buildRoleDropdownItem("inspector", "Inspector"),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        role = value;
-                        // Reset when role changes
-                        if (value != "driver" &&
-                            value != "conductor" &&
-                            value != "inspector") {
-                          employmentType = null;
-                          area = null;
-                        }
-                      });
-                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: roleColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Role: ${_capitalizeRole(role!)}',
+                          style: TextStyle(
+                            color: roleColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-
-                  const SizedBox(height: 16),
-
-                  // Role Display (read-only)
-                  if (role != null)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: roleColor),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: roleColor,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Role: ${_capitalizeRole(role!)}',
-                            style: TextStyle(
-                              color: roleColor,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
 
                   // Employment Type
                   if (role == 'driver' ||
