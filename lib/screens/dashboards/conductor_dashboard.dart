@@ -56,17 +56,17 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
       vehicleNumber = 0;
     }
 
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('inspector_trip')
-          .where(
-        'unitNumber',
-        isEqualTo: vehicleNumber.toString(),
-      )
-          .where(
-        'conductorName',
-        isEqualTo: widget.user.name?.trim(),
-      )
+          .where('unitNumber', isEqualTo: vehicleNumber.toString())
+          .where('conductorName', isEqualTo: widget.user.name?.trim())
+          .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
+          .where('timestamp', isLessThanOrEqualTo: endOfDay)
           .orderBy('timestamp', descending: true)
           .limit(1)
           .get();
@@ -100,11 +100,16 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
     } else {
       vehicleNumber = 0;
     }
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
 
     return FirebaseFirestore.instance
         .collection('inspector_trip')
         .where('unitNumber', isEqualTo: vehicleNumber.toString())
         .where('conductorName', isEqualTo: widget.user.name?.trim())
+        .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
+        .where('timestamp', isLessThanOrEqualTo: endOfDay)
         .orderBy('timestamp', descending: true)
         .limit(1)
         .snapshots()

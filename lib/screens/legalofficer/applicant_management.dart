@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'dart:io';
+import 'dart:io' show File;
 
 class Candidate {
   final String id;
@@ -280,7 +280,7 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                             selectedPosition = newValue!;
                             // Update requirements when position changes
                             if (isEditing) {
-                              candidate!.updateRequirementsForPosition(
+                              candidate.updateRequirementsForPosition(
                                 newValue,
                               );
                             }
@@ -386,20 +386,19 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
     );
   }
 
-  // Iba pang methods nananatiling pareho...
   Future<void> _uploadResume(Candidate candidate) async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'doc', 'docx'],
+        allowedExtensions: ['pdf'], // Only PDF
         allowMultiple: false,
+        withData: true, // Get bytes for all platforms
       );
 
       if (result != null && result.files.isNotEmpty) {
         setState(() => _isLoading = true);
 
         PlatformFile file = result.files.first;
-        File fileToUpload = File(file.path!);
 
         if (candidate.resumeUrl != null) {
           try {
@@ -413,9 +412,26 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
             '${candidate.id}_${DateTime.now().millisecondsSinceEpoch}_${file.name}';
         Reference storageRef = _storage.ref().child('resumes/$fileName');
 
-        UploadTask uploadTask = storageRef.putFile(fileToUpload);
-        TaskSnapshot snapshot = await uploadTask;
+        UploadTask uploadTask;
 
+        // Use bytes (works on all platforms including web)
+        if (file.bytes != null) {
+          uploadTask = storageRef.putData(
+            file.bytes!,
+            SettableMetadata(contentType: 'application/pdf'),
+          );
+        } else if (file.path != null) {
+          // Fallback to file path for platforms that support it
+          File fileToUpload = File(file.path!);
+          uploadTask = storageRef.putFile(
+            fileToUpload,
+            SettableMetadata(contentType: 'application/pdf'),
+          );
+        } else {
+          throw Exception('No file data available');
+        }
+
+        TaskSnapshot snapshot = await uploadTask;
         String downloadUrl = await snapshot.ref.getDownloadURL();
 
         candidate.resumeUrl = downloadUrl;
