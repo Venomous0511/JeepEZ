@@ -14,6 +14,7 @@ class _DriverConductorManagementScreenState
   final TextEditingController searchCtrl = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String searchQuery = '';
+  String selectedRole = 'all'; // 'all', 'driver', 'conductor', 'inspector'
 
   /// ----------- ROLE COLOR FUNCTION -----------
   Color _getRoleColor(String role) {
@@ -35,7 +36,9 @@ class _DriverConductorManagementScreenState
 
   /// ----------- VEHICLE STATUS COLOR FUNCTION -----------
   Color _getVehicleStatusColor(String? assignedVehicle) {
-    if (assignedVehicle == null || assignedVehicle.toString().isEmpty) {
+    if (assignedVehicle == null ||
+        assignedVehicle.toString().isEmpty ||
+        assignedVehicle == 'Not assigned') {
       return Colors.red; // Not assigned - Red
     }
     return Colors.blue; // Assigned - Blue
@@ -49,16 +52,34 @@ class _DriverConductorManagementScreenState
     return Colors.blue; // Set - Blue
   }
 
-  // Stream for real-time updates from users collection
-  Stream<QuerySnapshot> get employeesStream {
-    return _firestore
-        .collection('users')
-        .where('role', whereIn: ['driver', 'conductor'])
-        .orderBy('name')
-        .snapshots();
+  /// ----------- ASSIGNMENT STATUS COLOR FUNCTION (For Inspector) -----------
+  Color _getAssignmentStatusColor(String? assignment) {
+    if (assignment == null ||
+        assignment.isEmpty ||
+        assignment == 'Not assigned') {
+      return Colors.red; // Not assigned - Red
+    }
+    return Colors.green; // Assigned - Green
   }
 
-  // Update employee schedule + save to schedules history with employee info
+  // Stream for real-time updates from users collection based on selected role
+  Stream<QuerySnapshot> get employeesStream {
+    if (selectedRole == 'all') {
+      return _firestore
+          .collection('users')
+          .where('role', whereIn: ['driver', 'conductor', 'inspector'])
+          .orderBy('name')
+          .snapshots();
+    } else {
+      return _firestore
+          .collection('users')
+          .where('role', isEqualTo: selectedRole)
+          .orderBy('name')
+          .snapshots();
+    }
+  }
+
+  // Update employee schedule + save to appropriate history collection
   Future<void> _updateEmployeeSchedule(
     String docId,
     String newSchedule,
@@ -66,16 +87,23 @@ class _DriverConductorManagementScreenState
   ) async {
     try {
       final currentSchedule = employeeData['schedule']?.toString() ?? 'Not set';
+      final role = employeeData['role']?.toString() ?? '';
 
       await _firestore.collection('users').doc(docId).update({
         'schedule': newSchedule,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      await _firestore.collection('schedules').add({
+      // Determine which collection to use based on role
+      String collectionName = role == 'inspector'
+          ? 'inspector_schedules'
+          : 'schedules';
+
+      await _firestore.collection(collectionName).add({
         'userId': docId,
         'employeeName': employeeData['name'] ?? 'Unknown',
         'employeeId': employeeData['employeeId'] ?? 'Unknown',
+        'role': role,
         'previousSchedule': currentSchedule,
         'newSchedule': newSchedule,
         'createdAt': FieldValue.serverTimestamp(),
@@ -95,12 +123,17 @@ class _DriverConductorManagementScreenState
     }
   }
 
-  // Get the employee schedules (history)
+  // Get the employee schedules (history) based on role
   Future<List<Map<String, dynamic>>> _getEmployeeSchedules(
     String userId,
+    String role,
   ) async {
+    String collectionName = role == 'inspector'
+        ? 'inspector_schedules'
+        : 'schedules';
+
     final snapshot = await _firestore
-        .collection('schedules')
+        .collection(collectionName)
         .where('userId', isEqualTo: userId)
         .orderBy('createdAt', descending: true)
         .get();
@@ -112,8 +145,9 @@ class _DriverConductorManagementScreenState
     BuildContext context,
     String userId,
     String employeeName,
+    String role,
   ) async {
-    final schedules = await _getEmployeeSchedules(userId);
+    final schedules = await _getEmployeeSchedules(userId, role);
 
     showDialog(
       context: context,
@@ -188,6 +222,7 @@ class _DriverConductorManagementScreenState
         'userId': docId,
         'employeeName': employeeData['name'] ?? 'Unknown',
         'employeeId': employeeData['employeeId'] ?? 'Unknown',
+        'role': employeeData['role'] ?? '',
         'previousVehicle': currentVehicle != 'Not assigned'
             ? 'UNIT $currentVehicle'
             : currentVehicle,
@@ -283,6 +318,120 @@ class _DriverConductorManagementScreenState
     );
   }
 
+  // Update inspector assignment area + save to inspector_assignments history
+  Future<void> _updateInspectorAssignment(
+    String docId,
+    String newArea,
+    Map<String, dynamic> inspectorData,
+  ) async {
+    try {
+      final currentArea =
+          inspectorData['assignedArea']?.toString() ?? 'Not assigned';
+
+      await _firestore.collection('users').doc(docId).update({
+        'assignedArea': newArea,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      await _firestore.collection('inspector_assignments').add({
+        'userId': docId,
+        'inspectorName': inspectorData['name'] ?? 'Unknown',
+        'employeeId': inspectorData['employeeId'] ?? 'Unknown',
+        'previousArea': currentArea,
+        'newArea': newArea,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Assignment area updated & history saved'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating assignment: $e')),
+        );
+      }
+    }
+  }
+
+  // Get the inspector assignment history
+  Future<List<Map<String, dynamic>>> _getInspectorAssignmentHistory(
+    String userId,
+  ) async {
+    final snapshot = await _firestore
+        .collection('inspector_assignments')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .get();
+
+    return snapshot.docs.map((doc) => doc.data()).toList();
+  }
+
+  void _showAssignmentHistory(
+    BuildContext context,
+    String userId,
+    String inspectorName,
+  ) async {
+    final assignmentHistory = await _getInspectorAssignmentHistory(userId);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Assignment History - $inspectorName'),
+          content: SizedBox(
+            width: 400,
+            height: 400,
+            child: assignmentHistory.isEmpty
+                ? const Center(child: Text("No assignment history"))
+                : SingleChildScrollView(
+                    child: Column(
+                      children: assignmentHistory.map((history) {
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          child: ListTile(
+                            title: Text('New: ${history['newArea']}'),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Previous: ${history['previousArea']}'),
+                                const SizedBox(height: 4),
+                                Text(
+                                  history['createdAt'] != null
+                                      ? 'Changed on: ${(history['createdAt'] as Timestamp).toDate().toString()}'
+                                      : '',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            leading: const Icon(
+                              Icons.assignment,
+                              color: Colors.green,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // Filter employees based on search query
   List<QueryDocumentSnapshot> _filterEmployees(
     List<QueryDocumentSnapshot> docs,
@@ -310,12 +459,28 @@ class _DriverConductorManagementScreenState
     return vehicle != null && vehicle.isNotEmpty && vehicle != 'Not assigned';
   }
 
+  // Check if inspector has an assignment area
+  bool _hasAssignment(Map<String, dynamic> data) {
+    final assignment = data['assignedArea']?.toString();
+    return assignment != null &&
+        assignment.isNotEmpty &&
+        assignment != 'Not assigned';
+  }
+
+  // Check if employee is inspector
+  bool _isInspector(Map<String, dynamic> data) {
+    return data['role']?.toString().toLowerCase() == 'inspector';
+  }
+
   // State-based Action Menu
   void _showActionMenu(BuildContext context, QueryDocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     final employeeName = data['name']?.toString() ?? 'Employee';
+    final role = data['role']?.toString() ?? '';
     final hasSchedule = _hasSchedule(data);
     final hasVehicle = _hasVehicle(data);
+    final hasAssignment = _hasAssignment(data);
+    final isInspector = _isInspector(data);
 
     showModalBottomSheet(
       context: context,
@@ -323,7 +488,7 @@ class _DriverConductorManagementScreenState
         return SafeArea(
           child: Wrap(
             children: <Widget>[
-              // Schedule Actions - State-based
+              // Schedule Actions - State-based (for all roles)
               if (!hasSchedule) ...[
                 ListTile(
                   leading: const Icon(
@@ -358,36 +523,69 @@ class _DriverConductorManagementScreenState
                 ),
               ],
 
-              // Vehicle Actions - State-based
-              if (!hasVehicle) ...[
-                ListTile(
-                  leading: const Icon(
-                    Icons.directions_bus,
-                    color: Colors.green,
+              // Vehicle Actions - State-based (only for driver/conductor)
+              if (!isInspector) ...[
+                if (!hasVehicle) ...[
+                  ListTile(
+                    leading: const Icon(
+                      Icons.directions_bus,
+                      color: Colors.green,
+                    ),
+                    title: const Text('Assign Vehicle'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showVehicleSelector(context, doc, data);
+                    },
                   ),
-                  title: const Text('Assign Vehicle'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showVehicleSelector(context, doc, data);
-                  },
-                ),
-              ] else ...[
-                ListTile(
-                  leading: const Icon(Icons.edit, color: Colors.orange),
-                  title: const Text('Change Vehicle'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showVehicleSelector(context, doc, data);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.cancel, color: Colors.red),
-                  title: const Text('Remove Vehicle'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _removeVehicle(doc.id, data);
-                  },
-                ),
+                ] else ...[
+                  ListTile(
+                    leading: const Icon(Icons.edit, color: Colors.orange),
+                    title: const Text('Change Vehicle'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showVehicleSelector(context, doc, data);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.cancel, color: Colors.red),
+                    title: const Text('Remove Vehicle'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _removeVehicle(doc.id, data);
+                    },
+                  ),
+                ],
+              ],
+
+              // Assignment Area Actions - State-based (only for inspector)
+              if (isInspector) ...[
+                if (!hasAssignment) ...[
+                  ListTile(
+                    leading: const Icon(Icons.assignment, color: Colors.green),
+                    title: const Text('Assign Area'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showAreaSelector(context, doc, data);
+                    },
+                  ),
+                ] else ...[
+                  ListTile(
+                    leading: const Icon(Icons.edit, color: Colors.orange),
+                    title: const Text('Change Area'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showAreaSelector(context, doc, data);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.cancel, color: Colors.red),
+                    title: const Text('Remove Area'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _removeAssignment(doc.id, data);
+                    },
+                  ),
+                ],
               ],
 
               // History Actions (always available)
@@ -397,17 +595,33 @@ class _DriverConductorManagementScreenState
                 title: const Text('View Schedule History'),
                 onTap: () {
                   Navigator.pop(context);
-                  _showScheduleHistory(context, doc.id, employeeName);
+                  _showScheduleHistory(context, doc.id, employeeName, role);
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.history_edu, color: Colors.blue),
-                title: const Text('View Vehicle History'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showVehicleHistory(context, doc.id, employeeName);
-                },
-              ),
+
+              // Vehicle History (only for driver/conductor)
+              if (!isInspector) ...[
+                ListTile(
+                  leading: const Icon(Icons.history_edu, color: Colors.blue),
+                  title: const Text('View Vehicle History'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showVehicleHistory(context, doc.id, employeeName);
+                  },
+                ),
+              ],
+
+              // Assignment History (only for inspector)
+              if (isInspector) ...[
+                ListTile(
+                  leading: const Icon(Icons.assignment_ind, color: Colors.blue),
+                  title: const Text('View Assignment History'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showAssignmentHistory(context, doc.id, employeeName);
+                  },
+                ),
+              ],
             ],
           ),
         );
@@ -422,16 +636,22 @@ class _DriverConductorManagementScreenState
   ) async {
     try {
       final currentSchedule = employeeData['schedule']?.toString() ?? 'Not set';
+      final role = employeeData['role']?.toString() ?? '';
 
       await _firestore.collection('users').doc(docId).update({
         'schedule': 'Not set',
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      await _firestore.collection('schedules').add({
+      String collectionName = role == 'inspector'
+          ? 'inspector_schedules'
+          : 'schedules';
+
+      await _firestore.collection(collectionName).add({
         'userId': docId,
         'employeeName': employeeData['name'] ?? 'Unknown',
         'employeeId': employeeData['employeeId'] ?? 'Unknown',
+        'role': role,
         'previousSchedule': currentSchedule,
         'newSchedule': 'Not set',
         'createdAt': FieldValue.serverTimestamp(),
@@ -469,6 +689,7 @@ class _DriverConductorManagementScreenState
         'userId': docId,
         'employeeName': employeeData['name'] ?? 'Unknown',
         'employeeId': employeeData['employeeId'] ?? 'Unknown',
+        'role': employeeData['role'] ?? '',
         'previousVehicle': currentVehicle != 'Not assigned'
             ? 'UNIT $currentVehicle'
             : currentVehicle,
@@ -490,7 +711,44 @@ class _DriverConductorManagementScreenState
     }
   }
 
-  // Schedule selector dialog
+  // Remove assignment function (for inspector)
+  Future<void> _removeAssignment(
+    String docId,
+    Map<String, dynamic> inspectorData,
+  ) async {
+    try {
+      final currentAssignment =
+          inspectorData['assignedArea']?.toString() ?? 'Not assigned';
+
+      await _firestore.collection('users').doc(docId).update({
+        'assignedArea': 'Not assigned',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      await _firestore.collection('inspector_assignments').add({
+        'userId': docId,
+        'inspectorName': inspectorData['name'] ?? 'Unknown',
+        'employeeId': inspectorData['employeeId'] ?? 'Unknown',
+        'previousArea': currentAssignment,
+        'newArea': 'Not assigned',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Assignment removed & history saved')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error removing assignment: $e')),
+        );
+      }
+    }
+  }
+
+  // Schedule selector dialog (for all roles)
   void _showScheduleSelector(
     BuildContext context,
     QueryDocumentSnapshot doc,
@@ -645,7 +903,7 @@ class _DriverConductorManagementScreenState
     return snapshot.docs.map((doc) => doc['vehicleId'].toString()).toList();
   }
 
-  // Vehicle selector dialog
+  // Vehicle selector dialog (for driver/conductor)
   void _showVehicleSelector(
     BuildContext context,
     QueryDocumentSnapshot doc,
@@ -685,7 +943,7 @@ class _DriverConductorManagementScreenState
                       items: vehicles.map((v) {
                         return DropdownMenuItem<String>(
                           value: v,
-                          child: Text('Vehicle $v'),
+                          child: Text('UNIT $v'),
                         );
                       }).toList(),
                       onChanged: (val) {
@@ -724,18 +982,95 @@ class _DriverConductorManagementScreenState
     );
   }
 
+  // Area selector dialog (for inspector) - gaya gaya tungko at road 2
+  void _showAreaSelector(
+    BuildContext context,
+    QueryDocumentSnapshot doc,
+    Map<String, dynamic> inspectorData,
+  ) {
+    final data = doc.data() as Map<String, dynamic>;
+
+    final List<String> areas = ['Gaya-gaya', 'Tungko', 'Road 2 Route'];
+
+    String currentArea =
+        data['assignedArea']?.toString() ??
+        (areas.isNotEmpty ? areas.first : 'Not assigned');
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _hasAssignment(data)
+                          ? 'Change Assignment Area for ${inspectorData['name']}'
+                          : 'Assign Area for ${inspectorData['name']}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButton<String>(
+                      value: currentArea,
+                      isExpanded: true,
+                      items: areas.map((area) {
+                        return DropdownMenuItem<String>(
+                          value: area,
+                          child: Text(area),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        setState(() => currentArea = val!);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () async {
+                            await _updateInspectorAssignment(
+                              doc.id,
+                              currentArea,
+                              inspectorData,
+                            );
+                            Navigator.pop(context);
+                          },
+                          child: Text(
+                            _hasAssignment(data) ? 'Update' : 'Assign',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   // Build responsive employee card for mobile view
   Widget _buildEmployeeCard(QueryDocumentSnapshot doc, int index) {
     final data = doc.data() as Map<String, dynamic>;
     final employeeId = data['employeeId']?.toString() ?? 'N/A';
     final role = data['role']?.toString() ?? '';
     final roleColor = _getRoleColor(role);
-    final vehicleStatusColor = _getVehicleStatusColor(
-      data['assignedVehicle']?.toString(),
-    );
-    final scheduleStatusColor = _getScheduleStatusColor(
-      data['schedule']?.toString(),
-    );
+    final isInspector = _isInspector(data);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -762,19 +1097,14 @@ class _DriverConductorManagementScreenState
                       const SizedBox(height: 2),
                       Text(
                         'No. ${index + 1}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.black, // Changed to black
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.black),
                       ),
                     ],
                   ),
                 ),
+                // CHANGED: Pencil icon instead of 3 dots
                 IconButton(
-                  icon: const Icon(
-                    Icons.more_vert,
-                    color: Colors.black,
-                  ), // Changed to black
+                  icon: const Icon(Icons.edit, color: Colors.black),
                   onPressed: () => _showActionMenu(context, doc),
                 ),
               ],
@@ -791,17 +1121,32 @@ class _DriverConductorManagementScreenState
               'Employment Type',
               data['employmentType']?.toString() ?? 'N/A',
             ),
-            _buildInfoRow(
-              'Vehicle',
-              data['assignedVehicle'] != null
-                  ? 'UNIT ${data['assignedVehicle']}'
-                  : 'Not assigned',
-              valueColor: vehicleStatusColor,
-            ),
+
+            // Show Vehicle for driver/conductor, Assigned Area for inspector
+            if (!isInspector) ...[
+              _buildInfoRow(
+                'Vehicle',
+                data['assignedVehicle'] != null
+                    ? 'UNIT ${data['assignedVehicle']}'
+                    : 'Not assigned',
+                valueColor: _getVehicleStatusColor(
+                  data['assignedVehicle']?.toString(),
+                ),
+              ),
+            ] else ...[
+              _buildInfoRow(
+                'Assigned Area',
+                data['assignedArea']?.toString() ?? 'Not assigned',
+                valueColor: _getAssignmentStatusColor(
+                  data['assignedArea']?.toString(),
+                ),
+              ),
+            ],
+
             _buildInfoRow(
               'Schedule',
               data['schedule']?.toString() ?? 'Not set',
-              valueColor: scheduleStatusColor,
+              valueColor: _getScheduleStatusColor(data['schedule']?.toString()),
             ),
           ],
         ),
@@ -858,19 +1203,57 @@ class _DriverConductorManagementScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Search Bar
+            // Role Filter and Search Bar
             Container(
               padding: const EdgeInsets.all(16),
-              child: TextField(
-                controller: searchCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Search by name or ID',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+              child: Column(
+                children: [
+                  // Role Filter
+                  Container(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      children: [
+                        const Text('Filter by Role:'),
+                        const SizedBox(width: 12),
+                        DropdownButton<String>(
+                          value: selectedRole,
+                          items: const [
+                            DropdownMenuItem(value: 'all', child: Text('All')),
+                            DropdownMenuItem(
+                              value: 'driver',
+                              child: Text('Driver'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'conductor',
+                              child: Text('Conductor'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'inspector',
+                              child: Text('Inspector'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              selectedRole = value!;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                onChanged: (value) => setState(() => searchQuery = value),
+                  // Search Bar
+                  TextField(
+                    controller: searchCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Search by name or ID',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onChanged: (value) => setState(() => searchQuery = value),
+                  ),
+                ],
               ),
             ),
 
@@ -944,7 +1327,7 @@ class _DriverConductorManagementScreenState
             columnSpacing: 12,
             horizontalMargin: 8,
             headingRowColor: WidgetStateColor.resolveWith(
-              (states) => Color(0xFF0D2364),
+              (states) => const Color(0xFF0D2364),
             ),
             columns: const [
               DataColumn(
@@ -994,7 +1377,7 @@ class _DriverConductorManagementScreenState
               ),
               DataColumn(
                 label: Text(
-                  'VEHICLE',
+                  'ASSIGN',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -1045,7 +1428,7 @@ class _DriverConductorManagementScreenState
             columnSpacing: 20,
             horizontalMargin: 12,
             headingRowColor: WidgetStateColor.resolveWith(
-              (states) => Color(0xFF0D2364),
+              (states) => const Color(0xFF0D2364),
             ),
             columns: const [
               DataColumn(
@@ -1095,7 +1478,7 @@ class _DriverConductorManagementScreenState
               ),
               DataColumn(
                 label: Text(
-                  'VEHICLE',
+                  'ASSIGN',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -1143,16 +1526,33 @@ class _DriverConductorManagementScreenState
     final employeeId = data['employeeId']?.toString() ?? 'N/A';
     final role = data['role']?.toString() ?? '';
     final roleColor = _getRoleColor(role);
-    final vehicleStatusColor = _getVehicleStatusColor(
-      data['assignedVehicle']?.toString(),
-    );
+    final isInspector = _isInspector(data);
+
+    // Determine assignment text and color based on role
+    String assignmentText;
+    Color assignmentColor;
+
+    if (isInspector) {
+      assignmentText = data['assignedArea']?.toString() ?? 'Not assigned';
+      assignmentColor = _getAssignmentStatusColor(
+        data['assignedArea']?.toString(),
+      );
+    } else {
+      assignmentText = data['assignedVehicle'] != null
+          ? 'UNIT ${data['assignedVehicle']}'
+          : 'Not assigned';
+      assignmentColor = _getVehicleStatusColor(
+        data['assignedVehicle']?.toString(),
+      );
+    }
+
     final scheduleStatusColor = _getScheduleStatusColor(
       data['schedule']?.toString(),
     );
 
     return DataRow(
       cells: [
-        // NO. (Number) - Changed to black
+        // NO. (Number)
         DataCell(
           SizedBox(
             width: isCompact ? 60 : 80,
@@ -1160,7 +1560,7 @@ class _DriverConductorManagementScreenState
               (index + 1).toString(),
               style: TextStyle(
                 fontSize: isCompact ? 12 : 14,
-                color: Colors.black, // Changed to black
+                color: Colors.black,
               ),
             ),
           ),
@@ -1191,9 +1591,9 @@ class _DriverConductorManagementScreenState
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: roleColor.withAlpha(1),
+              color: roleColor.withAlpha(30),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: roleColor.withAlpha(3)),
+              border: Border.all(color: roleColor),
             ),
             child: Text(
               _capitalizeRole(role),
@@ -1216,21 +1616,19 @@ class _DriverConductorManagementScreenState
             ),
           ),
         ),
-        // VEHICLE
+        // ASSIGNMENT (Vehicle for driver/conductor, Area for inspector)
         DataCell(
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: vehicleStatusColor.withAlpha(1),
+              color: assignmentColor.withAlpha(30),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: vehicleStatusColor.withAlpha(3)),
+              border: Border.all(color: assignmentColor),
             ),
             child: Text(
-              data['assignedVehicle'] != null
-                  ? 'UNIT ${data['assignedVehicle']}'
-                  : 'Not assigned',
+              assignmentText,
               style: TextStyle(
-                color: vehicleStatusColor,
+                color: assignmentColor,
                 fontWeight: FontWeight.w600,
                 fontSize: isCompact ? 11 : 12,
               ),
@@ -1242,9 +1640,9 @@ class _DriverConductorManagementScreenState
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: scheduleStatusColor.withAlpha(1),
+              color: scheduleStatusColor.withAlpha(30),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: scheduleStatusColor.withAlpha(3)),
+              border: Border.all(color: scheduleStatusColor),
             ),
             child: Text(
               data['schedule']?.toString() ?? 'Not set',
@@ -1256,13 +1654,13 @@ class _DriverConductorManagementScreenState
             ),
           ),
         ),
-        // ACTION - Changed to black
+        // ACTION - CHANGED: Pencil icon instead of 3 dots
         DataCell(
           IconButton(
             icon: Icon(
-              Icons.more_vert,
+              Icons.edit, // CHANGED: Pencil icon
               size: isCompact ? 18 : 24,
-              color: Colors.black, // Changed to black
+              color: Colors.black,
             ),
             onPressed: () => _showActionMenu(context, doc),
           ),
