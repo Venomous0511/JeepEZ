@@ -83,42 +83,46 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
   /// Fetch employeeId for the violator based on name and position
   Future<String?> _fetchViolatorEmployeeId(String name, String position) async {
     try {
-      // Try exact match first
+      // Normalize input: remove commas, extra spaces, lowercase, split and sort
+      List<String> inputWords = name
+          .toLowerCase()
+          .replaceAll(',', '')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim()
+          .split(' ')
+        ..sort();
+
+      // Search by role first
       final querySnapshot = await FirebaseFirestore.instance
           .collection('users')
-          .where('name', isEqualTo: name)
           .where('role', isEqualTo: position.toLowerCase())
-          .limit(1)
           .get();
 
-      if (querySnapshot.docs.isNotEmpty) {
-        final employeeId = querySnapshot.docs.first
-            .data()['employeeId']
-            ?.toString();
-        if (employeeId != null && employeeId.isNotEmpty) {
-          return employeeId;
-        }
-      }
-
-      // If no exact match, try case-insensitive search
-      final allUsers = await FirebaseFirestore.instance
-          .collection('users')
-          .get();
-
-      for (var doc in allUsers.docs) {
+      // Compare normalized names
+      for (var doc in querySnapshot.docs) {
         final data = doc.data();
-        final userName = data['name']?.toString().toLowerCase() ?? '';
-        final userRole = data['role']?.toString().toLowerCase() ?? '';
+        final dbName = data['name']?.toString() ?? '';
 
-        if (userName == name.toLowerCase() &&
-            userRole == position.toLowerCase()) {
+        // Normalize database name the same way
+        List<String> dbWords = dbName
+            .toLowerCase()
+            .replaceAll(',', '')
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim()
+            .split(' ')
+          ..sort();
+
+        // Compare sorted word lists
+        if (inputWords.join(' ') == dbWords.join(' ')) {
           final employeeId = data['employeeId']?.toString();
           if (employeeId != null && employeeId.isNotEmpty) {
+            debugPrint('Found employee: $dbName with ID: $employeeId');
             return employeeId;
           }
         }
       }
 
+      debugPrint('No match found for: $name');
       return null;
     } catch (e) {
       debugPrint('Error fetching violator employeeId: $e');

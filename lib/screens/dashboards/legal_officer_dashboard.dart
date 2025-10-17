@@ -1446,7 +1446,18 @@ class _LegalOfficerDashboardScreenState
     return StreamBuilder<Map<String, int>>(
       stream: getViolationCountsStream(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const CircularProgressIndicator();
+        if (!snapshot.hasData) {
+          return const Center(
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+          );
+        }
 
         final counts = snapshot.data!;
         if (counts.isEmpty) return const Text('No violations found');

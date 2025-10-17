@@ -923,8 +923,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                                 vertical: 12,
                               ),
                               child: TextField(
-                                controller:
-                                ticketRows[rowIndex][colIndex],
+                                controller: ticketRows[rowIndex][colIndex],
                                 textAlign: TextAlign.center,
                                 keyboardType: TextInputType.number,
                                 decoration: const InputDecoration(
@@ -937,24 +936,31 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                                   fontSize: isSmallScreen ? 12 : 14,
                                   color: Colors.black,
                                 ),
+                                onTap: () {
+                                  if (ticketRows[rowIndex][colIndex].text == '0') {
+                                    ticketRows[rowIndex][colIndex].clear();
+                                  }
+                                },
                                 onChanged: (value) {
                                   if (value.isNotEmpty &&
-                                      !RegExp(r'^[0-9]*$')
-                                          .hasMatch(value)) {
-                                    ticketRows[rowIndex][colIndex]
-                                        .text = value.replaceAll(
+                                      !RegExp(r'^[0-9]*$').hasMatch(value)) {
+                                    ticketRows[rowIndex][colIndex].text = value.replaceAll(
                                       RegExp(r'[^0-9]'),
                                       '',
                                     );
-                                    ticketRows[rowIndex][colIndex]
-                                        .selection =
+                                    ticketRows[rowIndex][colIndex].selection =
                                         TextSelection.fromPosition(
                                           TextPosition(
-                                            offset: ticketRows[rowIndex]
-                                            [colIndex]
-                                                .text
-                                                .length,
+                                            offset: ticketRows[rowIndex][colIndex].text.length,
                                           ),
+                                        );
+                                  }
+                                  // If field becomes empty, reset to '0'
+                                  if (value.isEmpty) {
+                                    ticketRows[rowIndex][colIndex].text = '0';
+                                    ticketRows[rowIndex][colIndex].selection =
+                                        TextSelection.fromPosition(
+                                          const TextPosition(offset: 1),
                                         );
                                   }
                                 },

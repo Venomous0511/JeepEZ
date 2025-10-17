@@ -1,8 +1,3 @@
-// Key changes in this file:
-// 1. Auto-cleanup now runs in _buildSubmittedApplications StreamBuilder
-// 2. Rejected applications are properly tracked with rejectedAt timestamp
-// 3. Better error handling for auto-deletion
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
