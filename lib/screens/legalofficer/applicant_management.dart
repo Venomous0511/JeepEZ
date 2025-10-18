@@ -3,35 +3,57 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io' show File;
+import 'package:url_launcher/url_launcher.dart';
 
 class Candidate {
   final String id;
-  String name;
+  String firstName;
+  String middleName;
+  String lastName;
   String position;
   String interviewDate;
+  String interviewTime;
   String? resumeUrl;
   String? resumeFileName;
   Map<String, bool> requirements;
   DateTime? createdAt;
   DateTime? updatedAt;
+  DateTime? archivedAt;
 
   Candidate({
     required this.id,
-    required this.name,
+    required this.firstName,
+    required this.middleName,
+    required this.lastName,
     required this.position,
     required this.interviewDate,
+    required this.interviewTime,
     this.resumeUrl,
     this.resumeFileName,
     Map<String, bool>? requirements,
     this.createdAt,
     this.updatedAt,
-  }) : requirements = requirements ?? _getDefaultRequirements('');
+    this.archivedAt,
+  }) : requirements =
+           requirements ??
+           _getDefaultRequirements(position); // FIXED: Pass position here
+
+  // Get full name
+  String get fullName {
+    List<String> names = [firstName];
+    if (middleName.isNotEmpty) names.add(middleName);
+    names.add(lastName);
+    return names.join(' ');
+  }
 
   // Method to get default requirements based on position
   static Map<String, bool> _getDefaultRequirements(String position) {
-    switch (position.toLowerCase()) {
+    String lowerPosition = position.toLowerCase(); // FIXED: Case insensitive
+
+    switch (lowerPosition) {
       case 'driver':
         return {
+          'Resume': false,
           'Driver License': false,
           'Government Issued IDs': false,
           'NBI Clearance': false,
@@ -44,6 +66,7 @@ class Candidate {
       case 'inspector':
       case 'legal officer':
         return {
+          'Resume': false,
           'Government Issued IDs': false,
           'NBI Clearance': false,
           'Barangay Clearance': false,
@@ -53,6 +76,7 @@ class Candidate {
         };
       default:
         return {
+          'Resume': false,
           'Government Issued IDs': false,
           'NBI Clearance': false,
           'Barangay Clearance': false,
@@ -79,29 +103,53 @@ class Candidate {
 
   Map<String, dynamic> toMap() {
     return {
-      'name': name,
+      'firstName': firstName,
+      'middleName': middleName,
+      'lastName': lastName,
       'position': position,
       'interviewDate': interviewDate,
+      'interviewTime': interviewTime,
       'resumeUrl': resumeUrl,
       'resumeFileName': resumeFileName,
       'requirements': requirements,
       'updatedAt': FieldValue.serverTimestamp(),
+      'archivedAt': archivedAt != null ? Timestamp.fromDate(archivedAt!) : null,
     };
   }
 
   factory Candidate.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+    // FIXED: Ensure requirements are properly initialized based on position
+    Map<String, bool>? existingRequirements;
+    if (data['requirements'] != null) {
+      existingRequirements = Map<String, bool>.from(data['requirements']);
+    }
+
     return Candidate(
       id: doc.id,
-      name: data['name'] ?? '',
+      firstName: data['firstName'] ?? '',
+      middleName: data['middleName'] ?? '',
+      lastName: data['lastName'] ?? '',
       position: data['position'] ?? '',
       interviewDate: data['interviewDate'] ?? '',
+      interviewTime: data['interviewTime'] ?? '',
       resumeUrl: data['resumeUrl'],
       resumeFileName: data['resumeFileName'],
-      requirements: Map<String, bool>.from(data['requirements'] ?? {}),
+      requirements:
+          existingRequirements, // Use existing requirements if available
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+      archivedAt: (data['archivedAt'] as Timestamp?)?.toDate(),
     );
+  }
+
+  // Check if candidate should be automatically removed (archived for more than 30 days)
+  bool shouldBeRemoved() {
+    if (archivedAt == null) return false;
+    final now = DateTime.now();
+    final daysInArchive = now.difference(archivedAt!).inDays;
+    return daysInArchive > 30;
   }
 }
 
@@ -132,14 +180,41 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Auto-clean archived candidates on app start
+    _cleanExpiredArchives();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
+  // Clean candidates that have been archived for more than 30 days
+  Future<void> _cleanExpiredArchives() async {
+    try {
+      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
+      final expiredQuery = _firestore
+          .collection('candidates')
+          .where('archivedAt', isLessThan: Timestamp.fromDate(thirtyDaysAgo));
+
+      final snapshot = await expiredQuery.get();
+
+      for (final doc in snapshot.docs) {
+        final candidate = Candidate.fromFirestore(doc);
+        await _deleteCandidatePermanently(candidate);
+      }
+    } catch (e) {
+      debugPrint('Error cleaning expired archives: $e');
+    }
+  }
+
   Stream<List<Candidate>> _getCandidatesStream() {
     Query query = _firestore
         .collection('candidates')
+        .where('archivedAt', isNull: true) // Only show non-archived candidates
         .orderBy('createdAt', descending: true);
 
     if (_selectedFilter != 'All') {
@@ -158,7 +233,7 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
 
     final search = _searchController.text.toLowerCase();
     return candidates.where((candidate) {
-      return candidate.name.toLowerCase().contains(search) ||
+      return candidate.fullName.toLowerCase().contains(search) ||
           candidate.position.toLowerCase().contains(search);
     }).toList();
   }
@@ -227,11 +302,63 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
     }
   }
 
+  Future<void> _archiveCandidate(Candidate candidate) async {
+    try {
+      setState(() => _isLoading = true);
+
+      // Mark as archived with current timestamp
+      await _firestore.collection('candidates').doc(candidate.id).update({
+        'archivedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${candidate.fullName} has been archived')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error archiving candidate: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _deleteCandidatePermanently(Candidate candidate) async {
+    try {
+      // Delete resume file if exists
+      if (candidate.resumeUrl != null) {
+        try {
+          await _storage.refFromURL(candidate.resumeUrl!).delete();
+        } catch (e) {
+          debugPrint('Error deleting resume file: $e');
+        }
+      }
+
+      // Delete candidate document
+      await _firestore.collection('candidates').doc(candidate.id).delete();
+    } catch (e) {
+      debugPrint('Error permanently deleting candidate: $e');
+    }
+  }
+
   void _showCandidateDialog({Candidate? candidate}) {
     final isEditing = candidate != null;
-    final nameController = TextEditingController(text: candidate?.name ?? '');
+    final firstNameController = TextEditingController(
+      text: candidate?.firstName ?? '',
+    );
+    final middleNameController = TextEditingController(
+      text: candidate?.middleName ?? '',
+    );
+    final lastNameController = TextEditingController(
+      text: candidate?.lastName ?? '',
+    );
 
-    // FIX: Ensure the initial value exists in the position options
+    // FIXED: Ensure the initial value exists in the position options
     String selectedPosition;
     if (candidate?.position != null &&
         _positionOptions.contains(candidate!.position)) {
@@ -243,7 +370,11 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
     final dateController = TextEditingController(
       text: candidate?.interviewDate ?? '',
     );
+    final timeController = TextEditingController(
+      text: candidate?.interviewTime ?? '',
+    );
     DateTime? selectedDate;
+    TimeOfDay? selectedTime;
 
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
@@ -259,20 +390,45 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                 style: TextStyle(fontSize: isMobile ? 16 : 18),
               ),
               content: SizedBox(
-                width: isMobile ? double.maxFinite : 400,
+                width: isMobile ? double.maxFinite : 500,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // First Name
                       TextField(
-                        controller: nameController,
+                        controller: firstNameController,
                         decoration: const InputDecoration(
-                          labelText: 'Name',
+                          labelText: 'First Name *',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.person),
                         ),
                       ),
+                      const SizedBox(height: 12),
+
+                      // Middle Name
+                      TextField(
+                        controller: middleNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Middle Name',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Last Name
+                      TextField(
+                        controller: lastNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Last Name *',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                      ),
                       const SizedBox(height: 16),
+
+                      // Position Dropdown
                       DropdownButtonFormField<String>(
                         value: selectedPosition,
                         onChanged: (String? newValue) {
@@ -280,9 +436,7 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                             selectedPosition = newValue!;
                             // Update requirements when position changes
                             if (isEditing) {
-                              candidate.updateRequirementsForPosition(
-                                newValue,
-                              );
+                              candidate.updateRequirementsForPosition(newValue);
                             }
                           });
                         },
@@ -295,48 +449,182 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                           );
                         }).toList(),
                         decoration: const InputDecoration(
-                          labelText: 'Position',
+                          labelText: 'Position *',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.work),
                         ),
                       ),
                       const SizedBox(height: 16),
-                      TextField(
-                        controller: dateController,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          labelText: 'Interview Date',
-                          border: const OutlineInputBorder(),
-                          prefixIcon: const Icon(Icons.calendar_today),
-                          suffixIcon: IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              setDialogState(() {
-                                dateController.clear();
-                                selectedDate = null;
-                              });
-                            },
-                          ),
-                        ),
-                        onTap: () async {
-                          final DateTime? pickedDate = await showDatePicker(
-                            context: context,
-                            initialDate: selectedDate ?? DateTime.now(),
-                            firstDate: DateTime(2000),
-                            lastDate: DateTime(2100),
-                          );
 
-                          if (pickedDate != null) {
-                            setDialogState(() {
-                              selectedDate = pickedDate;
-                              dateController.text =
-                                  '${pickedDate.month.toString().padLeft(2, '0')}/'
-                                  '${pickedDate.day.toString().padLeft(2, '0')}/'
-                                  '${pickedDate.year.toString().substring(2)}';
-                            });
-                          }
-                        },
-                      ),
+                      // Interview Date and Time in a row for desktop
+                      if (!isMobile)
+                        Row(
+                          children: [
+                            // Date Picker
+                            Expanded(
+                              child: TextField(
+                                controller: dateController,
+                                readOnly: true,
+                                decoration: InputDecoration(
+                                  labelText: 'Interview Date *',
+                                  border: const OutlineInputBorder(),
+                                  prefixIcon: const Icon(Icons.calendar_today),
+                                  suffixIcon: IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () {
+                                      setDialogState(() {
+                                        dateController.clear();
+                                        selectedDate = null;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                onTap: () async {
+                                  final DateTime? pickedDate =
+                                      await showDatePicker(
+                                        context: context,
+                                        initialDate:
+                                            selectedDate ?? DateTime.now(),
+                                        firstDate: DateTime(2000),
+                                        lastDate: DateTime(2100),
+                                      );
+
+                                  if (pickedDate != null) {
+                                    setDialogState(() {
+                                      selectedDate = pickedDate;
+                                      dateController.text =
+                                          '${pickedDate.month.toString().padLeft(2, '0')}/'
+                                          '${pickedDate.day.toString().padLeft(2, '0')}/'
+                                          '${pickedDate.year.toString().substring(2)}';
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+
+                            // Time Picker
+                            Expanded(
+                              child: TextField(
+                                controller: timeController,
+                                readOnly: true,
+                                decoration: InputDecoration(
+                                  labelText: 'Interview Time *',
+                                  border: const OutlineInputBorder(),
+                                  prefixIcon: const Icon(Icons.access_time),
+                                  suffixIcon: IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () {
+                                      setDialogState(() {
+                                        timeController.clear();
+                                        selectedTime = null;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                onTap: () async {
+                                  final TimeOfDay? pickedTime =
+                                      await showTimePicker(
+                                        context: context,
+                                        initialTime:
+                                            selectedTime ?? TimeOfDay.now(),
+                                      );
+
+                                  if (pickedTime != null) {
+                                    setDialogState(() {
+                                      selectedTime = pickedTime;
+                                      timeController.text =
+                                          '${pickedTime.hour.toString().padLeft(2, '0')}:'
+                                          '${pickedTime.minute.toString().padLeft(2, '0')}';
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        Column(
+                          children: [
+                            // Date Picker for mobile
+                            TextField(
+                              controller: dateController,
+                              readOnly: true,
+                              decoration: InputDecoration(
+                                labelText: 'Interview Date *',
+                                border: const OutlineInputBorder(),
+                                prefixIcon: const Icon(Icons.calendar_today),
+                                suffixIcon: IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    setDialogState(() {
+                                      dateController.clear();
+                                      selectedDate = null;
+                                    });
+                                  },
+                                ),
+                              ),
+                              onTap: () async {
+                                final DateTime? pickedDate =
+                                    await showDatePicker(
+                                      context: context,
+                                      initialDate:
+                                          selectedDate ?? DateTime.now(),
+                                      firstDate: DateTime(2000),
+                                      lastDate: DateTime(2100),
+                                    );
+
+                                if (pickedDate != null) {
+                                  setDialogState(() {
+                                    selectedDate = pickedDate;
+                                    dateController.text =
+                                        '${pickedDate.month.toString().padLeft(2, '0')}/'
+                                        '${pickedDate.day.toString().padLeft(2, '0')}/'
+                                        '${pickedDate.year.toString().substring(2)}';
+                                  });
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Time Picker for mobile
+                            TextField(
+                              controller: timeController,
+                              readOnly: true,
+                              decoration: InputDecoration(
+                                labelText: 'Interview Time *',
+                                border: const OutlineInputBorder(),
+                                prefixIcon: const Icon(Icons.access_time),
+                                suffixIcon: IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    setDialogState(() {
+                                      timeController.clear();
+                                      selectedTime = null;
+                                    });
+                                  },
+                                ),
+                              ),
+                              onTap: () async {
+                                final TimeOfDay? pickedTime =
+                                    await showTimePicker(
+                                      context: context,
+                                      initialTime:
+                                          selectedTime ?? TimeOfDay.now(),
+                                    );
+
+                                if (pickedTime != null) {
+                                  setDialogState(() {
+                                    selectedTime = pickedTime;
+                                    timeController.text =
+                                        '${pickedTime.hour.toString().padLeft(2, '0')}:'
+                                        '${pickedTime.minute.toString().padLeft(2, '0')}';
+                                  });
+                                }
+                              },
+                            ),
+                          ],
+                        ),
                     ],
                   ),
                 ),
@@ -352,27 +640,48 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () {
-                    if (nameController.text.isNotEmpty &&
+                    if (firstNameController.text.isNotEmpty &&
+                        lastNameController.text.isNotEmpty &&
                         selectedPosition.isNotEmpty &&
-                        dateController.text.isNotEmpty) {
+                        dateController.text.isNotEmpty &&
+                        timeController.text.isNotEmpty) {
                       if (isEditing) {
-                        candidate.name = nameController.text;
+                        candidate.firstName = firstNameController.text;
+                        candidate.middleName = middleNameController.text;
+                        candidate.lastName = lastNameController.text;
                         candidate.position = selectedPosition;
                         candidate.interviewDate = dateController.text;
+                        candidate.interviewTime = timeController.text;
                         _updateCandidate(candidate);
                       } else {
+                        // FIXED: Create candidate with position to generate correct requirements
                         final newCandidate = Candidate(
                           id: '',
-                          name: nameController.text,
-                          position: selectedPosition,
+                          firstName: firstNameController.text,
+                          middleName: middleNameController.text,
+                          lastName: lastNameController.text,
+                          position:
+                              selectedPosition, // This will generate correct requirements
                           interviewDate: dateController.text,
+                          interviewTime: timeController.text,
                         );
+
+                        // DEBUG: Print requirements to verify
+                        debugPrint(
+                          'Creating candidate with position: $selectedPosition',
+                        );
+                        debugPrint(
+                          'Requirements: ${newCandidate.requirements}',
+                        );
+
                         _addCandidate(newCandidate);
                       }
                       Navigator.pop(context);
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please fill all fields')),
+                        const SnackBar(
+                          content: Text('Please fill all required fields (*)'),
+                        ),
                       );
                     }
                   },
@@ -392,14 +701,25 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
         type: FileType.custom,
         allowedExtensions: ['pdf'], // Only PDF
         allowMultiple: false,
-        withData: true, // Get bytes for all platforms
+        withData: true,
       );
 
       if (result != null && result.files.isNotEmpty) {
-        setState(() => _isLoading = true);
-
         PlatformFile file = result.files.first;
 
+        // Check file size (3MB limit)
+        if (file.size > 3 * 1024 * 1024) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('File size must be less than 3MB')),
+            );
+          }
+          return;
+        }
+
+        setState(() => _isLoading = true);
+
+        // Delete old resume if exists
         if (candidate.resumeUrl != null) {
           try {
             await _storage.refFromURL(candidate.resumeUrl!).delete();
@@ -436,11 +756,17 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
 
         candidate.resumeUrl = downloadUrl;
         candidate.resumeFileName = file.name;
+
+        // Mark resume requirement as completed
+        candidate.requirements['Resume'] = true;
+
         await _updateCandidate(candidate);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Resume uploaded for ${candidate.name}')),
+            SnackBar(
+              content: Text('Resume uploaded for ${candidate.fullName}'),
+            ),
           );
         }
       }
@@ -455,84 +781,16 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
     }
   }
 
-  void _viewResume(Candidate candidate) {
-    if (candidate.resumeUrl == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('No resume available')));
-      return;
+  Future<void> _viewResumeInBrowser(String url) async {
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url));
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Cannot open resume')));
+      }
     }
-
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            'Resume - ${candidate.name}',
-            style: TextStyle(fontSize: isMobile ? 16 : 18),
-          ),
-          content: SizedBox(
-            width: isMobile ? double.maxFinite : 400,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Position: ${candidate.position}',
-                    style: TextStyle(fontSize: isMobile ? 13 : 14),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'File: ${candidate.resumeFileName ?? "Unknown"}',
-                    style: TextStyle(fontSize: isMobile ? 12 : 14),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Resume stored and can be downloaded',
-                    style: TextStyle(
-                      fontSize: isMobile ? 12 : 14,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.download),
-                      label: const Text('Download Resume'),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Resume URL: ${candidate.resumeUrl}'),
-                            duration: const Duration(seconds: 5),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0D2364),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   void _showRequirementsChecklist(Candidate candidate) {
@@ -544,6 +802,27 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            // FIXED: Ensure all requirements are properly initialized
+            _initializeRequirements(candidate);
+
+            // Auto-check Resume if already uploaded
+            if (candidate.resumeUrl != null &&
+                !candidate.requirements['Resume']!) {
+              candidate.requirements['Resume'] = true;
+            }
+
+            // Get ALL requirements without filtering
+            List<MapEntry<String, bool>> requirementsList = candidate
+                .requirements
+                .entries
+                .toList();
+
+            // Sort requirements: checked items first, then unchecked
+            requirementsList.sort((a, b) {
+              if (a.value == b.value) return 0;
+              return a.value ? -1 : 1;
+            });
+
             return AlertDialog(
               title: Row(
                 children: [
@@ -555,7 +834,7 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Requirements - ${candidate.name}',
+                      'Requirements - ${candidate.fullName}',
                       style: TextStyle(fontSize: isMobile ? 14 : 16),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -595,16 +874,26 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      ...candidate.requirements.keys.map((key) {
+
+                      // Requirements Checklist - Show ALL requirements
+                      ...requirementsList.map((entry) {
                         return _buildRequirementItem(
-                          key,
-                          candidate.requirements[key] ?? false,
+                          entry.key,
+                          entry.value,
                           (value) {
                             setDialogState(() {
-                              candidate.requirements[key] = value;
+                              candidate.requirements[entry.key] = value;
+                              // Re-sort when value changes
+                              requirementsList =
+                                  candidate.requirements.entries.toList()
+                                    ..sort((a, b) {
+                                      if (a.value == b.value) return 0;
+                                      return a.value ? -1 : 1;
+                                    });
                             });
                           },
                           isMobile,
+                          candidate: candidate,
                         );
                       }),
                       const SizedBox(height: 16),
@@ -653,14 +942,42 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
     );
   }
 
+  // FIXED: New method to ensure requirements are properly initialized
+  void _initializeRequirements(Candidate candidate) {
+    final defaultRequirements = Candidate._getDefaultRequirements(
+      candidate.position,
+    );
+
+    // Add any missing requirements from the default set
+    for (var requirement in defaultRequirements.keys) {
+      if (!candidate.requirements.containsKey(requirement)) {
+        candidate.requirements[requirement] = false;
+      }
+    }
+
+    // Remove any requirements that shouldn't be there for this position
+    List<String> requirementsToRemove = [];
+    for (var requirement in candidate.requirements.keys) {
+      if (!defaultRequirements.containsKey(requirement)) {
+        requirementsToRemove.add(requirement);
+      }
+    }
+
+    for (var requirement in requirementsToRemove) {
+      candidate.requirements.remove(requirement);
+    }
+  }
+
   Widget _buildRequirementItem(
     String title,
     bool isChecked,
     Function(bool) onChanged,
-    bool isMobile,
-  ) {
+    bool isMobile, {
+    Candidate? candidate,
+  }) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
+      color: isChecked ? Colors.green[50] : null,
       child: ListTile(
         contentPadding: EdgeInsets.symmetric(
           horizontal: isMobile ? 8 : 16,
@@ -668,22 +985,109 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
         ),
         leading: Checkbox(
           value: isChecked,
-          onChanged: (value) => onChanged(value ?? false),
+          onChanged: (value) {
+            // For Resume, only allow unchecking manually, checking happens through upload
+            if (title == 'Resume' &&
+                value == true &&
+                candidate?.resumeUrl == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Please upload resume first')),
+              );
+              return;
+            }
+            onChanged(value ?? false);
+          },
         ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: isMobile ? 13 : 14,
-            decoration: isChecked ? TextDecoration.lineThrough : null,
-            color: isChecked ? Colors.green : Colors.black,
-          ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: isMobile ? 13 : 14,
+                  decoration: isChecked ? TextDecoration.lineThrough : null,
+                  color: isChecked ? Colors.green : Colors.black,
+                ),
+              ),
+            ),
+            // Upload button for Resume requirement
+            if (title == 'Resume') ...[
+              const SizedBox(width: 8),
+              if (candidate != null && candidate.resumeUrl == null)
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.upload, size: 14),
+                  label: Text(
+                    'Upload',
+                    style: TextStyle(fontSize: isMobile ? 11 : 12),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context); // Close the dialog first
+                    _uploadResume(candidate);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0D2364),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 8 : 12,
+                      vertical: isMobile ? 4 : 6,
+                    ),
+                  ),
+                )
+              else if (candidate != null && candidate.resumeUrl != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: isMobile ? 16 : 18,
+                    ),
+                    const SizedBox(width: 4),
+                    SizedBox(
+                      width: isMobile ? 60 : 80,
+                      child: Text(
+                        candidate.resumeFileName ?? 'Resume',
+                        style: TextStyle(
+                          fontSize: isMobile ? 10 : 11,
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: Icon(Icons.visibility, size: isMobile ? 16 : 18),
+                      onPressed: () {
+                        if (candidate.resumeUrl != null) {
+                          _viewResumeInBrowser(candidate.resumeUrl!);
+                        }
+                      },
+                      tooltip: 'View in Browser',
+                      padding: const EdgeInsets.all(4),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.upload, size: isMobile ? 16 : 18),
+                      onPressed: () {
+                        Navigator.pop(context); // Close the dialog first
+                        _uploadResume(candidate);
+                      },
+                      tooltip: 'Reupload',
+                      padding: const EdgeInsets.all(4),
+                    ),
+                  ],
+                ),
+            ],
+          ],
         ),
       ),
     );
   }
 
   Widget _buildCompletionStatus(Candidate candidate, bool isMobile) {
+    // Calculate completion based on ALL requirements
     int completed = candidate.requirements.values
         .where((value) => value)
         .length;
@@ -712,6 +1116,7 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
   }
 
   String _getRequirementsStatus(Candidate candidate) {
+    // Calculate status based on ALL requirements
     int completed = candidate.requirements.values
         .where((value) => value)
         .length;
@@ -720,6 +1125,7 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
   }
 
   Color _getCompletionColor(Candidate candidate) {
+    // Calculate completion based on ALL requirements
     int completed = candidate.requirements.values
         .where((value) => value)
         .length;
@@ -762,13 +1168,22 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
     );
   }
 
-  void _showDeleteDialog(Candidate candidate) {
+  void _showArchiveDialog(Candidate candidate) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Delete Candidate'),
-          content: Text('Are you sure you want to delete ${candidate.name}?'),
+          title: const Row(
+            children: [
+              Icon(Icons.archive, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('Archive Candidate'),
+            ],
+          ),
+          content: Text(
+            'Are you sure you want to archive ${candidate.fullName}? '
+            'Archived candidates will be automatically removed after 30 days.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -776,14 +1191,14 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+                backgroundColor: Colors.orange,
                 foregroundColor: Colors.white,
               ),
               onPressed: () {
-                _deleteCandidate(candidate);
+                _archiveCandidate(candidate);
                 Navigator.pop(context);
               },
-              child: const Text('Delete'),
+              child: const Text('Archive'),
             ),
           ],
         );
@@ -800,24 +1215,24 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
         width: double.infinity,
         height: double.infinity,
         child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
+          scrollDirection: Axis.vertical,
           child: SingleChildScrollView(
-            scrollDirection: Axis.vertical,
+            scrollDirection: Axis.horizontal,
             child: DataTable(
-              columnSpacing: 16,
-              horizontalMargin: 16,
-              dataRowMinHeight: 60,
-              dataRowMaxHeight: 80,
+              columnSpacing: 150,
+              horizontalMargin: 12,
+              dataRowMinHeight: 50,
+              dataRowMaxHeight: 60,
               headingRowColor: WidgetStateProperty.all(const Color(0xFF0D2364)),
               columns: [
                 DataColumn(
                   label: SizedBox(
-                    width: 300,
+                    width: 200,
                     child: Text(
                       'Candidate Name',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: isTablet ? 14 : 16,
+                        fontSize: isTablet ? 13 : 14,
                         color: Colors.white,
                       ),
                     ),
@@ -825,12 +1240,12 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                 ),
                 DataColumn(
                   label: SizedBox(
-                    width: 220,
+                    width: 120,
                     child: Text(
                       'Position',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: isTablet ? 14 : 16,
+                        fontSize: isTablet ? 13 : 14,
                         color: Colors.white,
                       ),
                     ),
@@ -838,12 +1253,12 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                 ),
                 DataColumn(
                   label: SizedBox(
-                    width: 220,
+                    width: 120,
                     child: Text(
                       'Interview Date',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: isTablet ? 14 : 16,
+                        fontSize: isTablet ? 13 : 14,
                         color: Colors.white,
                       ),
                     ),
@@ -851,12 +1266,25 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                 ),
                 DataColumn(
                   label: SizedBox(
-                    width: 220,
+                    width: 120,
+                    child: Text(
+                      'Interview Time',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: isTablet ? 13 : 14,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: SizedBox(
+                    width: 100,
                     child: Text(
                       'Requirements',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: isTablet ? 14 : 16,
+                        fontSize: isTablet ? 13 : 14,
                         color: Colors.white,
                       ),
                     ),
@@ -864,25 +1292,12 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                 ),
                 DataColumn(
                   label: SizedBox(
-                    width: 300,
-                    child: Text(
-                      'Resume',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: isTablet ? 14 : 16,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                DataColumn(
-                  label: SizedBox(
-                    width: 220,
+                    width: 80,
                     child: Text(
                       'Actions',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: isTablet ? 14 : 16,
+                        fontSize: isTablet ? 13 : 14,
                         color: Colors.white,
                       ),
                     ),
@@ -894,22 +1309,23 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                   cells: [
                     DataCell(
                       SizedBox(
-                        width: 250,
+                        width: 180,
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
-                              Icons.star,
-                              color: Colors.amber,
+                              Icons.person,
+                              color: Color(0xFF0D2364),
                               size: 16,
                             ),
                             const SizedBox(width: 8),
                             Flexible(
                               child: Text(
-                                candidate.name,
+                                candidate.fullName,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w500,
-                                  fontSize: isTablet ? 13 : 15,
+                                  fontSize: isTablet ? 12 : 13,
+                                  color: Colors.black87,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -920,39 +1336,58 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                     ),
                     DataCell(
                       SizedBox(
-                        width: 150,
+                        width: 100,
                         child: Text(
                           candidate.position,
-                          style: TextStyle(fontSize: isTablet ? 13 : 15),
+                          style: TextStyle(
+                            fontSize: isTablet ? 12 : 13,
+                            color: Colors.black87,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
                     DataCell(
                       SizedBox(
-                        width: 200,
+                        width: 100,
                         child: Text(
                           candidate.interviewDate,
-                          style: TextStyle(fontSize: isTablet ? 13 : 15),
+                          style: TextStyle(
+                            fontSize: isTablet ? 12 : 13,
+                            color: Colors.black87,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
                     DataCell(
                       SizedBox(
-                        width: 200,
+                        width: 100,
+                        child: Text(
+                          candidate.interviewTime,
+                          style: TextStyle(
+                            fontSize: isTablet ? 12 : 13,
+                            color: Colors.black87,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      SizedBox(
+                        width: 80,
                         child: InkWell(
                           onTap: () => _showRequirementsChecklist(candidate),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
+                              horizontal: 8,
+                              vertical: 4,
                             ),
                             decoration: BoxDecoration(
                               color: _getCompletionColor(
                                 candidate,
-                              ).withAlpha(1),
-                              borderRadius: BorderRadius.circular(12),
+                              ).withAlpha(30),
+                              borderRadius: BorderRadius.circular(8),
                               border: Border.all(
                                 color: _getCompletionColor(candidate),
                               ),
@@ -963,14 +1398,14 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                               children: [
                                 Icon(
                                   Icons.checklist,
-                                  size: 14,
+                                  size: 12,
                                   color: _getCompletionColor(candidate),
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 4),
                                 Text(
                                   _getRequirementsStatus(candidate),
                                   style: TextStyle(
-                                    fontSize: isTablet ? 12 : 14,
+                                    fontSize: isTablet ? 10 : 11,
                                     fontWeight: FontWeight.bold,
                                     color: _getCompletionColor(candidate),
                                   ),
@@ -983,77 +1418,16 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                     ),
                     DataCell(
                       SizedBox(
-                        width: 200,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(
-                              child: ElevatedButton.icon(
-                                icon: const Icon(Icons.upload, size: 16),
-                                label: Text(
-                                  candidate.resumeUrl == null
-                                      ? 'Upload'
-                                      : 'Reupload',
-                                  style: TextStyle(
-                                    fontSize: isTablet ? 12 : 14,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                onPressed: () => _uploadResume(candidate),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF0D2364),
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isTablet ? 8 : 10,
-                                    vertical: isTablet ? 6 : 8,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            if (candidate.resumeUrl != null) ...[
-                              const SizedBox(width: 8),
-                              IconButton(
-                                icon: const Icon(Icons.visibility, size: 18),
-                                onPressed: () => _viewResume(candidate),
-                                tooltip: 'View Resume',
-                                style: IconButton.styleFrom(
-                                  backgroundColor: Colors.green[50],
-                                  foregroundColor: Colors.green,
-                                  padding: const EdgeInsets.all(6),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      SizedBox(
-                        width: 150,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, size: 18),
-                              onPressed: () =>
-                                  _showCandidateDialog(candidate: candidate),
-                              tooltip: 'Edit',
-                              style: IconButton.styleFrom(
-                                backgroundColor: Colors.blue[50],
-                                foregroundColor: Colors.blue,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            IconButton(
-                              icon: const Icon(Icons.delete, size: 18),
-                              onPressed: () => _showDeleteDialog(candidate),
-                              tooltip: 'Delete',
-                              style: IconButton.styleFrom(
-                                backgroundColor: Colors.red[50],
-                                foregroundColor: Colors.red,
-                              ),
-                            ),
-                          ],
+                        width: 60,
+                        child: IconButton(
+                          icon: const Icon(Icons.archive, size: 16),
+                          onPressed: () => _showArchiveDialog(candidate),
+                          tooltip: 'Archive',
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.orange[50],
+                            foregroundColor: Colors.orange,
+                            padding: const EdgeInsets.all(6),
+                          ),
                         ),
                       ),
                     ),
@@ -1080,8 +1454,8 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
           itemBuilder: (context, index) {
             final candidate = candidates[index];
             return Container(
-              margin: const EdgeInsets.all(12),
-              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.grey[50],
                 borderRadius: BorderRadius.circular(8),
@@ -1092,13 +1466,17 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.star, color: Colors.amber, size: 20),
+                      const Icon(
+                        Icons.person,
+                        color: Color(0xFF0D2364),
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          candidate.name,
+                          candidate.fullName,
                           style: const TextStyle(
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF0D2364),
                           ),
@@ -1107,12 +1485,12 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                          horizontal: 6,
+                          vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: _getCompletionColor(candidate).withAlpha(1),
-                          borderRadius: BorderRadius.circular(12),
+                          color: _getCompletionColor(candidate).withAlpha(30),
+                          borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: _getCompletionColor(candidate),
                           ),
@@ -1120,7 +1498,7 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                         child: Text(
                           'REQs: ${_getRequirementsStatus(candidate)}',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: FontWeight.bold,
                             color: _getCompletionColor(candidate),
                           ),
@@ -1128,92 +1506,50 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   _buildCardInfoRow(Icons.work, 'Position', candidate.position),
                   _buildCardInfoRow(
                     Icons.calendar_today,
                     'Interview Date',
                     candidate.interviewDate,
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.upload, size: 16),
-                          label: Text(
-                            candidate.resumeUrl == null
-                                ? 'Upload Resume'
-                                : 'Reupload',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          onPressed: () => _uploadResume(candidate),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0D2364),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      if (candidate.resumeUrl != null)
-                        IconButton(
-                          icon: const Icon(Icons.visibility, size: 20),
-                          onPressed: () => _viewResume(candidate),
-                          tooltip: 'View Resume',
-                          style: IconButton.styleFrom(
-                            backgroundColor: Colors.green[50],
-                            foregroundColor: Colors.green,
-                            padding: const EdgeInsets.all(12),
-                          ),
-                        ),
-                    ],
+                  _buildCardInfoRow(
+                    Icons.access_time,
+                    'Interview Time',
+                    candidate.interviewTime,
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      icon: const Icon(Icons.checklist, size: 16),
+                      icon: const Icon(Icons.checklist, size: 14),
                       label: const Text(
-                        'Requirements',
-                        style: TextStyle(fontSize: 14),
+                        'Requirements & Resume',
+                        style: TextStyle(fontSize: 13),
                       ),
                       onPressed: () => _showRequirementsChecklist(candidate),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF0D2364),
                         side: const BorderSide(color: Color(0xFF0D2364)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.edit, size: 16),
-                          label: const Text('Edit'),
-                          onPressed: () =>
-                              _showCandidateDialog(candidate: candidate),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.blue,
-                            side: const BorderSide(color: Colors.blue),
-                          ),
-                        ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.archive, size: 14),
+                      label: const Text(
+                        'Archive Candidate',
+                        style: TextStyle(fontSize: 13),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.delete, size: 16),
-                          label: const Text('Delete'),
-                          onPressed: () => _showDeleteDialog(candidate),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            side: const BorderSide(color: Colors.red),
-                          ),
-                        ),
+                      onPressed: () => _showArchiveDialog(candidate),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.orange,
+                        side: const BorderSide(color: Colors.orange),
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -1440,36 +1776,6 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
         ),
       ),
     );
-  }
-
-  Future<void> _deleteCandidate(Candidate candidate) async {
-    try {
-      setState(() => _isLoading = true);
-
-      if (candidate.resumeUrl != null) {
-        try {
-          await _storage.refFromURL(candidate.resumeUrl!).delete();
-        } catch (e) {
-          debugPrint('Error deleting resume file: $e');
-        }
-      }
-
-      await _firestore.collection('candidates').doc(candidate.id).delete();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${candidate.name} has been deleted')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error deleting candidate: $e')));
-      }
-    } finally {
-      setState(() => _isLoading = false);
-    }
   }
 
   @override

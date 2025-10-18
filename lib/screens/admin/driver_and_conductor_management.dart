@@ -990,7 +990,7 @@ class _DriverConductorManagementScreenState
   ) {
     final data = doc.data() as Map<String, dynamic>;
 
-    final List<String> areas = ['Gaya-gaya', 'Tungko', 'Road 2 Route'];
+    final List<String> areas = ['Gaya-gaya', 'Tungko', 'Road 2'];
 
     String currentArea =
         data['assignedArea']?.toString() ??
@@ -1102,10 +1102,27 @@ class _DriverConductorManagementScreenState
                     ],
                   ),
                 ),
-                // CHANGED: Pencil icon instead of 3 dots
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.black),
-                  onPressed: () => _showActionMenu(context, doc),
+                // UPDATED: Light blue container with dark blue pencil icon (exactly like the image)
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50, // Light blue background
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.blue.shade100, // Light blue border
+                      width: 1,
+                    ),
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.edit,
+                      size: 18,
+                      color: Colors.blue.shade800, // Dark blue pencil
+                    ),
+                    padding: EdgeInsets.zero,
+                    onPressed: () => _showActionMenu(context, doc),
+                  ),
                 ),
               ],
             ),
@@ -1203,57 +1220,153 @@ class _DriverConductorManagementScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Role Filter and Search Bar
+            // UPDATED: Search and Filter Bar - Responsive Design
             Container(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  // Role Filter
-                  Container(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Row(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final bool isMobile = constraints.maxWidth < 600;
+
+                  if (isMobile) {
+                    // Mobile Layout - Vertical
+                    return Column(
                       children: [
-                        const Text('Filter by Role:'),
-                        const SizedBox(width: 12),
-                        DropdownButton<String>(
-                          value: selectedRole,
-                          items: const [
-                            DropdownMenuItem(value: 'all', child: Text('All')),
-                            DropdownMenuItem(
-                              value: 'driver',
-                              child: Text('Driver'),
+                        // Search Bar - Full width on mobile
+                        TextField(
+                          controller: searchCtrl,
+                          decoration: InputDecoration(
+                            labelText: 'Search by name or ID',
+                            prefixIcon: const Icon(Icons.search),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            DropdownMenuItem(
-                              value: 'conductor',
-                              child: Text('Conductor'),
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 16,
                             ),
-                            DropdownMenuItem(
-                              value: 'inspector',
-                              child: Text('Inspector'),
+                          ),
+                          onChanged: (value) =>
+                              setState(() => searchQuery = value),
+                        ),
+                        const SizedBox(height: 12),
+                        // Filter - Full width on mobile
+                        Row(
+                          children: [
+                            const Text(
+                              'Filter by Role:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: DropdownButton<String>(
+                                value: selectedRole,
+                                isExpanded: true,
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'all',
+                                    child: Text('All'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'driver',
+                                    child: Text('Driver'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'conductor',
+                                    child: Text('Conductor'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'inspector',
+                                    child: Text('Inspector'),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  setState(() {
+                                    selectedRole = value!;
+                                  });
+                                },
+                              ),
                             ),
                           ],
-                          onChanged: (value) {
-                            setState(() {
-                              selectedRole = value!;
-                            });
-                          },
                         ),
                       ],
-                    ),
-                  ),
-                  // Search Bar
-                  TextField(
-                    controller: searchCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Search by name or ID',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onChanged: (value) => setState(() => searchQuery = value),
-                  ),
-                ],
+                    );
+                  } else {
+                    // Desktop/Tablet Layout - Horizontal
+                    return Row(
+                      children: [
+                        // Search Bar - Takes more space
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            controller: searchCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'Search by name or ID',
+                              prefixIcon: const Icon(Icons.search),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 16,
+                              ),
+                            ),
+                            onChanged: (value) =>
+                                setState(() => searchQuery = value),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // Filter - Fixed width
+                        Container(
+                          width: 250,
+                          child: Row(
+                            children: [
+                              const Text(
+                                'Filter by Role:',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DropdownButton<String>(
+                                  value: selectedRole,
+                                  isExpanded: true,
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'all',
+                                      child: Text('All'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'driver',
+                                      child: Text('Driver'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'conductor',
+                                      child: Text('Conductor'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'inspector',
+                                      child: Text('Inspector'),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    setState(() {
+                                      selectedRole = value!;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                },
               ),
             ),
 
@@ -1377,7 +1490,7 @@ class _DriverConductorManagementScreenState
               ),
               DataColumn(
                 label: Text(
-                  'ASSIGN',
+                  'ASSIGN UNIT/AREA',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -1478,7 +1591,7 @@ class _DriverConductorManagementScreenState
               ),
               DataColumn(
                 label: Text(
-                  'ASSIGN',
+                  'ASSIGN UNIT/AREA',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -1654,15 +1767,24 @@ class _DriverConductorManagementScreenState
             ),
           ),
         ),
-        // ACTION - CHANGED: Pencil icon instead of 3 dots
         DataCell(
-          IconButton(
-            icon: Icon(
-              Icons.edit, // CHANGED: Pencil icon
-              size: isCompact ? 18 : 24,
-              color: Colors.black,
+          Container(
+            width: isCompact ? 32 : 36,
+            height: isCompact ? 32 : 36,
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.shade100, width: 1),
             ),
-            onPressed: () => _showActionMenu(context, doc),
+            child: IconButton(
+              icon: Icon(
+                Icons.edit,
+                size: isCompact ? 16 : 18,
+                color: Colors.blue.shade800,
+              ),
+              padding: EdgeInsets.zero,
+              onPressed: () => _showActionMenu(context, doc),
+            ),
           ),
         ),
       ],

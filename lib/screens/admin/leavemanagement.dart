@@ -73,14 +73,18 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
             final daysSinceRejection = now.difference(rejectedAt).inDays;
             if (daysSinceRejection >= 5) {
               shouldDelete = true;
-              debugPrint('Deleting rejected leave (${leaveDoc.id}) - $daysSinceRejection days old');
+              debugPrint(
+                'Deleting rejected leave (${leaveDoc.id}) - $daysSinceRejection days old',
+              );
             }
           }
 
           // Delete completed leave applications (end date has passed)
           if (endDate != null && endDate.isBefore(now)) {
             shouldDelete = true;
-            debugPrint('Deleting completed leave (${leaveDoc.id}) - ended on $endDate');
+            debugPrint(
+              'Deleting completed leave (${leaveDoc.id}) - ended on $endDate',
+            );
           }
 
           if (shouldDelete) {
@@ -217,11 +221,11 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     final endIndex = startIndex + _itemsPerPage;
     return _filteredRequests.length > startIndex
         ? _filteredRequests.sublist(
-      startIndex,
-      endIndex > _filteredRequests.length
-          ? _filteredRequests.length
-          : endIndex,
-    )
+            startIndex,
+            endIndex > _filteredRequests.length
+                ? _filteredRequests.length
+                : endIndex,
+          )
         : [];
   }
 
@@ -237,9 +241,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         .collection('leave_application')
         .doc(req['leaveId'])
         .update({
-      'status': 'Approved',
-      'approvedAt': FieldValue.serverTimestamp(), // ADDED: Track approval time
-    });
+          'status': 'Approved',
+          'approvedAt':
+              FieldValue.serverTimestamp(), // ADDED: Track approval time
+        });
 
     if (mounted) {
       await _loadLeaveRequests();
@@ -310,10 +315,11 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
           .collection('leave_application')
           .doc(req['leaveId'])
           .update({
-        'status': 'Rejected',
-        'rejectionReason': result,
-        'rejectedAt': FieldValue.serverTimestamp(), // This will set the current server time
-      });
+            'status': 'Rejected',
+            'rejectionReason': result,
+            'rejectedAt':
+                FieldValue.serverTimestamp(), // This will set the current server time
+          });
 
       if (mounted) {
         await _loadLeaveRequests();
@@ -323,56 +329,15 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${req['name']}'s leave request has been declined. It will be automatically deleted after 5 days."),
+            content: Text(
+              "${req['name']}'s leave request has been declined. It will be automatically deleted after 5 days.",
+            ),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
           ),
         );
       }
     }
-  }
-
-  /// Show action menu (3 dots)
-  void _showActionMenu(BuildContext context, int index) {
-    final request = _paginatedRequests[index];
-    final status = request['status'] ?? 'Pending';
-
-    if (status != 'Pending') return;
-
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.check_circle, color: Colors.green),
-                title: const Text('Approve Leave Request'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _approveRequest(index);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.cancel, color: Colors.red),
-                title: const Text('Decline Leave Request'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _rejectRequest(index);
-                },
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   @override
@@ -407,18 +372,18 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         Expanded(
           child: _filteredRequests.isEmpty
               ? const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text(
-                  'No leave requests found',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-              ],
-            ),
-          )
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'No leave requests found',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                )
               : _buildResponsiveLayout(),
         ),
         if (_totalPages > 1) _buildPagination(),
@@ -488,10 +453,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
           IconButton(
             onPressed: _currentPage > 0
                 ? () {
-              setState(() {
-                _currentPage--;
-              });
-            }
+                    setState(() {
+                      _currentPage--;
+                    });
+                  }
                 : null,
             icon: const Icon(Icons.chevron_left),
           ),
@@ -502,10 +467,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
           IconButton(
             onPressed: _currentPage < _totalPages - 1
                 ? () {
-              setState(() {
-                _currentPage++;
-              });
-            }
+                    setState(() {
+                      _currentPage++;
+                    });
+                  }
                 : null,
             icon: const Icon(Icons.chevron_right),
           ),
@@ -602,45 +567,121 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(status).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    status.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: _getStatusColor(status),
-                    ),
-                  ),
-                ),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '$days days',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            request['name'] ?? 'Unknown User',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${request['role'] ?? 'No role'} • ID: ${request['employeeId'] ?? 'N/A'}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+
+                          // PENDING STATUS - MOVED BELOW EMPLOYEE ID
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(status).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              status.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: _getStatusColor(status),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+
+                    // MOBILE: VERTICAL BUTTONS (NAGKAKAPATONG)
                     if (status == 'Pending') ...[
                       const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.more_vert, size: 20),
-                        onPressed: () => _showActionMenu(context, index),
+                      Column(
+                        children: [
+                          SizedBox(
+                            width: 80,
+                            child: ElevatedButton(
+                              onPressed: () => _approveRequest(index),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6,
+                                  horizontal: 4,
+                                ),
+                                minimumSize: const Size(0, 30),
+                              ),
+                              child: const Text(
+                                'APPROVE',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          SizedBox(
+                            width: 80,
+                            child: ElevatedButton(
+                              onPressed: () => _rejectRequest(index),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6,
+                                  horizontal: 4,
+                                ),
+                                minimumSize: const Size(0, 30),
+                              ),
+                              child: const Text(
+                                'DECLINE',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ],
+                ),
+
+                const SizedBox(height: 8),
+                Text(
+                  'Applied for $leaveType',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: _getLeaveTypeColor(leaveType),
+                  ),
                 ),
               ],
             ),
@@ -651,35 +692,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      request['name'] ?? 'Unknown User',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${request['role'] ?? 'No role'} • ID: ${request['employeeId'] ?? 'N/A'}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Applied for $leaveType',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: _getLeaveTypeColor(leaveType),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
                 Row(
                   children: [
                     Icon(
@@ -693,6 +705,14 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                         '${_formatDate(request['startDate'])} - ${_formatDate(request['endDate'])}',
                         style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                         overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      '$days days',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
                       ),
                     ),
                   ],
@@ -710,9 +730,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                   const SizedBox(height: 4),
                   Container(
                     width: double.infinity,
-                    constraints: const BoxConstraints(
-                      maxHeight: 60,
-                    ),
+                    constraints: const BoxConstraints(maxHeight: 60),
                     child: SingleChildScrollView(
                       child: Text(
                         reason,
@@ -726,6 +744,8 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                   ),
                   const SizedBox(height: 8),
                 ],
+
+                // VIEW DETAILS BUTTON for non-pending status
                 if (status != 'Pending') ...[
                   SizedBox(
                     width: double.infinity,
@@ -734,9 +754,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.blue,
                         side: const BorderSide(color: Colors.blue),
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 8,
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                       ),
                       child: const Text(
                         'VIEW DETAILS',
@@ -763,9 +781,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     final reason = request['reason'] ?? 'No reason provided';
 
     return Container(
-      constraints: const BoxConstraints(
-        maxHeight: 260,
-      ),
+      constraints: const BoxConstraints(maxHeight: 280),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -782,7 +798,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            height: 65,
+            height: 75,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: _getStatusHeaderColor(status),
@@ -799,9 +815,9 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                   child: Text(
                     request['name']?.toString().isNotEmpty == true
                         ? request['name']
-                        .toString()
-                        .substring(0, 1)
-                        .toUpperCase()
+                              .toString()
+                              .substring(0, 1)
+                              .toUpperCase()
                         : 'U',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
@@ -833,42 +849,88 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
+
+                      // PENDING STATUS - MOVED BELOW EMPLOYEE ID
+                      const SizedBox(height: 2),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(status).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          status,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 8,
+                            color: _getStatusColor(status),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        status,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 9,
-                          color: _getStatusColor(status),
-                        ),
-                      ),
-                    ),
-                    if (status == 'Pending') ...[
-                      const SizedBox(width: 2),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.more_vert,
-                          size: 14,
-                        ),
-                        padding: const EdgeInsets.all(2),
-                        onPressed: () => _showActionMenu(context, index),
+
+                // DESKTOP/TABLET: HORIZONTAL BUTTONS (MAGKATABI)
+                if (status == 'Pending') ...[
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: 60,
+                            child: ElevatedButton(
+                              onPressed: () => _approveRequest(index),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                  horizontal: 2,
+                                ),
+                                minimumSize: const Size(0, 25),
+                              ),
+                              child: const Text(
+                                'APPROVE',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          SizedBox(
+                            width: 60,
+                            child: ElevatedButton(
+                              onPressed: () => _rejectRequest(index),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                  horizontal: 2,
+                                ),
+                                minimumSize: const Size(0, 25),
+                              ),
+                              child: const Text(
+                                'DECLINE',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
-                  ],
-                ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -985,25 +1047,48 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                      child: SingleChildScrollView(
-                        child: Text(
-                          reason,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                          ),
+                  Container(
+                    height: 40,
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: SingleChildScrollView(
+                      child: Text(
+                        reason,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                   ),
+
+                  // VIEW DETAILS BUTTON for non-pending status
+                  if (status != 'Pending') ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () => _showDetailsDialog(request),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.blue,
+                          side: const BorderSide(color: Colors.blue),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          minimumSize: const Size(0, 30),
+                        ),
+                        child: const Text(
+                          'VIEW DETAILS',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
