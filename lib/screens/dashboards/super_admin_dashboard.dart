@@ -637,7 +637,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
 
     try {
       await _notificationsSubscription?.cancel();
-      await Future.delayed(const Duration(seconds: 3));
       await AuthService().logout();
     } catch (e) {
       if (!mounted) return;
