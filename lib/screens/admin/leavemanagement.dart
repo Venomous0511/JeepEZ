@@ -28,24 +28,19 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
   void initState() {
     super.initState();
     _loadLeaveRequests();
-    _startAutoCleanup(); // Add auto-cleanup on init
+    _startAutoCleanup();
   }
 
-  /// ADDED: Auto-cleanup that runs periodically
   void _startAutoCleanup() {
-    // Run cleanup immediately
     _cleanupOldLeaveApplications();
-
-    // Schedule periodic cleanup (every hour)
     Future.delayed(const Duration(hours: 1), () {
       if (mounted) {
         _cleanupOldLeaveApplications();
-        _startAutoCleanup(); // Reschedule
+        _startAutoCleanup();
       }
     });
   }
 
-  /// ADDED: Clean up old rejected and completed leave applications
   Future<void> _cleanupOldLeaveApplications() async {
     try {
       final firestore = FirebaseFirestore.instance;
@@ -68,23 +63,15 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
 
           bool shouldDelete = false;
 
-          // Delete rejected applications after 5 days
           if (status == 'Rejected' && rejectedAt != null) {
             final daysSinceRejection = now.difference(rejectedAt).inDays;
             if (daysSinceRejection >= 5) {
               shouldDelete = true;
-              debugPrint(
-                'Deleting rejected leave (${leaveDoc.id}) - $daysSinceRejection days old',
-              );
             }
           }
 
-          // Delete completed leave applications (end date has passed)
           if (endDate != null && endDate.isBefore(now)) {
             shouldDelete = true;
-            debugPrint(
-              'Deleting completed leave (${leaveDoc.id}) - ended on $endDate',
-            );
           }
 
           if (shouldDelete) {
@@ -97,19 +84,14 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
           }
         }
       }
-
-      debugPrint('Cleanup completed at ${DateTime.now()}');
     } catch (e) {
       debugPrint('Error during cleanup: $e');
     }
   }
 
-  /// Load all leave applications from Firestore
   Future<void> _loadLeaveRequests() async {
     try {
-      // Run cleanup before loading
       await _cleanupOldLeaveApplications();
-
       final data = await _fetchAllLeaveApplications();
       if (mounted) {
         setState(() {
@@ -124,7 +106,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     }
   }
 
-  /// Get all leave applications from all users
+  /// UPDATED: Sorting logic to prioritize Request > Pending > Rejected
   Future<List<Map<String, dynamic>>> _fetchAllLeaveApplications() async {
     final firestore = FirebaseFirestore.instance;
     final List<Map<String, dynamic>> allLeaves = [];
@@ -148,10 +130,8 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         final rejectedAt = (data['rejectedAt'] as Timestamp?)?.toDate();
         final endDate = (data['endDate'] as Timestamp?)?.toDate();
 
-        // Skip applications that should be deleted
         bool shouldSkip = false;
 
-        // Skip rejected applications older than 5 days
         if (status == 'Rejected' && rejectedAt != null) {
           final daysSinceRejection = now.difference(rejectedAt).inDays;
           if (daysSinceRejection >= 5) {
@@ -159,7 +139,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
           }
         }
 
-        // Skip completed leave applications
         if (endDate != null && endDate.isBefore(now)) {
           shouldSkip = true;
         }
@@ -178,10 +157,32 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
       }
     }
 
+    // UPDATED: Custom sorting logic
+    allLeaves.sort((a, b) {
+      final statusA = a['status'] ?? '';
+      final statusB = b['status'] ?? '';
+
+      // Define priority order
+      final priorityOrder = {'Pending': 1, 'Approved': 2, 'Rejected': 3};
+
+      final priorityA = priorityOrder[statusA] ?? 0;
+      final priorityB = priorityOrder[statusB] ?? 0;
+
+      // First sort by status priority
+      if (priorityA != priorityB) {
+        return priorityA.compareTo(priorityB);
+      }
+
+      // If same status, sort by submission date (newest first)
+      final dateA = (a['submittedAt'] as Timestamp?)?.toDate() ?? DateTime(0);
+      final dateB = (b['submittedAt'] as Timestamp?)?.toDate() ?? DateTime(0);
+      return dateB.compareTo(dateA);
+    });
+
     return allLeaves;
   }
 
-  /// Filter and search leave requests
+  /// UPDATED: Filter method to maintain custom sorting
   void _filterRequests() {
     List<Map<String, dynamic>> filtered = _leaveRequests;
 
@@ -215,7 +216,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     });
   }
 
-  /// Get paginated requests
+  // Rest of your existing methods remain the same...
   List<Map<String, dynamic>> get _paginatedRequests {
     final startIndex = _currentPage * _itemsPerPage;
     final endIndex = startIndex + _itemsPerPage;
@@ -229,10 +230,8 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         : [];
   }
 
-  /// Get total pages
   int get _totalPages => (_filteredRequests.length / _itemsPerPage).ceil();
 
-  /// Approve request
   Future<void> _approveRequest(int index) async {
     final req = _paginatedRequests[index];
     await FirebaseFirestore.instance
@@ -242,8 +241,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         .doc(req['leaveId'])
         .update({
           'status': 'Approved',
-          'approvedAt':
-              FieldValue.serverTimestamp(), // ADDED: Track approval time
+          'approvedAt': FieldValue.serverTimestamp(),
         });
 
     if (mounted) {
@@ -261,7 +259,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     }
   }
 
-  /// Reject request - FIXED: Now properly sets rejectedAt timestamp
   Future<void> _rejectRequest(int index) async {
     final TextEditingController reasonController = TextEditingController();
 
@@ -308,7 +305,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     if (result != null && result.isNotEmpty) {
       final req = _paginatedRequests[index];
 
-      // FIXED: Properly set rejectedAt with server timestamp
       await FirebaseFirestore.instance
           .collection('users')
           .doc(req['userId'])
@@ -317,8 +313,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
           .update({
             'status': 'Rejected',
             'rejectionReason': result,
-            'rejectedAt':
-                FieldValue.serverTimestamp(), // This will set the current server time
+            'rejectedAt': FieldValue.serverTimestamp(),
           });
 
       if (mounted) {
@@ -349,7 +344,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  /// Main content with search, filter, and list
   Widget _buildMainContent() {
     return Column(
       children: [
@@ -391,7 +385,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  /// Search and Filter Section
   Widget _buildSearchFilterSection() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -443,7 +436,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  /// Pagination Controls
   Widget _buildPagination() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -479,7 +471,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  /// Responsive layout based on screen size
   Widget _buildResponsiveLayout() {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -498,7 +489,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  /// Mobile View - Notification Style
   Widget _buildMobileNotificationView() {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
@@ -508,7 +498,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  /// Tablet View
   Widget _buildTabletView({required int columns}) {
     return GridView.builder(
       padding: const EdgeInsets.all(16),
@@ -524,7 +513,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  /// Desktop View
   Widget _buildDesktopView() {
     return GridView.builder(
       padding: const EdgeInsets.all(16),
@@ -540,8 +528,9 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  /// Mobile Notification Style Tile
+  // ... (rest of your UI builder methods remain exactly the same)
   Widget _buildNotificationTile(Map<String, dynamic> request, int index) {
+    // Your existing _buildNotificationTile implementation
     final status = request['status'] ?? 'Pending';
     final leaveType = request['leaveType'] ?? '';
     final reason = request['reason'] ?? 'No reason provided';
@@ -565,6 +554,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // ... (your existing mobile tile implementation)
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -593,8 +583,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                               color: Colors.grey[600],
                             ),
                           ),
-
-                          // PENDING STATUS - MOVED BELOW EMPLOYEE ID
                           const SizedBox(height: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -617,8 +605,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                         ],
                       ),
                     ),
-
-                    // MOBILE: VERTICAL BUTTONS (NAGKAKAPATONG)
                     if (status == 'Pending') ...[
                       const SizedBox(width: 8),
                       Column(
@@ -673,7 +659,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                     ],
                   ],
                 ),
-
                 const SizedBox(height: 8),
                 Text(
                   'Applied for $leaveType',
@@ -744,8 +729,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                   ),
                   const SizedBox(height: 8),
                 ],
-
-                // VIEW DETAILS BUTTON for non-pending status
                 if (status != 'Pending') ...[
                   SizedBox(
                     width: double.infinity,
@@ -774,8 +757,8 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  /// Original Tile for Tablet/Desktop
   Widget _buildLeaveTile(Map<String, dynamic> request, int index) {
+    // Your existing _buildLeaveTile implementation
     final status = request['status'] ?? 'Pending';
     final leaveType = request['leaveType'] ?? '';
     final reason = request['reason'] ?? 'No reason provided';
@@ -849,8 +832,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
-
-                      // PENDING STATUS - MOVED BELOW EMPLOYEE ID
                       const SizedBox(height: 2),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -873,8 +854,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                     ],
                   ),
                 ),
-
-                // DESKTOP/TABLET: HORIZONTAL BUTTONS (MAGKATABI)
                 if (status == 'Pending') ...[
                   Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1065,8 +1044,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                       ),
                     ),
                   ),
-
-                  // VIEW DETAILS BUTTON for non-pending status
                   if (status != 'Pending') ...[
                     const SizedBox(height: 8),
                     SizedBox(
@@ -1098,7 +1075,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  /// Show details dialog for mobile
   void _showDetailsDialog(Map<String, dynamic> request) {
     showDialog(
       context: context,
@@ -1155,7 +1131,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  /// Helper methods
+  // Helper methods
   Color _getStatusColor(String status) {
     switch (status) {
       case 'Approved':
