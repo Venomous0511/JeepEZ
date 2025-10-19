@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -80,9 +82,22 @@ class _LegalOfficerDashboardScreenState
   }
 
   Stream<List<Map<String, dynamic>>> getIncidentReportsStream() async* {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = todayStart.add(Duration(days: 1));
+
     final incidentSnapshot = await FirebaseFirestore.instance
         .collection('incident_report')
+        .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(todayStart))
+        .where('timestamp', isLessThan: Timestamp.fromDate(todayEnd))
+        .orderBy('timestamp', descending: true)
         .get();
+
+    // If no incidents found, yield empty list
+    if (incidentSnapshot.docs.isEmpty) {
+      yield [];
+      return;
+    }
 
     // Extract all unique createdById
     final userIds = incidentSnapshot.docs
@@ -124,11 +139,31 @@ class _LegalOfficerDashboardScreenState
         .snapshots()
         .map((snapshot) {
           final Map<String, int> counts = {};
-          for (var doc in snapshot.docs) {
-            final type = doc['violation'] ?? 'Unknown';
-            counts[type] = (counts[type] ?? 0) + 1;
+
+          // Check if snapshot has documents
+          if (snapshot.docs.isEmpty) {
+            return counts;
           }
+
+          for (var doc in snapshot.docs) {
+            try {
+              final data = doc.data();
+
+              // Check if 'violation' field exists
+              final type = data.containsKey('violation')
+                  ? (data['violation'] ?? 'Unknown').toString()
+                  : 'Unknown';
+
+              counts[type] = (counts[type] ?? 0) + 1;
+            } catch (e) {
+              continue;
+            }
+          }
+
           return counts;
+        })
+        .handleError((error) {
+          return <String, int>{};
         });
   }
 
@@ -544,6 +579,7 @@ class _LegalOfficerDashboardScreenState
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
+    _incidentTableScrollController.dispose();
     super.dispose();
   }
 
@@ -1006,7 +1042,10 @@ class _LegalOfficerDashboardScreenState
         final isTablet = screenWidth >= 600 && screenWidth < 1024;
 
         return SingleChildScrollView(
-          padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 12.0 : (screenWidth >= 1024 ? 32.0 : 16.0),
+            vertical: isMobile ? 12.0 : 16.0,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1063,31 +1102,36 @@ class _LegalOfficerDashboardScreenState
   Widget _buildDesktopLayout() {
     return Column(
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionTitle('Inspector Overview'),
-                  const SizedBox(height: 8),
-                  _buildInspectorTableWithScroll(),
-                ],
-              ),
+        Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 1400),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _sectionTitle('Inspector Overview'),
+                      const SizedBox(height: 8),
+                      _buildInspectorTableWithScroll(),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _sectionTitle('Incident Tracking'),
+                      const SizedBox(height: 8),
+                      _buildIncidentTable(),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionTitle('Incident Tracking'),
-                  const SizedBox(height: 8),
-                  _buildIncidentTable(),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
         const SizedBox(height: 24),
         _sectionTitle('Violations by Type'),
@@ -1100,13 +1144,14 @@ class _LegalOfficerDashboardScreenState
   Widget _sectionTitle(String title) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
+    final isDesktop = screenWidth >= 1024;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         title,
         style: TextStyle(
-          fontSize: isMobile ? 16 : 20,
+          fontSize: isMobile ? 16 : (isDesktop ? 24 : 20),
           fontWeight: FontWeight.bold,
           color: Colors.black,
         ),
@@ -1117,10 +1162,14 @@ class _LegalOfficerDashboardScreenState
   Widget _styledCard(Widget child) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
+    final isDesktop = screenWidth >= 1024;
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
+      constraints: isDesktop
+          ? BoxConstraints(maxWidth: 1200)
+          : null,
+      padding: EdgeInsets.all(isMobile ? 12.0 : (isDesktop ? 24.0 : 16.0)),
       decoration: BoxDecoration(
         color: const Color(0xFF0D2364),
         borderRadius: BorderRadius.circular(8),
@@ -1201,14 +1250,16 @@ class _LegalOfficerDashboardScreenState
 
         final incidents = snapshot.data!;
 
-        // Sort incidents by timestamp (optional)
-        final sortedIncidents = List<Map<String, dynamic>>.from(incidents)
-          ..sort((a, b) {
-            final t1 = a['timestamp'] as Timestamp?;
-            final t2 = b['timestamp'] as Timestamp?;
-            if (t1 == null || t2 == null) return 0;
-            return t1.compareTo(t2);
-          });
+        // Sort incidents by timestamp
+        // final sortedIncidents = List<Map<String, dynamic>>.from(incidents)
+        //   ..sort((a, b) {
+        //     final t1 = a['timestamp'] as Timestamp?;
+        //     final t2 = b['timestamp'] as Timestamp?;
+        //     if (t1 == null || t2 == null) return 0;
+        //     return t1.compareTo(t2);
+        //   });
+
+        final sortedIncidents = incidents;
 
         return Column(
           children: sortedIncidents.asMap().entries.map((entry) {
@@ -1305,6 +1356,7 @@ class _LegalOfficerDashboardScreenState
   Widget _buildInspectorTableWithScroll() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600 && screenWidth < 1024;
+    final isDesktop = screenWidth >= 1024;
 
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: getInspectorsStream(),
@@ -1321,13 +1373,16 @@ class _LegalOfficerDashboardScreenState
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: isTablet ? 600 : 700),
+            constraints: BoxConstraints(minWidth: isDesktop ? screenWidth * 0.45 : (isTablet ? 600 : 700)),
             child: DataTable(
               headingRowColor: WidgetStateProperty.all(const Color(0xFF0D2364)),
               dataRowColor: WidgetStateProperty.all(const Color(0xFF0D2364)),
-              headingTextStyle: const TextStyle(
+              columnSpacing: isDesktop ? 56 : (isTablet ? 40 : 24),
+              horizontalMargin: isDesktop ? 24 : 12,
+              headingTextStyle: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
+                fontSize: isDesktop ? 16 : (isTablet ? 12 : 14),
               ),
               dataTextStyle: const TextStyle(color: Colors.white),
               columns: [
@@ -1368,10 +1423,11 @@ class _LegalOfficerDashboardScreenState
     );
   }
 
-  // FIXED INCIDENT TABLE - NO LONGER SCROLLABLE
+  final ScrollController _incidentTableScrollController = ScrollController();
   Widget _buildIncidentTable() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600 && screenWidth < 1024;
+    final isDesktop = screenWidth >= 1024;
 
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: getIncidentReportsStream(),
@@ -1384,53 +1440,87 @@ class _LegalOfficerDashboardScreenState
           builder: (context, userSnapshot) {
             if (!userSnapshot.hasData) return const CircularProgressIndicator();
 
-            // Map userId -> name
-            final userMap = {
-              for (var doc in userSnapshot.data!.docs)
-                doc.id: (doc.data() as Map<String, dynamic>)['name'],
-            };
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const Center(
+                child: Text(
+                  'No incidents today',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              );
+            }
 
-            final sortedIncidents = List<Map<String, dynamic>>.from(incidents)
-              ..sort((a, b) {
-                final t1 = a['timestamp'] as Timestamp?;
-                final t2 = b['timestamp'] as Timestamp?;
-                if (t1 == null || t2 == null) return 0;
-                return t1.compareTo(t2);
-              });
+            // final sortedIncidents = List<Map<String, dynamic>>.from(incidents)
+            //   ..sort((a, b) {
+            //     final t1 = a['timestamp'] as Timestamp?;
+            //     final t2 = b['timestamp'] as Timestamp?;
+            //     if (t1 == null || t2 == null) return 0;
+            //     return t1.compareTo(t2);
+            //   });
 
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: [
-                  DataColumn(label: Text('ID')),
-                  DataColumn(label: Text('Date')),
-                  DataColumn(label: Text('Assigned')),
-                  DataColumn(label: Text('Type')),
-                ],
-                rows: sortedIncidents.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final incident = entry.value;
-                  final assignedName = userMap[incident['createdById']] ?? '';
+            final sortedIncidents = incidents;
 
-                  return DataRow(
-                    cells: [
-                      DataCell(
-                        Text('INC-${(index + 1).toString().padLeft(2, '0')}'),
-                      ),
-                      DataCell(
-                        Text(
-                          incident['timestamp'] != null
-                              ? DateFormat('MMM d, y hh:mm a').format(
-                                  (incident['timestamp'] as Timestamp).toDate(),
-                                )
-                              : '',
-                        ),
-                      ),
-                      DataCell(Text(assignedName)),
-                      DataCell(Text(incident['type'] ?? '')),
+            return Scrollbar(
+              controller: _incidentTableScrollController,
+              thumbVisibility: isDesktop || isTablet,
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(
+                  dragDevices: {
+                    PointerDeviceKind.touch,
+                    PointerDeviceKind.mouse,
+                  },
+                  scrollbars: true,
+                ),
+                child: SingleChildScrollView(
+                  controller: _incidentTableScrollController,
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    headingRowColor: WidgetStateProperty.all(const Color(0xFF0D2364)),
+                    dataRowColor: WidgetStateProperty.all(const Color(0xFFFFFFFF)),
+                    columnSpacing: isDesktop ? 40 : (isTablet ? 30 : 20),
+                    horizontalMargin: isDesktop ? 24 : 12,
+                    headingTextStyle: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: isDesktop ? 16 : (isTablet ? 12 : 14),
+                    ),
+                    dataTextStyle: TextStyle(
+                      color: Colors.black87,
+                      fontSize: isDesktop ? 14 : (isTablet ? 12 : 13),
+                    ),
+                    columns: const [
+                      DataColumn(label: Text('ID')),
+                      DataColumn(label: Text('Date')),
+                      DataColumn(label: Text('Assigned')),
+                      DataColumn(label: Text('Type')),
+                      DataColumn(label: Text('Location')),
                     ],
-                  );
-                }).toList(),
+                    rows: sortedIncidents.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final incident = entry.value;
+                      final assignedName = incident['employeeName'] ?? 'Unknown';
+
+                      return DataRow(
+                        cells: [
+                          DataCell(
+                            Text('INC-${(index + 1).toString().padLeft(2, '0')}'),
+                          ),
+                          DataCell(
+                            Text(
+                              incident['timestamp'] != null
+                                  ? DateFormat('MMM d, y hh:mm a').format(
+                                (incident['timestamp'] as Timestamp).toDate(),
+                              )
+                                  : '',
+                            ),
+                          ),
+                          DataCell(Text(assignedName)), // SIMPLE, NO CONTAINER
+                          DataCell(Text(incident['type'] ?? '')),
+                          DataCell(Text(incident['location'] ?? '')),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
               ),
             );
           },
@@ -1446,7 +1536,8 @@ class _LegalOfficerDashboardScreenState
     return StreamBuilder<Map<String, int>>(
       stream: getViolationCountsStream(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        // Show loading while waiting
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
             child: SizedBox(
               width: 24,
@@ -1459,8 +1550,23 @@ class _LegalOfficerDashboardScreenState
           );
         }
 
+        // Check for errors
+        if (snapshot.hasError) {
+          return Text(
+            'Error loading violations',
+            style: TextStyle(color: Colors.white),
+          );
+        }
+
+        // Check if data exists and is not empty
+        if (!snapshot.hasData || snapshot.data == null || snapshot.data!.isEmpty) {
+          return const Text(
+            'No violations found',
+            style: TextStyle(color: Colors.white),
+          );
+        }
+
         final counts = snapshot.data!;
-        if (counts.isEmpty) return const Text('No violations found');
 
         // Get the most common violation type
         final mostCommon = counts.entries
@@ -1502,7 +1608,7 @@ class _LegalOfficerDashboardScreenState
         return Row(
           children: [
             SizedBox(
-              width: isSmallScreen ? 150 : 150,
+              width: isSmallScreen ? 150 : (constraints.maxWidth > 800 ? 200 : 150),
               child: Text(
                 label,
                 style: TextStyle(

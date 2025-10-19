@@ -58,7 +58,7 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
       if (!userDoc.exists) return;
 
       final userData = userDoc.data()!;
-      final assignedVehicleId = userData['assignedVehicle']?.toString();
+      final assignedVehicleId = userData['assignedVehicle']?.toString() ?? 'N/A';
       setState(() {
         _vehicleId = assignedVehicleId;
       });
@@ -393,16 +393,22 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                           width: double.infinity,
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: _submitForm,
+                            onPressed: _vehicleId == 'N/A' || _vehicleId == null
+                                ? null
+                                : _submitForm,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0D2364),
+                              backgroundColor: _vehicleId == 'N/A' || _vehicleId == null
+                                  ? Colors.grey
+                                  : const Color(0xFF0D2364),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8.0),
                               ),
                             ),
-                            child: const Text(
-                              'Save & Submit Form',
-                              style: TextStyle(
+                            child: Text(
+                              _vehicleId == 'N/A' || _vehicleId == null
+                                  ? 'No Vehicle Assigned'
+                                  : 'Save & Submit Form',
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -410,6 +416,20 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                             ),
                           ),
                         ),
+
+                        if (_vehicleId == 'N/A' || _vehicleId == null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Text(
+                              '⚠️ No vehicle assigned. Please contact admin to submit incident reports.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.red[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
                       ],
                     ),
                   ),

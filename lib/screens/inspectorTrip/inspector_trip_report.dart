@@ -378,6 +378,11 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                                   keyboardType:
                                                       TextInputType.number,
                                                   maxLength: 10,
+                                                  onTap: () {
+                                                    if (ticketRow[colIndex].text == '0') {
+                                                      ticketRow[colIndex].clear();
+                                                    }
+                                                  },
                                                   decoration:
                                                       const InputDecoration(
                                                         border:

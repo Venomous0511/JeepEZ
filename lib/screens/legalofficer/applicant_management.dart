@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -165,6 +167,8 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _horizontalScrollController = ScrollController();
 
   String _selectedFilter = 'All';
   int _rowsPerPage = 10;
@@ -189,6 +193,8 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _verticalScrollController.dispose();
+    _horizontalScrollController.dispose();
     super.dispose();
   }
 
@@ -782,13 +788,30 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
   }
 
   Future<void> _viewResumeInBrowser(String url) async {
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url));
-    } else {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No app available to open this link'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error opening URL: $e');
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Cannot open resume')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening resume: $e'),
+          ),
+        );
       }
     }
   }
@@ -969,60 +992,66 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
   }
 
   Widget _buildRequirementItem(
-    String title,
-    bool isChecked,
-    Function(bool) onChanged,
-    bool isMobile, {
-    Candidate? candidate,
-  }) {
+      String title,
+      bool isChecked,
+      Function(bool) onChanged,
+      bool isMobile, {
+        Candidate? candidate,
+      }) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       color: isChecked ? Colors.green[50] : null,
-      child: ListTile(
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 8 : 16,
-          vertical: isMobile ? 4 : 8,
-        ),
-        leading: Checkbox(
-          value: isChecked,
-          onChanged: (value) {
-            // For Resume, only allow unchecking manually, checking happens through upload
-            if (title == 'Resume' &&
-                value == true &&
-                candidate?.resumeUrl == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Please upload resume first')),
-              );
-              return;
-            }
-            onChanged(value ?? false);
-          },
-        ),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontSize: isMobile ? 13 : 14,
-                  decoration: isChecked ? TextDecoration.lineThrough : null,
-                  color: isChecked ? Colors.green : Colors.black,
-                ),
+      child: Column(  // Changed from ListTile to Column for better mobile control
+        children: [
+          ListTile(
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 8 : 16,
+              vertical: isMobile ? 4 : 8,
+            ),
+            leading: Checkbox(
+              value: isChecked,
+              onChanged: (value) {
+                // For Resume, only allow unchecking manually, checking happens through upload
+                if (title == 'Resume' &&
+                    value == true &&
+                    candidate?.resumeUrl == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please upload resume first')),
+                  );
+                  return;
+                }
+                onChanged(value ?? false);
+              },
+            ),
+            title: Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: isMobile ? 13 : 14,
+                decoration: isChecked ? TextDecoration.lineThrough : null,
+                color: isChecked ? Colors.green : Colors.black,
               ),
             ),
-            // Upload button for Resume requirement
-            if (title == 'Resume') ...[
-              const SizedBox(width: 8),
-              if (candidate != null && candidate.resumeUrl == null)
-                ElevatedButton.icon(
+          ),
+          // Resume upload section - moved outside ListTile
+          if (title == 'Resume' && candidate != null) ...[
+            Padding(
+              padding: EdgeInsets.only(
+                left: isMobile ? 8 : 16,
+                right: isMobile ? 8 : 16,
+                bottom: isMobile ? 8 : 12,
+              ),
+              child: candidate.resumeUrl == null
+                  ? SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
                   icon: const Icon(Icons.upload, size: 14),
                   label: Text(
-                    'Upload',
+                    'Upload Resume',
                     style: TextStyle(fontSize: isMobile ? 11 : 12),
                   ),
                   onPressed: () {
-                    Navigator.pop(context); // Close the dialog first
+                    Navigator.pop(context);
                     _uploadResume(candidate);
                   },
                   style: ElevatedButton.styleFrom(
@@ -1030,58 +1059,96 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                     foregroundColor: Colors.white,
                     padding: EdgeInsets.symmetric(
                       horizontal: isMobile ? 8 : 12,
-                      vertical: isMobile ? 4 : 6,
+                      vertical: isMobile ? 8 : 10,
                     ),
                   ),
-                )
-              else if (candidate != null && candidate.resumeUrl != null)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.check_circle,
-                      color: Colors.green,
-                      size: isMobile ? 16 : 18,
-                    ),
-                    const SizedBox(width: 4),
-                    SizedBox(
-                      width: isMobile ? 60 : 80,
-                      child: Text(
-                        candidate.resumeFileName ?? 'Resume',
-                        style: TextStyle(
-                          fontSize: isMobile ? 10 : 11,
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    IconButton(
-                      icon: Icon(Icons.visibility, size: isMobile ? 16 : 18),
-                      onPressed: () {
-                        if (candidate.resumeUrl != null) {
-                          _viewResumeInBrowser(candidate.resumeUrl!);
-                        }
-                      },
-                      tooltip: 'View in Browser',
-                      padding: const EdgeInsets.all(4),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.upload, size: isMobile ? 16 : 18),
-                      onPressed: () {
-                        Navigator.pop(context); // Close the dialog first
-                        _uploadResume(candidate);
-                      },
-                      tooltip: 'Reupload',
-                      padding: const EdgeInsets.all(4),
-                    ),
-                  ],
                 ),
-            ],
+              )
+                  : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Filename row
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: isMobile ? 14 : 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          candidate.resumeFileName ?? 'Resume uploaded',
+                          style: TextStyle(
+                            fontSize: isMobile ? 11 : 12,
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Action buttons row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: Icon(
+                            Icons.visibility,
+                            size: isMobile ? 14 : 16,
+                          ),
+                          label: Text(
+                            'View',
+                            style: TextStyle(fontSize: isMobile ? 11 : 12),
+                          ),
+                          onPressed: () {
+                            if (candidate.resumeUrl != null) {
+                              _viewResumeInBrowser(candidate.resumeUrl!);
+                            }
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.blue,
+                            side: const BorderSide(color: Colors.blue),
+                            padding: EdgeInsets.symmetric(
+                              vertical: isMobile ? 8 : 10,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: Icon(
+                            Icons.upload,
+                            size: isMobile ? 14 : 16,
+                          ),
+                          label: Text(
+                            'Reupload',
+                            style: TextStyle(fontSize: isMobile ? 11 : 12),
+                          ),
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _uploadResume(candidate);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.orange,
+                            side: const BorderSide(color: Colors.orange),
+                            padding: EdgeInsets.symmetric(
+                              vertical: isMobile ? 8 : 10,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -1214,226 +1281,246 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
       child: SizedBox(
         width: double.infinity,
         height: double.infinity,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columnSpacing: 150,
-              horizontalMargin: 12,
-              dataRowMinHeight: 50,
-              dataRowMaxHeight: 60,
-              headingRowColor: WidgetStateProperty.all(const Color(0xFF0D2364)),
-              columns: [
-                DataColumn(
-                  label: SizedBox(
-                    width: 200,
-                    child: Text(
-                      'Candidate Name',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: isTablet ? 13 : 14,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                DataColumn(
-                  label: SizedBox(
-                    width: 120,
-                    child: Text(
-                      'Position',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: isTablet ? 13 : 14,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                DataColumn(
-                  label: SizedBox(
-                    width: 120,
-                    child: Text(
-                      'Interview Date',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: isTablet ? 13 : 14,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                DataColumn(
-                  label: SizedBox(
-                    width: 120,
-                    child: Text(
-                      'Interview Time',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: isTablet ? 13 : 14,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                DataColumn(
-                  label: SizedBox(
-                    width: 100,
-                    child: Text(
-                      'Requirements',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: isTablet ? 13 : 14,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                DataColumn(
-                  label: SizedBox(
-                    width: 80,
-                    child: Text(
-                      'Actions',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: isTablet ? 13 : 14,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              rows: candidates.map((candidate) {
-                return DataRow(
-                  cells: [
-                    DataCell(
-                      SizedBox(
-                        width: 180,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.person,
-                              color: Color(0xFF0D2364),
-                              size: 16,
+        child: Scrollbar(
+          controller: _verticalScrollController,
+          thumbVisibility: true,
+          child: ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context).copyWith(
+              dragDevices: {
+                PointerDeviceKind.touch,
+                PointerDeviceKind.mouse,
+              },
+              scrollbars: true,
+            ),
+            child: SingleChildScrollView(
+              controller: _verticalScrollController,
+              scrollDirection: Axis.vertical,
+              child: Scrollbar(
+                controller: _horizontalScrollController,
+                thumbVisibility: true,
+                notificationPredicate: (notification) => notification.depth == 1,
+                child: SingleChildScrollView(
+                  controller: _horizontalScrollController,
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    columnSpacing: 150,
+                    horizontalMargin: 12,
+                    dataRowMinHeight: 50,
+                    dataRowMaxHeight: 60,
+                    headingRowColor: WidgetStateProperty.all(const Color(0xFF0D2364)),
+                    columns: [
+                      DataColumn(
+                        label: SizedBox(
+                          width: 200,
+                          child: Text(
+                            'Candidate Name',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: isTablet ? 13 : 14,
+                              color: Colors.white,
                             ),
-                            const SizedBox(width: 8),
-                            Flexible(
+                          ),
+                        ),
+                      ),
+                      DataColumn(
+                        label: SizedBox(
+                          width: 120,
+                          child: Text(
+                            'Position',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: isTablet ? 13 : 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      DataColumn(
+                        label: SizedBox(
+                          width: 120,
+                          child: Text(
+                            'Interview Date',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: isTablet ? 13 : 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      DataColumn(
+                        label: SizedBox(
+                          width: 120,
+                          child: Text(
+                            'Interview Time',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: isTablet ? 13 : 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      DataColumn(
+                        label: SizedBox(
+                          width: 100,
+                          child: Text(
+                            'Requirements',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: isTablet ? 13 : 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      DataColumn(
+                        label: SizedBox(
+                          width: 80,
+                          child: Text(
+                            'Actions',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: isTablet ? 13 : 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    rows: candidates.map((candidate) {
+                      return DataRow(
+                        cells: [
+                          DataCell(
+                            SizedBox(
+                              width: 180,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.person,
+                                    color: Color(0xFF0D2364),
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      candidate.fullName,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: isTablet ? 12 : 13,
+                                        color: Colors.black87,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            SizedBox(
+                              width: 100,
                               child: Text(
-                                candidate.fullName,
+                                candidate.position,
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w500,
                                   fontSize: isTablet ? 12 : 13,
                                   color: Colors.black87,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      SizedBox(
-                        width: 100,
-                        child: Text(
-                          candidate.position,
-                          style: TextStyle(
-                            fontSize: isTablet ? 12 : 13,
-                            color: Colors.black87,
                           ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      SizedBox(
-                        width: 100,
-                        child: Text(
-                          candidate.interviewDate,
-                          style: TextStyle(
-                            fontSize: isTablet ? 12 : 13,
-                            color: Colors.black87,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      SizedBox(
-                        width: 100,
-                        child: Text(
-                          candidate.interviewTime,
-                          style: TextStyle(
-                            fontSize: isTablet ? 12 : 13,
-                            color: Colors.black87,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      SizedBox(
-                        width: 80,
-                        child: InkWell(
-                          onTap: () => _showRequirementsChecklist(candidate),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _getCompletionColor(
-                                candidate,
-                              ).withAlpha(30),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: _getCompletionColor(candidate),
+                          DataCell(
+                            SizedBox(
+                              width: 100,
+                              child: Text(
+                                candidate.interviewDate,
+                                style: TextStyle(
+                                  fontSize: isTablet ? 12 : 13,
+                                  color: Colors.black87,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.checklist,
-                                  size: 12,
-                                  color: _getCompletionColor(candidate),
+                          ),
+                          DataCell(
+                            SizedBox(
+                              width: 100,
+                              child: Text(
+                                candidate.interviewTime,
+                                style: TextStyle(
+                                  fontSize: isTablet ? 12 : 13,
+                                  color: Colors.black87,
                                 ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  _getRequirementsStatus(candidate),
-                                  style: TextStyle(
-                                    fontSize: isTablet ? 10 : 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: _getCompletionColor(candidate),
-                                  ),
-                                ),
-                              ],
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      SizedBox(
-                        width: 60,
-                        child: IconButton(
-                          icon: const Icon(Icons.archive, size: 16),
-                          onPressed: () => _showArchiveDialog(candidate),
-                          tooltip: 'Archive',
-                          style: IconButton.styleFrom(
-                            backgroundColor: Colors.orange[50],
-                            foregroundColor: Colors.orange,
-                            padding: const EdgeInsets.all(6),
+                          DataCell(
+                            SizedBox(
+                              width: 80,
+                              child: InkWell(
+                                onTap: () => _showRequirementsChecklist(candidate),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _getCompletionColor(
+                                      candidate,
+                                    ).withAlpha(30),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: _getCompletionColor(candidate),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.checklist,
+                                        size: 12,
+                                        color: _getCompletionColor(candidate),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _getRequirementsStatus(candidate),
+                                        style: TextStyle(
+                                          fontSize: isTablet ? 10 : 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: _getCompletionColor(candidate),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              }).toList(),
+                          DataCell(
+                            SizedBox(
+                              width: 60,
+                              child: IconButton(
+                                icon: const Icon(Icons.archive, size: 16),
+                                onPressed: () => _showArchiveDialog(candidate),
+                                tooltip: 'Archive',
+                                style: IconButton.styleFrom(
+                                  backgroundColor: Colors.orange[50],
+                                  foregroundColor: Colors.orange,
+                                  padding: const EdgeInsets.all(6),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
             ),
           ),
         ),

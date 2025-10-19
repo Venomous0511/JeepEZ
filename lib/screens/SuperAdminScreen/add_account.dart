@@ -229,6 +229,8 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       );
       final newUid = newCred.user!.uid;
 
+      await newCred.user!.sendEmailVerification();
+
       // Update user profile with display name
       await newCred.user!.updateDisplayName(displayName);
 

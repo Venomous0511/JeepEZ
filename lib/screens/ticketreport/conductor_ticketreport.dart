@@ -58,6 +58,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
       setState(() {
         user = doc.data();
         user?['uid'] = uid;
+        user?['assignedVehicle'] = user?['assignedVehicle'] ?? 'N/A';
       });
       await _checkTodaySubmissions();
     }
@@ -590,7 +591,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              onPressed: hasSubmittedOpeningToday
+                              onPressed: hasSubmittedOpeningToday || user?['assignedVehicle'] == 'N/A'
                                   ? null
                                   : () => _submitOpeningTickets(),
                               icon: Icon(
@@ -601,6 +602,8 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                               label: Text(
                                 hasSubmittedOpeningToday
                                     ? 'Opening Submitted Today'
+                                    : user?['assignedVehicle'] == 'N/A'
+                                    ? 'No Vehicle Assigned'
                                     : 'Submit Opening Tickets',
                                 style: TextStyle(
                                   fontSize: isSmallScreen ? 14 : 16,
@@ -621,6 +624,18 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                               ),
                             ),
                           ),
+                          if (user?['assignedVehicle'] == 'N/A')
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                '⚠️ No vehicle assigned. Please contact admin.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.red[700],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -655,7 +670,9 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              onPressed: !hasSubmittedOpeningToday
+                              onPressed: !hasSubmittedOpeningToday ||
+                                  hasSubmittedClosingToday ||
+                                  user?['assignedVehicle'] == 'N/A'
                                   ? null
                                   : hasSubmittedClosingToday
                                   ? null
@@ -668,6 +685,8 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                               label: Text(
                                 hasSubmittedClosingToday
                                     ? 'Closing Submitted Today'
+                                    : user?['assignedVehicle'] == 'N/A'
+                                    ? 'No Vehicle Assigned'
                                     : !hasSubmittedOpeningToday
                                     ? 'Submit Opening First'
                                     : 'Submit Closing Tickets',
@@ -692,7 +711,19 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                               ),
                             ),
                           ),
-                          if (!hasSubmittedOpeningToday)
+                          if (user?['assignedVehicle'] == 'N/A')
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                '⚠️ No vehicle assigned. Please contact admin.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.red[700],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            )
+                          else if (!hasSubmittedOpeningToday)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: Text(
