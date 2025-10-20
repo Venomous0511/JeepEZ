@@ -149,6 +149,8 @@ class _DriverConductorManagementScreenState
   ) async {
     final schedules = await _getEmployeeSchedules(userId, role);
 
+    if (!mounted) return;
+
     showDialog(
       context: context,
       builder: (context) {
@@ -214,7 +216,7 @@ class _DriverConductorManagementScreenState
           employeeData['assignedVehicle']?.toString() ?? 'Not assigned';
 
       await _firestore.collection('users').doc(docId).update({
-        'assignedVehicle': int.tryParse(newVehicle) ?? 0,
+        'assignedVehicle': int.parse(newVehicle),
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
@@ -263,6 +265,8 @@ class _DriverConductorManagementScreenState
     String employeeName,
   ) async {
     final vehicleHistory = await _getEmployeeVehicleHistory(userId);
+
+    if (!mounted) return;
 
     showDialog(
       context: context,
@@ -377,6 +381,8 @@ class _DriverConductorManagementScreenState
     String inspectorName,
   ) async {
     final assignmentHistory = await _getInspectorAssignmentHistory(userId);
+
+    if (!mounted) return;
 
     showDialog(
       context: context,
@@ -498,7 +504,11 @@ class _DriverConductorManagementScreenState
                   title: const Text('Set Schedule'),
                   onTap: () {
                     Navigator.pop(context);
-                    _showScheduleSelector(context, doc, data);
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        _showScheduleSelector(this.context, doc, data);
+                      }
+                    });
                   },
                 ),
               ] else ...[
@@ -510,7 +520,11 @@ class _DriverConductorManagementScreenState
                   title: const Text('Change Schedule'),
                   onTap: () {
                     Navigator.pop(context);
-                    _showScheduleSelector(context, doc, data);
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        _showScheduleSelector(this.context, doc, data);
+                      }
+                    });
                   },
                 ),
                 ListTile(
@@ -534,7 +548,12 @@ class _DriverConductorManagementScreenState
                     title: const Text('Assign Vehicle'),
                     onTap: () {
                       Navigator.pop(context);
-                      _showVehicleSelector(context, doc, data);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          // Get fresh context from the widget tree
+                          _showVehicleSelector(this.context, doc, data);
+                        }
+                      });
                     },
                   ),
                 ] else ...[
@@ -543,7 +562,12 @@ class _DriverConductorManagementScreenState
                     title: const Text('Change Vehicle'),
                     onTap: () {
                       Navigator.pop(context);
-                      _showVehicleSelector(context, doc, data);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          // Get fresh context from the widget tree
+                          _showVehicleSelector(this.context, doc, data);
+                        }
+                      });
                     },
                   ),
                   ListTile(
@@ -565,7 +589,11 @@ class _DriverConductorManagementScreenState
                     title: const Text('Assign Area'),
                     onTap: () {
                       Navigator.pop(context);
-                      _showAreaSelector(context, doc, data);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          _showAreaSelector(this.context, doc, data);
+                        }
+                      });
                     },
                   ),
                 ] else ...[
@@ -574,7 +602,11 @@ class _DriverConductorManagementScreenState
                     title: const Text('Change Area'),
                     onTap: () {
                       Navigator.pop(context);
-                      _showAreaSelector(context, doc, data);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          _showAreaSelector(this.context, doc, data);
+                        }
+                      });
                     },
                   ),
                   ListTile(
@@ -900,25 +932,120 @@ class _DriverConductorManagementScreenState
   // Load vehicle IDs from vehicles collection
   Future<List<String>> _getVehicles() async {
     final snapshot = await _firestore.collection('vehicles').get();
-    return snapshot.docs.map((doc) => doc['vehicleId'].toString()).toList();
+    return snapshot.docs.map((doc) => doc['vehicleId'].toString().trim()).toList();
+  }
+
+  // Get available vehicles
+  Future<List<String>> _getAvailableVehicles(String? currentUserId, String role,) async {
+    // Get all vehicles
+    final allVehicles = await _getVehicles();
+
+    // Get vehicles that are under repair
+    final vehiclesSnapshot = await _firestore.collection('vehicles').get();
+    final underRepairVehicles = <String>{};
+    for (var doc in vehiclesSnapshot.docs) {
+      final isUnderRepair = doc.data()['isUnderRepair'] ?? false;
+      if (isUnderRepair) {
+        underRepairVehicles.add(doc.data()['vehicleId'].toString().trim());
+      }
+    }
+
+
+    // Get all users with the SAME role who have assigned vehicles
+    final usersSnapshot = await _firestore
+        .collection('users')
+        .where('role', isEqualTo: role)
+        .where('status', isEqualTo: true)
+        .get();
+
+    // Collect assigned vehicle IDs
+    final assignedVehicles = <String>{};
+    for (var doc in usersSnapshot.docs) {
+      if (doc.id == currentUserId) {
+        continue;
+      }
+
+      final data = doc.data();
+      final assignedVehicle = data['assignedVehicle'];
+
+      // Add to assigned list if it's a valid vehicle number
+      if (assignedVehicle != null && assignedVehicle.toString() != 'Not assigned') {
+        // Convert to string for consistent comparison
+        final vehicleStr = assignedVehicle is int
+            ? assignedVehicle.toString()
+            : assignedVehicle.toString().trim();
+        if (vehicleStr.isNotEmpty && vehicleStr != 'Not assigned') {
+          assignedVehicles.add(vehicleStr);
+        }
+      }
+    }
+
+    // Filter out assigned vehicles
+    final availableVehicles = allVehicles
+        .where((vehicle) =>
+        !assignedVehicles.contains(vehicle) &&
+        !underRepairVehicles.contains(vehicle))
+        .toList();
+
+    return availableVehicles;
   }
 
   // Vehicle selector dialog (for driver/conductor)
+// Vehicle selector dialog (for driver/conductor)
   void _showVehicleSelector(
-    BuildContext context,
-    QueryDocumentSnapshot doc,
-    Map<String, dynamic> employeeData,
-  ) async {
+      BuildContext context,
+      QueryDocumentSnapshot doc,
+      Map<String, dynamic> employeeData,
+      ) async {
+
     final data = doc.data() as Map<String, dynamic>;
-    final vehicles = await _getVehicles();
+    final role = data['role']?.toString() ?? '';
 
-    String currentVehicle =
-        data['assignedVehicle']?.toString() ??
-        (vehicles.isNotEmpty ? vehicles.first : '0');
+    // Get available vehicles based on role
+    final availableVehicles = await _getAvailableVehicles(doc.id, role);
 
+    // Get current vehicle assignment
+    String? currentVehicleValue = data['assignedVehicle']?.toString();
+
+    // If employee already has a vehicle, add it to the list
+    if (currentVehicleValue != null &&
+        currentVehicleValue != 'Not assigned' &&
+        !availableVehicles.contains(currentVehicleValue)) {
+      availableVehicles.insert(0, currentVehicleValue);
+    }
+
+    // Check mounted BEFORE any UI operations
+    if (!mounted) {
+      return;
+    }
+
+    // Check if there are any available vehicles
+    if (availableVehicles.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No available vehicles to assign'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Determine initial selection
+    String currentVehicle;
+    if (currentVehicleValue != null &&
+        currentVehicleValue != 'Not assigned' &&
+        availableVehicles.contains(currentVehicleValue)) {
+      currentVehicle = currentVehicleValue;
+    } else {
+      currentVehicle = availableVehicles.first;
+    }
+
+
+    // Use Builder to get a fresh context
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      barrierDismissible: false, // Prevent accidental dismissal
+      builder: (dialogContext) {  // ← Use dialogContext instead of context
         return StatefulBuilder(
           builder: (context, setState) {
             return Dialog(
@@ -936,26 +1063,91 @@ class _DriverConductorManagementScreenState
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+
                     const SizedBox(height: 16),
+
+                    // Info message
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline,
+                            color: Colors.blue.shade700,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Showing ${availableVehicles.length} available vehicle(s) (excluding assigned & under repair)',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
                     DropdownButton<String>(
                       value: currentVehicle,
                       isExpanded: true,
-                      items: vehicles.map((v) {
+                      items: availableVehicles.map((v) {
+                        final isCurrentVehicle = v == currentVehicleValue;
                         return DropdownMenuItem<String>(
                           value: v,
-                          child: Text('UNIT $v'),
+                          child: Row(
+                            children: [
+                              Text('UNIT $v'),
+                              if (isCurrentVehicle) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade100,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: Colors.green.shade300,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Current',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.green.shade700,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         );
                       }).toList(),
                       onChanged: (val) {
                         setState(() => currentVehicle = val!);
                       },
                     ),
+
                     const SizedBox(height: 16),
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton(
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () {
+                            Navigator.pop(dialogContext);  // ← Use dialogContext
+                          },
                           child: const Text('Cancel'),
                         ),
                         const SizedBox(width: 8),
@@ -966,7 +1158,9 @@ class _DriverConductorManagementScreenState
                               currentVehicle,
                               employeeData,
                             );
-                            Navigator.pop(context);
+                            if (dialogContext.mounted) {  // ← Check dialogContext
+                              Navigator.pop(dialogContext);  // ← Use dialogContext
+                            }
                           },
                           child: Text(_hasVehicle(data) ? 'Update' : 'Assign'),
                         ),
@@ -990,11 +1184,9 @@ class _DriverConductorManagementScreenState
   ) {
     final data = doc.data() as Map<String, dynamic>;
 
-    final List<String> areas = ['Gaya-gaya', 'Tungko', 'Road 2'];
+    final List<String> areas = ['Not assigned', 'Gaya-gaya', 'Tungko', 'Road 2'];
 
-    String currentArea =
-        data['assignedArea']?.toString() ??
-        (areas.isNotEmpty ? areas.first : 'Not assigned');
+    String currentArea = data['assignedArea']?.toString() ?? 'Not assigned';
 
     showDialog(
       context: context,
@@ -1319,7 +1511,7 @@ class _DriverConductorManagementScreenState
                         ),
                         const SizedBox(width: 16),
                         // Filter - Fixed width
-                        Container(
+                        SizedBox(
                           width: 250,
                           child: Row(
                             children: [

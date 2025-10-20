@@ -91,10 +91,34 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     return passwordList.join();
   }
 
+  /// ----------- VALIDATE EMAIL FUNCTION -----------
+  bool _isValidEmail(String email) {
+    // Basic email format validation
+    final emailRegex = RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    );
+    return emailRegex.hasMatch(email);
+  }
+
   /// ----------- VALIDATE GMAIL FUNCTION -----------
   bool _isValidGmail(String email) {
     final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@gmail\.com$');
     return emailRegex.hasMatch(email);
+  }
+
+  /// ----------- CHECK IF EMAIL EXISTS -----------
+  Future<bool> _checkEmailExists(String email) async {
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
   }
 
   /// ----------- VALIDATE NAME FUNCTION -----------
@@ -1257,10 +1281,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     _capitalizeEmploymentType(data['employmentType']),
                   ),
 
-                // 🔥 NEW: Show area for inspectors
-                if (role == 'inspector' && data['area'] != null)
-                  _buildMobileDetailRow("Area", data['area']),
-
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -1384,7 +1404,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
               DataColumn(label: Text("Status")),
               DataColumn(label: Text("Email")),
               DataColumn(label: Text("Role")),
-              DataColumn(label: Text("Area")),
               DataColumn(label: Text("Actions")),
             ],
             rows: employeeDocs.asMap().entries.map((entry) {
@@ -1432,7 +1451,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
               DataColumn(label: Text("Status")),
               DataColumn(label: Text("Email")),
               DataColumn(label: Text("Role")),
-              DataColumn(label: Text("Area")),
               DataColumn(label: Text("Actions")),
             ],
             rows: employeeDocs.asMap().entries.map((entry) {
@@ -1561,13 +1579,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 fontSize: isCompact ? 11 : 12,
               ),
             ),
-          ),
-        ),
-        // 🔥 NEW: Area column for inspectors
-        DataCell(
-          Text(
-            role == 'inspector' ? (data['area'] ?? 'N/A') : '-',
-            style: isCompact ? const TextStyle(fontSize: 12) : null,
           ),
         ),
         DataCell(
@@ -1714,7 +1725,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     bool obscurePassword = true;
     String generatedPassword = _generatePassword();
     String? employmentType;
-    String? area;
+    String? emailError;
+    bool isCheckingEmail = false;
 
     await showDialog(
       context: context,
@@ -1859,15 +1871,70 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                             // Email Field
                             TextField(
                               controller: emailCtrl,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Email *',
                                 border: OutlineInputBorder(),
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: 12,
                                   vertical: 12,
                                 ),
+                                errorText: emailError,
+                                suffixIcon: isCheckingEmail
+                                    ? Padding(
+                                  padding: const EdgeInsets.all(12.0),
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                )
+                                    : emailError == null && emailCtrl.text.isNotEmpty
+                                    ? Icon(Icons.check_circle, color: Colors.green)
+                                    : null,
                               ),
                               keyboardType: TextInputType.emailAddress,
+                              onChanged: (value) async {
+                                setState(() {
+                                  isCheckingEmail = true;
+                                  emailError = null;
+                                });
+
+                                // Debounce: wait for user to stop typing
+                                await Future.delayed(Duration(milliseconds: 500));
+
+                                if (value.isEmpty) {
+                                  setState(() {
+                                    emailError = 'Email is required';
+                                    isCheckingEmail = false;
+                                  });
+                                  return;
+                                }
+
+                                if (!_isValidEmail(value)) {
+                                  setState(() {
+                                    emailError = 'Invalid email format';
+                                    isCheckingEmail = false;
+                                  });
+                                  return;
+                                }
+
+                                if (!_isValidGmail(value)) {
+                                  setState(() {
+                                    emailError = 'Only Gmail accounts are allowed';
+                                    isCheckingEmail = false;
+                                  });
+                                  return;
+                                }
+
+                                // Check if email already exists
+                                final exists = await _checkEmailExists(value);
+                                setState(() {
+                                  if (exists) {
+                                    emailError = 'This email is already registered';
+                                  }
+                                  isCheckingEmail = false;
+                                });
+                              },
                             ),
 
                             const SizedBox(height: 16),
@@ -1964,7 +2031,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                   setState(() {
                                     role = value;
                                     employmentType = null;
-                                    area = null;
                                   });
                                 },
                               ),
@@ -2025,41 +2091,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                 },
                                 decoration: const InputDecoration(
                                   labelText: "Employment Type *",
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
-
-                            // Area field only for inspectors
-                            if (role == "inspector") ...[
-                              const SizedBox(height: 12),
-                              DropdownButtonFormField<String>(
-                                value: area,
-                                items: const [
-                                  DropdownMenuItem(
-                                    value: "Gaya Gaya",
-                                    child: Text("Gaya Gaya"),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: "SM Tungko",
-                                    child: Text("SM Tungko"),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: "Road 2",
-                                    child: Text("Road 2"),
-                                  ),
-                                ],
-                                onChanged: (value) {
-                                  setState(() {
-                                    area = value;
-                                  });
-                                },
-                                decoration: const InputDecoration(
-                                  labelText: "Area *",
                                   border: OutlineInputBorder(),
                                   contentPadding: EdgeInsets.symmetric(
                                     horizontal: 12,
@@ -2230,35 +2261,44 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                       return;
                                     }
 
-                                    if (!_isValidGmail(email)) {
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              'Only Gmail accounts are allowed',
-                                            ),
-                                          ),
-                                        );
-                                      }
+                                    if (email.isEmpty) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Please enter email address'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
                                       return;
                                     }
 
-                                    // Validate area for inspectors
-                                    if (role == "inspector" &&
-                                        (area == null || area!.isEmpty)) {
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              'Please select an area for inspector',
-                                            ),
-                                          ),
-                                        );
-                                      }
+                                    if (!_isValidEmail(email)) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Please enter a valid email address'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    if (!_isValidGmail(email)) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Only Gmail accounts are allowed'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    final emailExists = await _checkEmailExists(email);
+                                    if (emailExists) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('This email is already registered'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
                                       return;
                                     }
 
@@ -2315,10 +2355,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                       if (employmentType != null) {
                                         userData['employmentType'] =
                                             employmentType;
-                                      }
-                                      // Save area only for inspectors
-                                      if (role == "inspector" && area != null) {
-                                        userData['area'] = area;
                                       }
 
                                       await FirebaseFirestore.instance
@@ -2454,7 +2490,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     final emailCtrl = TextEditingController(text: data['email'] ?? '');
     String? role = data['role'];
     String? employmentType = data['employmentType'];
-    String? area = data['area'];
 
     await showDialog(
       context: context,
@@ -2611,37 +2646,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       ),
                     ),
                   ],
-
-                  // Area Field (Inspector only)
-                  if (role == "inspector") ...[
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: area,
-                      items: const [
-                        DropdownMenuItem(
-                          value: "Gaya Gaya",
-                          child: Text("Gaya Gaya"),
-                        ),
-                        DropdownMenuItem(
-                          value: "SM Tungko",
-                          child: Text("SM Tungko"),
-                        ),
-                        DropdownMenuItem(
-                          value: "Road 2",
-                          child: Text("Road 2"),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          area = value;
-                        });
-                      },
-                      decoration: const InputDecoration(
-                        labelText: "Area *",
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -2692,15 +2696,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     return;
                   }
 
-                  if (role == "inspector" && (area == null || area!.isEmpty)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please select an area for inspector'),
-                      ),
-                    );
-                    return;
-                  }
-
                   final mi = middleName.isNotEmpty ? ' ${middleName[0]}.' : '';
                   final displayName = '$lastName, $firstName$mi';
 
@@ -2719,12 +2714,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           role == 'conductor' ||
                           role == 'inspector')) {
                     updateData["employmentType"] = employmentType as Object;
-                  }
-
-                  if (role == "inspector" && area != null) {
-                    updateData["area"] = area!;
-                  } else {
-                    updateData["area"] = FieldValue.delete();
                   }
 
                   try {
