@@ -88,7 +88,10 @@ class _LegalOfficerDashboardScreenState
 
     final incidentSnapshot = await FirebaseFirestore.instance
         .collection('incident_report')
-        .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(todayStart))
+        .where(
+          'timestamp',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(todayStart),
+        )
         .where('timestamp', isLessThan: Timestamp.fromDate(todayEnd))
         .orderBy('timestamp', descending: true)
         .get();
@@ -431,6 +434,33 @@ class _LegalOfficerDashboardScreenState
   /// ---------------- SIGN OUT  ----------------
   Future<void> _signOut() async {
     if (_isLoggingOut) return;
+
+    // Show confirmation dialog
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout Confirmation'),
+        content: const Text('Are you sure you want to log-out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0D2364),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    // If user cancels, return
+    if (shouldLogout != true) return;
+
     setState(() => _isLoggingOut = true);
 
     try {
@@ -1166,9 +1196,7 @@ class _LegalOfficerDashboardScreenState
 
     return Container(
       width: double.infinity,
-      constraints: isDesktop
-          ? BoxConstraints(maxWidth: 1200)
-          : null,
+      constraints: isDesktop ? BoxConstraints(maxWidth: 1200) : null,
       padding: EdgeInsets.all(isMobile ? 12.0 : (isDesktop ? 24.0 : 16.0)),
       decoration: BoxDecoration(
         color: const Color(0xFF0D2364),
@@ -1373,7 +1401,9 @@ class _LegalOfficerDashboardScreenState
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: isDesktop ? screenWidth * 0.45 : (isTablet ? 600 : 700)),
+            constraints: BoxConstraints(
+              minWidth: isDesktop ? screenWidth * 0.45 : (isTablet ? 600 : 700),
+            ),
             child: DataTable(
               headingRowColor: WidgetStateProperty.all(const Color(0xFF0D2364)),
               dataRowColor: WidgetStateProperty.all(const Color(0xFF0D2364)),
@@ -1474,8 +1504,12 @@ class _LegalOfficerDashboardScreenState
                   controller: _incidentTableScrollController,
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
-                    headingRowColor: WidgetStateProperty.all(const Color(0xFF0D2364)),
-                    dataRowColor: WidgetStateProperty.all(const Color(0xFFFFFFFF)),
+                    headingRowColor: WidgetStateProperty.all(
+                      const Color(0xFF0D2364),
+                    ),
+                    dataRowColor: WidgetStateProperty.all(
+                      const Color(0xFFFFFFFF),
+                    ),
                     columnSpacing: isDesktop ? 40 : (isTablet ? 30 : 20),
                     horizontalMargin: isDesktop ? 24 : 12,
                     headingTextStyle: TextStyle(
@@ -1497,19 +1531,23 @@ class _LegalOfficerDashboardScreenState
                     rows: sortedIncidents.asMap().entries.map((entry) {
                       final index = entry.key;
                       final incident = entry.value;
-                      final assignedName = incident['employeeName'] ?? 'Unknown';
+                      final assignedName =
+                          incident['employeeName'] ?? 'Unknown';
 
                       return DataRow(
                         cells: [
                           DataCell(
-                            Text('INC-${(index + 1).toString().padLeft(2, '0')}'),
+                            Text(
+                              'INC-${(index + 1).toString().padLeft(2, '0')}',
+                            ),
                           ),
                           DataCell(
                             Text(
                               incident['timestamp'] != null
                                   ? DateFormat('MMM d, y hh:mm a').format(
-                                (incident['timestamp'] as Timestamp).toDate(),
-                              )
+                                      (incident['timestamp'] as Timestamp)
+                                          .toDate(),
+                                    )
                                   : '',
                             ),
                           ),
@@ -1559,7 +1597,9 @@ class _LegalOfficerDashboardScreenState
         }
 
         // Check if data exists and is not empty
-        if (!snapshot.hasData || snapshot.data == null || snapshot.data!.isEmpty) {
+        if (!snapshot.hasData ||
+            snapshot.data == null ||
+            snapshot.data!.isEmpty) {
           return const Text(
             'No violations found',
             style: TextStyle(color: Colors.white),
@@ -1608,7 +1648,9 @@ class _LegalOfficerDashboardScreenState
         return Row(
           children: [
             SizedBox(
-              width: isSmallScreen ? 150 : (constraints.maxWidth > 800 ? 200 : 150),
+              width: isSmallScreen
+                  ? 150
+                  : (constraints.maxWidth > 800 ? 200 : 150),
               child: Text(
                 label,
                 style: TextStyle(

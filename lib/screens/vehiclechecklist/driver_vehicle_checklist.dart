@@ -431,15 +431,17 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                     width: double.infinity,
                     height: isMobile ? 45 : 50,
                     child: ElevatedButton(
-                      onPressed: _defectsController.text.length <= 100 &&
-                          _assignedVehicle != null &&
-                          _assignedVehicle != 'N/A'
+                      onPressed:
+                          _defectsController.text.length <= 100 &&
+                              _assignedVehicle != null &&
+                              _assignedVehicle != 'N/A'
                           ? _submitForm
                           : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _defectsController.text.length <= 100 &&
-                            _assignedVehicle != null &&
-                            _assignedVehicle != 'N/A'
+                        backgroundColor:
+                            _defectsController.text.length <= 100 &&
+                                _assignedVehicle != null &&
+                                _assignedVehicle != 'N/A'
                             ? const Color(0xFF0D2364)
                             : Colors.grey,
                         shape: RoundedRectangleBorder(

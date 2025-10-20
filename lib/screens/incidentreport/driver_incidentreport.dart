@@ -58,7 +58,8 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
       if (!userDoc.exists) return;
 
       final userData = userDoc.data()!;
-      final assignedVehicleId = userData['assignedVehicle']?.toString() ?? 'N/A';
+      final assignedVehicleId =
+          userData['assignedVehicle']?.toString() ?? 'N/A';
       setState(() {
         _vehicleId = assignedVehicleId;
       });
@@ -397,7 +398,8 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                                 ? null
                                 : _submitForm,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _vehicleId == 'N/A' || _vehicleId == null
+                              backgroundColor:
+                                  _vehicleId == 'N/A' || _vehicleId == null
                                   ? Colors.grey
                                   : const Color(0xFF0D2364),
                               shape: RoundedRectangleBorder(

@@ -183,8 +183,9 @@ class _IncidentReportManagementScreenState
 
   // Mobile: Vertical stacked stats
   Widget _buildMobileStats(List<IncidentReport> incidents) {
-    final inProgressCount =
-        incidents.where((i) => i.status == 'In Progress').length;
+    final inProgressCount = incidents
+        .where((i) => i.status == 'In Progress')
+        .length;
     final resolvedCount = incidents.where((i) => i.status == 'Resolved').length;
 
     return Column(
@@ -214,8 +215,9 @@ class _IncidentReportManagementScreenState
 
   // Tablet: Three columns
   Widget _buildTabletStats(List<IncidentReport> incidents) {
-    final inProgressCount =
-        incidents.where((i) => i.status == 'In Progress').length;
+    final inProgressCount = incidents
+        .where((i) => i.status == 'In Progress')
+        .length;
     final resolvedCount = incidents.where((i) => i.status == 'Resolved').length;
 
     return Row(
@@ -240,8 +242,9 @@ class _IncidentReportManagementScreenState
 
   // Desktop: Three columns with more spacing
   Widget _buildDesktopStats(List<IncidentReport> incidents) {
-    final inProgressCount =
-        incidents.where((i) => i.status == 'In Progress').length;
+    final inProgressCount = incidents
+        .where((i) => i.status == 'In Progress')
+        .length;
     final resolvedCount = incidents.where((i) => i.status == 'Resolved').length;
 
     return Row(
@@ -444,16 +447,10 @@ class _IncidentReportManagementScreenState
                   ),
                   DataCell(Text(_formatDate(incident.timestamp))),
                   DataCell(
-                    Text(
-                      incident.type,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    Text(incident.type, overflow: TextOverflow.ellipsis),
                   ),
                   DataCell(
-                    Text(
-                      incident.createdBy,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    Text(incident.createdBy, overflow: TextOverflow.ellipsis),
                   ),
                   DataCell(
                     Container(
@@ -591,10 +588,7 @@ class _IncidentReportManagementScreenState
     );
   }
 
-  void _showEditIncidentDialog(
-      BuildContext context,
-      IncidentReport incident,
-      ) {
+  void _showEditIncidentDialog(BuildContext context, IncidentReport incident) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
 
@@ -639,9 +633,10 @@ class _IncidentReportManagementScreenState
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: selectedStatus,
-                      items: ['In Progress', 'Resolved', 'Closed']
-                          .map((String status) {
+                      initialValue: selectedStatus,
+                      items: ['In Progress', 'Resolved', 'Closed'].map((
+                        String status,
+                      ) {
                         return DropdownMenuItem<String>(
                           value: status,
                           child: Text(status),

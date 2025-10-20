@@ -1881,15 +1881,21 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                 errorText: emailError,
                                 suffixIcon: isCheckingEmail
                                     ? Padding(
-                                  padding: const EdgeInsets.all(12.0),
-                                  child: SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  ),
-                                )
-                                    : emailError == null && emailCtrl.text.isNotEmpty
-                                    ? Icon(Icons.check_circle, color: Colors.green)
+                                        padding: const EdgeInsets.all(12.0),
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                      )
+                                    : emailError == null &&
+                                          emailCtrl.text.isNotEmpty
+                                    ? Icon(
+                                        Icons.check_circle,
+                                        color: Colors.green,
+                                      )
                                     : null,
                               ),
                               keyboardType: TextInputType.emailAddress,
@@ -1900,7 +1906,9 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                 });
 
                                 // Debounce: wait for user to stop typing
-                                await Future.delayed(Duration(milliseconds: 500));
+                                await Future.delayed(
+                                  Duration(milliseconds: 500),
+                                );
 
                                 if (value.isEmpty) {
                                   setState(() {
@@ -1920,7 +1928,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
                                 if (!_isValidGmail(value)) {
                                   setState(() {
-                                    emailError = 'Only Gmail accounts are allowed';
+                                    emailError =
+                                        'Only Gmail accounts are allowed';
                                     isCheckingEmail = false;
                                   });
                                   return;
@@ -1930,7 +1939,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                 final exists = await _checkEmailExists(value);
                                 setState(() {
                                   if (exists) {
-                                    emailError = 'This email is already registered';
+                                    emailError =
+                                        'This email is already registered';
                                   }
                                   isCheckingEmail = false;
                                 });
@@ -2262,9 +2272,13 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                     }
 
                                     if (email.isEmpty) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
-                                          content: Text('Please enter email address'),
+                                          content: Text(
+                                            'Please enter email address',
+                                          ),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
@@ -2272,9 +2286,13 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                     }
 
                                     if (!_isValidEmail(email)) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
-                                          content: Text('Please enter a valid email address'),
+                                          content: Text(
+                                            'Please enter a valid email address',
+                                          ),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
@@ -2282,20 +2300,30 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                     }
 
                                     if (!_isValidGmail(email)) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
-                                          content: Text('Only Gmail accounts are allowed'),
+                                          content: Text(
+                                            'Only Gmail accounts are allowed',
+                                          ),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
                                       return;
                                     }
 
-                                    final emailExists = await _checkEmailExists(email);
+                                    final emailExists = await _checkEmailExists(
+                                      email,
+                                    );
                                     if (emailExists) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
-                                          content: Text('This email is already registered'),
+                                          content: Text(
+                                            'This email is already registered',
+                                          ),
                                           backgroundColor: Colors.red,
                                         ),
                                       );

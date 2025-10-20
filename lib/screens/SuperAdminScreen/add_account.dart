@@ -234,14 +234,14 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       // Update user profile with display name
       await newCred.user!.updateDisplayName(displayName);
 
-      // Save to Firestore
+      // FIXED: Save to Firestore with ALL name fields
       await FirebaseFirestore.instance.collection('users').doc(newUid).set({
         'uid': newUid,
         'email': email,
         'employeeId': employeeId,
-        'firstName': firstName,
-        'middleName': middleName,
-        'lastName': lastName,
+        'firstName': firstName, // ✅ SAVE firstName
+        'middleName': middleName, // ✅ SAVE middleName
+        'lastName': lastName, // ✅ SAVE lastName
         'displayName': displayName,
         'role': role,
         'status': true,

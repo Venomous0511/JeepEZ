@@ -57,7 +57,10 @@ class AppUpdateService {
   }
 
   /// Open app store page for update
-  static Future<bool> openAppStoreUpdate(String packageName, {String? releaseUrl}) async {
+  static Future<bool> openAppStoreUpdate(
+    String packageName, {
+    String? releaseUrl,
+  }) async {
     try {
       // Use GitHub release URL if provided, otherwise fall back to app stores
       if (releaseUrl != null && releaseUrl.isNotEmpty) {
@@ -70,7 +73,8 @@ class AppUpdateService {
       }
 
       // For Android, try Google Play
-      final playStoreUrl = 'https://play.google.com/store/apps/details?id=$packageName';
+      final playStoreUrl =
+          'https://play.google.com/store/apps/details?id=$packageName';
       if (await canLaunchUrl(Uri.parse(playStoreUrl))) {
         return await launchUrl(
           Uri.parse(playStoreUrl),

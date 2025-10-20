@@ -12,7 +12,8 @@ class TicketTable extends StatefulWidget {
 class _TicketTableState extends State<TicketTable> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _unitNumberController = TextEditingController();
-  final TextEditingController _conductorNameController = TextEditingController();
+  final TextEditingController _conductorNameController =
+      TextEditingController();
 
   bool isLoading = false;
   String noOfPass = '0';
@@ -33,9 +34,13 @@ class _TicketTableState extends State<TicketTable> {
   }
 
   Stream<List<TicketData>> _getTicketsStream() {
-    return _firestore.collection('ticket_report').snapshots().asyncMap((ticketSnapshot) async {
+    return _firestore.collection('ticket_report').snapshots().asyncMap((
+      ticketSnapshot,
+    ) async {
       // Load inspector trips
-      final inspectorSnapshot = await _firestore.collection('inspector_trip').get();
+      final inspectorSnapshot = await _firestore
+          .collection('inspector_trip')
+          .get();
       Map<String, int> inspectorData = {};
 
       for (var doc in inspectorSnapshot.docs) {
@@ -45,7 +50,8 @@ class _TicketTableState extends State<TicketTable> {
           final timestamp = (data['timestamp'] as Timestamp).toDate();
           final dateKey = DateFormat('yyyy-MM-dd').format(timestamp);
           final unitNumber = data['unitNumber']?.toString().trim() ?? '';
-          final conductorName = data['conductorName']?.toString().toLowerCase().trim() ?? '';
+          final conductorName =
+              data['conductorName']?.toString().toLowerCase().trim() ?? '';
           final passengers = int.tryParse(data['noOfPass'].toString()) ?? 0;
 
           // Composite key: date-unit-conductor
@@ -68,7 +74,8 @@ class _TicketTableState extends State<TicketTable> {
         final timestamp = (data['timestamp'] as Timestamp).toDate();
         final dateKey = DateFormat('yyyy-MM-dd').format(timestamp);
         final unitNumber = data['unitNumber']?.toString().trim() ?? 'Unknown';
-        final conductorName = data['conductorName']?.toString().toLowerCase().trim() ?? 'Unknown';
+        final conductorName =
+            data['conductorName']?.toString().toLowerCase().trim() ?? 'Unknown';
         final employeeId = data['employeeId'] ?? '';
 
         // Match inspector trip to get number of passengers
@@ -126,20 +133,22 @@ class _TicketTableState extends State<TicketTable> {
 
           if (!hasData || firstOpeningTicket == null) continue;
 
-          tickets.add(TicketData(
-            tripNo: '${rowIndex + 1}',
-            vehicle: unitNumber,
-            conductorName: conductorName,
-            employeeId: employeeId,
-            date: timestamp,
-            openingTicketNo: firstOpeningTicket,
-            closingTicketNo: firstClosingTicket,
-            passengers: passengers,
-            submittedBy: conductorName,
-            openingTimestamp: timestamp,
-            closingTimestamp: firstClosingTicket != null ? timestamp : null,
-            denominationBreakdown: denominationBreakdown,
-          ));
+          tickets.add(
+            TicketData(
+              tripNo: '${rowIndex + 1}',
+              vehicle: unitNumber,
+              conductorName: conductorName,
+              employeeId: employeeId,
+              date: timestamp,
+              openingTicketNo: firstOpeningTicket,
+              closingTicketNo: firstClosingTicket,
+              passengers: passengers,
+              submittedBy: conductorName,
+              openingTimestamp: timestamp,
+              closingTimestamp: firstClosingTicket != null ? timestamp : null,
+              denominationBreakdown: denominationBreakdown,
+            ),
+          );
         }
       }
 
@@ -177,7 +186,10 @@ class _TicketTableState extends State<TicketTable> {
       QuerySnapshot querySnapshot = await _firestore
           .collection('inspector_trip')
           .where('unitNumber', isEqualTo: _unitNumberController.text.trim())
-          .where('conductorName', isEqualTo: _conductorNameController.text.trim())
+          .where(
+            'conductorName',
+            isEqualTo: _conductorNameController.text.trim(),
+          )
           .orderBy('timestamp', descending: true)
           .limit(1)
           .get();
@@ -339,10 +351,26 @@ class _TicketTableState extends State<TicketTable> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _buildDetailRow('Trip No.', ticket.tripNo, isMobile),
-                        _buildDetailRow('Vehicle Unit', ticket.vehicle, isMobile),
-                        _buildDetailRow('Conductor', ticket.conductorName, isMobile),
-                        _buildDetailRow('Employee ID', ticket.employeeId, isMobile),
-                        _buildDetailRow('Date', _formatDate(ticket.date), isMobile),
+                        _buildDetailRow(
+                          'Vehicle Unit',
+                          ticket.vehicle,
+                          isMobile,
+                        ),
+                        _buildDetailRow(
+                          'Conductor',
+                          ticket.conductorName,
+                          isMobile,
+                        ),
+                        _buildDetailRow(
+                          'Employee ID',
+                          ticket.employeeId,
+                          isMobile,
+                        ),
+                        _buildDetailRow(
+                          'Date',
+                          _formatDate(ticket.date),
+                          isMobile,
+                        ),
                         _buildDetailRow(
                           'Opening Time',
                           _formatTime(ticket.openingTimestamp),
@@ -353,7 +381,11 @@ class _TicketTableState extends State<TicketTable> {
                           _formatTime(ticket.closingTimestamp),
                           isMobile,
                         ),
-                        _buildDetailRow('Submitted By', ticket.submittedBy, isMobile),
+                        _buildDetailRow(
+                          'Submitted By',
+                          ticket.submittedBy,
+                          isMobile,
+                        ),
 
                         SizedBox(height: 20),
 
@@ -426,15 +458,23 @@ class _TicketTableState extends State<TicketTable> {
                                   ),
                                 ),
                                 // Rows
-                                ...ticket.denominationBreakdown.entries.map((entry) {
+                                ...ticket.denominationBreakdown.entries.map((
+                                  entry,
+                                ) {
                                   final denom = entry.key;
                                   final data = entry.value;
-                                  final index = ticket.denominationBreakdown.keys.toList().indexOf(denom);
+                                  final index = ticket
+                                      .denominationBreakdown
+                                      .keys
+                                      .toList()
+                                      .indexOf(denom);
 
                                   return Container(
                                     padding: EdgeInsets.all(isMobile ? 8 : 12),
                                     decoration: BoxDecoration(
-                                      color: index.isEven ? Colors.grey[50] : Colors.white,
+                                      color: index.isEven
+                                          ? Colors.grey[50]
+                                          : Colors.white,
                                       border: Border(
                                         bottom: BorderSide(
                                           color: Colors.grey[300]!,
@@ -578,83 +618,83 @@ class _TicketTableState extends State<TicketTable> {
           child: tickets.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
-            itemCount: tickets.length,
-            itemBuilder: (context, index) {
-              final ticket = tickets[index];
-              return Container(
-                decoration: BoxDecoration(
-                  color: index.isEven ? Colors.white : Colors.grey[50],
-                  border: const Border(
-                    bottom: BorderSide(color: Colors.grey, width: 0.5),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: _TableDataText(ticket.tripNo),
-                      ),
-                      Expanded(
-                        flex: 3,
-                        child: _TableDataText(ticket.vehicle),
-                      ),
-                      Expanded(
-                        flex: 4,
-                        child: _TableDataText(ticket.conductorName),
-                      ),
-                      Expanded(
-                        flex: 3,
-                        child: _TableDataText(_formatDate(ticket.date)),
-                      ),
-                      Expanded(
-                        flex: 3,
-                        child: _TableDataText(
-                          _formatTicketNumber(ticket.openingTicketNo),
+                  itemCount: tickets.length,
+                  itemBuilder: (context, index) {
+                    final ticket = tickets[index];
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: index.isEven ? Colors.white : Colors.grey[50],
+                        border: const Border(
+                          bottom: BorderSide(color: Colors.grey, width: 0.5),
                         ),
                       ),
-                      Expanded(
-                        flex: 3,
-                        child: _TableDataText(
-                          _formatTicketNumber(ticket.closingTicketNo),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
                         ),
-                      ),
-                      Expanded(
-                        flex: 3,
-                        child: Center(
-                          child: _TableDataText(
-                            ticket.closingTicketNo != null
-                                ? ticket.passengers.toString()
-                                : 'N/A',
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Center(
-                          child: IconButton(
-                            icon: Icon(
-                              Icons.visibility,
-                              color: Color(0xFF0D2364),
-                              size: 18,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: _TableDataText(ticket.tripNo),
                             ),
-                            onPressed: () => _showTicketDetails(ticket),
-                            tooltip: 'View Details',
-                            padding: EdgeInsets.zero,
-                            constraints: BoxConstraints(),
-                          ),
+                            Expanded(
+                              flex: 3,
+                              child: _TableDataText(ticket.vehicle),
+                            ),
+                            Expanded(
+                              flex: 4,
+                              child: _TableDataText(ticket.conductorName),
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child: _TableDataText(_formatDate(ticket.date)),
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child: _TableDataText(
+                                _formatTicketNumber(ticket.openingTicketNo),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child: _TableDataText(
+                                _formatTicketNumber(ticket.closingTicketNo),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child: Center(
+                                child: _TableDataText(
+                                  ticket.closingTicketNo != null
+                                      ? ticket.passengers.toString()
+                                      : 'N/A',
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Center(
+                                child: IconButton(
+                                  icon: Icon(
+                                    Icons.visibility,
+                                    color: Color(0xFF0D2364),
+                                    size: 18,
+                                  ),
+                                  onPressed: () => _showTicketDetails(ticket),
+                                  tooltip: 'View Details',
+                                  padding: EdgeInsets.zero,
+                                  constraints: BoxConstraints(),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
       ],
     );
@@ -664,104 +704,104 @@ class _TicketTableState extends State<TicketTable> {
     return tickets.isEmpty
         ? _buildEmptyState()
         : ListView.builder(
-      itemCount: tickets.length,
-      itemBuilder: (context, index) {
-        final ticket = tickets[index];
-        return Card(
-          margin: EdgeInsets.fromLTRB(8, 4, 8, 4),
-          elevation: 1,
-          child: Padding(
-            padding: EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Trip ${ticket.tripNo}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Color(0xFF0D2364),
+            itemCount: tickets.length,
+            itemBuilder: (context, index) {
+              final ticket = tickets[index];
+              return Card(
+                margin: EdgeInsets.fromLTRB(8, 4, 8, 4),
+                elevation: 1,
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Trip ${ticket.tripNo}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Color(0xFF0D2364),
+                            ),
+                          ),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Color(0xFF0D2364).withAlpha(25),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              ticket.vehicle,
+                              style: TextStyle(
+                                color: Color(0xFF0D2364),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                      SizedBox(height: 8),
+                      _buildMobileInfoRow('Conductor', ticket.conductorName),
+                      _buildMobileInfoRow('Date', _formatDate(ticket.date)),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildMobileInfoRow(
+                              'Opening',
+                              _formatTicketNumber(ticket.openingTicketNo),
+                            ),
+                          ),
+                          Expanded(
+                            child: _buildMobileInfoRow(
+                              'Closing',
+                              _formatTicketNumber(ticket.closingTicketNo),
+                            ),
+                          ),
+                          Expanded(
+                            child: _buildMobileInfoRow(
+                              'Passengers',
+                              ticket.passengers.toString(),
+                            ),
+                          ),
+                        ],
                       ),
-                      decoration: BoxDecoration(
-                        color: Color(0xFF0D2364).withAlpha(25),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        ticket.vehicle,
-                        style: TextStyle(
-                          color: Color(0xFF0D2364),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                      SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          icon: Icon(
+                            Icons.visibility,
+                            size: 16,
+                            color: Color(0xFF0D2364),
+                          ),
+                          label: Text(
+                            'View Details',
+                            style: TextStyle(
+                              color: Color(0xFF0D2364),
+                              fontSize: 12,
+                            ),
+                          ),
+                          onPressed: () => _showTicketDetails(ticket),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                _buildMobileInfoRow('Conductor', ticket.conductorName),
-                _buildMobileInfoRow('Date', _formatDate(ticket.date)),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildMobileInfoRow(
-                        'Opening',
-                        _formatTicketNumber(ticket.openingTicketNo),
-                      ),
-                    ),
-                    Expanded(
-                      child: _buildMobileInfoRow(
-                        'Closing',
-                        _formatTicketNumber(ticket.closingTicketNo),
-                      ),
-                    ),
-                    Expanded(
-                      child: _buildMobileInfoRow(
-                        'Passengers',
-                        ticket.passengers.toString(),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    icon: Icon(
-                      Icons.visibility,
-                      size: 16,
-                      color: Color(0xFF0D2364),
-                    ),
-                    label: Text(
-                      'View Details',
-                      style: TextStyle(
-                        color: Color(0xFF0D2364),
-                        fontSize: 12,
-                      ),
-                    ),
-                    onPressed: () => _showTicketDetails(ticket),
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                    ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+              );
+            },
+          );
   }
 
   Widget _buildMobileInfoRow(String label, String value) {
@@ -812,7 +852,10 @@ class _TicketTableState extends State<TicketTable> {
     );
   }
 
-  Widget _buildSearchAndFilterSection(bool isMobile, List<String> vehicleOptions) {
+  Widget _buildSearchAndFilterSection(
+    bool isMobile,
+    List<String> vehicleOptions,
+  ) {
     Color customBlueColor = const Color(0xFF0D2364);
 
     return Column(
@@ -971,7 +1014,9 @@ class _TicketTableState extends State<TicketTable> {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            inspectionTime.isNotEmpty ? inspectionTime : '--:--',
+                            inspectionTime.isNotEmpty
+                                ? inspectionTime
+                                : '--:--',
                             style: TextStyle(
                               fontSize: isMobile ? 14 : 16,
                               fontWeight: FontWeight.w600,
@@ -995,13 +1040,17 @@ class _TicketTableState extends State<TicketTable> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: customBlueColor,
                           foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 15),
+                          padding: EdgeInsets.symmetric(
+                            vertical: isMobile ? 12 : 15,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                         child: Text(
-                          showTicketTable ? 'Hide Ticket Table' : 'Show Ticket Table',
+                          showTicketTable
+                              ? 'Hide Ticket Table'
+                              : 'Show Ticket Table',
                           style: TextStyle(
                             fontSize: isMobile ? 14 : 16,
                             fontWeight: FontWeight.bold,
@@ -1024,11 +1073,11 @@ class _TicketTableState extends State<TicketTable> {
   }
 
   Widget _buildSearchField(
-      String label,
-      TextEditingController controller,
-      String hint,
-      bool isSmallScreen,
-      ) {
+    String label,
+    TextEditingController controller,
+    String hint,
+    bool isSmallScreen,
+  ) {
     Color customBlueColor = const Color(0xFF0D2364);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1097,9 +1146,7 @@ class _TicketTableState extends State<TicketTable> {
     Color customBlueColor = const Color(0xFF0D2364);
     return Container(
       width: double.infinity,
-      constraints: BoxConstraints(
-        maxHeight: 300,
-      ),
+      constraints: BoxConstraints(maxHeight: 300),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[400]!),
         borderRadius: BorderRadius.circular(8),
@@ -1120,7 +1167,9 @@ class _TicketTableState extends State<TicketTable> {
                   ),
                   decoration: BoxDecoration(
                     color: customBlueColor,
-                    border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey[300]!),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -1180,9 +1229,11 @@ class _TicketTableState extends State<TicketTable> {
                             textAlign: TextAlign.center,
                           ),
                         ),
-                        for (int colIndex = 0;
-                        colIndex < ticketData[rowIndex].length;
-                        colIndex++)
+                        for (
+                          int colIndex = 0;
+                          colIndex < ticketData[rowIndex].length;
+                          colIndex++
+                        )
                           SizedBox(
                             width: isSmallScreen ? 80 : 100,
                             child: Text(
@@ -1221,9 +1272,7 @@ class _TicketTableState extends State<TicketTable> {
             }
 
             if (snapshot.hasError) {
-              return Center(
-                child: Text('Error: ${snapshot.error}'),
-              );
+              return Center(child: Text('Error: ${snapshot.error}'));
             }
 
             final allTickets = snapshot.data ?? [];
@@ -1231,7 +1280,10 @@ class _TicketTableState extends State<TicketTable> {
             final vehicleOptions = _getVehicleOptions(allTickets);
 
             final screenHeight = MediaQuery.of(context).size.height;
-            final safeMaxHeight = (screenHeight * 0.6).clamp(400.0, double.infinity);
+            final safeMaxHeight = (screenHeight * 0.6).clamp(
+              400.0,
+              double.infinity,
+            );
 
             return Column(
               children: [
@@ -1241,7 +1293,10 @@ class _TicketTableState extends State<TicketTable> {
                       padding: EdgeInsets.all(isMobile ? 8.0 : 16.0),
                       child: Column(
                         children: [
-                          _buildSearchAndFilterSection(isMobile, vehicleOptions),
+                          _buildSearchAndFilterSection(
+                            isMobile,
+                            vehicleOptions,
+                          ),
                           SizedBox(height: isMobile ? 12 : 16),
 
                           // Ticket container with safe height constraints

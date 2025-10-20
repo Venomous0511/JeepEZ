@@ -587,7 +587,9 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              onPressed: hasSubmittedOpeningToday || user?['assignedVehicle'] == 'N/A'
+                              onPressed:
+                                  hasSubmittedOpeningToday ||
+                                      user?['assignedVehicle'] == 'N/A'
                                   ? null
                                   : () => _submitOpeningTickets(),
                               icon: Icon(
@@ -666,9 +668,10 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              onPressed: !hasSubmittedOpeningToday ||
-                                  hasSubmittedClosingToday ||
-                                  user?['assignedVehicle'] == 'N/A'
+                              onPressed:
+                                  !hasSubmittedOpeningToday ||
+                                      hasSubmittedClosingToday ||
+                                      user?['assignedVehicle'] == 'N/A'
                                   ? null
                                   : hasSubmittedClosingToday
                                   ? null

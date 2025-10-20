@@ -91,6 +91,33 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Future<void> _signOut() async {
     if (_isLoggingOut) return;
+
+    // Show confirmation dialog
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout Confirmation'),
+        content: const Text('Are you sure you want to log-out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0D2364),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    // If user cancels, return
+    if (shouldLogout != true) return;
+
     setState(() => _isLoggingOut = true);
 
     try {

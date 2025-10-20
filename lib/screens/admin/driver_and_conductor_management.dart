@@ -932,11 +932,16 @@ class _DriverConductorManagementScreenState
   // Load vehicle IDs from vehicles collection
   Future<List<String>> _getVehicles() async {
     final snapshot = await _firestore.collection('vehicles').get();
-    return snapshot.docs.map((doc) => doc['vehicleId'].toString().trim()).toList();
+    return snapshot.docs
+        .map((doc) => doc['vehicleId'].toString().trim())
+        .toList();
   }
 
   // Get available vehicles
-  Future<List<String>> _getAvailableVehicles(String? currentUserId, String role,) async {
+  Future<List<String>> _getAvailableVehicles(
+    String? currentUserId,
+    String role,
+  ) async {
     // Get all vehicles
     final allVehicles = await _getVehicles();
 
@@ -949,7 +954,6 @@ class _DriverConductorManagementScreenState
         underRepairVehicles.add(doc.data()['vehicleId'].toString().trim());
       }
     }
-
 
     // Get all users with the SAME role who have assigned vehicles
     final usersSnapshot = await _firestore
@@ -969,7 +973,8 @@ class _DriverConductorManagementScreenState
       final assignedVehicle = data['assignedVehicle'];
 
       // Add to assigned list if it's a valid vehicle number
-      if (assignedVehicle != null && assignedVehicle.toString() != 'Not assigned') {
+      if (assignedVehicle != null &&
+          assignedVehicle.toString() != 'Not assigned') {
         // Convert to string for consistent comparison
         final vehicleStr = assignedVehicle is int
             ? assignedVehicle.toString()
@@ -982,22 +987,23 @@ class _DriverConductorManagementScreenState
 
     // Filter out assigned vehicles
     final availableVehicles = allVehicles
-        .where((vehicle) =>
-        !assignedVehicles.contains(vehicle) &&
-        !underRepairVehicles.contains(vehicle))
+        .where(
+          (vehicle) =>
+              !assignedVehicles.contains(vehicle) &&
+              !underRepairVehicles.contains(vehicle),
+        )
         .toList();
 
     return availableVehicles;
   }
 
   // Vehicle selector dialog (for driver/conductor)
-// Vehicle selector dialog (for driver/conductor)
+  // Vehicle selector dialog (for driver/conductor)
   void _showVehicleSelector(
-      BuildContext context,
-      QueryDocumentSnapshot doc,
-      Map<String, dynamic> employeeData,
-      ) async {
-
+    BuildContext context,
+    QueryDocumentSnapshot doc,
+    Map<String, dynamic> employeeData,
+  ) async {
     final data = doc.data() as Map<String, dynamic>;
     final role = data['role']?.toString() ?? '';
 
@@ -1040,12 +1046,12 @@ class _DriverConductorManagementScreenState
       currentVehicle = availableVehicles.first;
     }
 
-
     // Use Builder to get a fresh context
     showDialog(
       context: context,
       barrierDismissible: false, // Prevent accidental dismissal
-      builder: (dialogContext) {  // ← Use dialogContext instead of context
+      builder: (dialogContext) {
+        // ← Use dialogContext instead of context
         return StatefulBuilder(
           builder: (context, setState) {
             return Dialog(
@@ -1076,7 +1082,8 @@ class _DriverConductorManagementScreenState
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.info_outline,
+                          Icon(
+                            Icons.info_outline,
                             color: Colors.blue.shade700,
                             size: 20,
                           ),
@@ -1146,7 +1153,7 @@ class _DriverConductorManagementScreenState
                       children: [
                         TextButton(
                           onPressed: () {
-                            Navigator.pop(dialogContext);  // ← Use dialogContext
+                            Navigator.pop(dialogContext); // ← Use dialogContext
                           },
                           child: const Text('Cancel'),
                         ),
@@ -1158,8 +1165,11 @@ class _DriverConductorManagementScreenState
                               currentVehicle,
                               employeeData,
                             );
-                            if (dialogContext.mounted) {  // ← Check dialogContext
-                              Navigator.pop(dialogContext);  // ← Use dialogContext
+                            if (dialogContext.mounted) {
+                              // ← Check dialogContext
+                              Navigator.pop(
+                                dialogContext,
+                              ); // ← Use dialogContext
                             }
                           },
                           child: Text(_hasVehicle(data) ? 'Update' : 'Assign'),
@@ -1184,7 +1194,12 @@ class _DriverConductorManagementScreenState
   ) {
     final data = doc.data() as Map<String, dynamic>;
 
-    final List<String> areas = ['Not assigned', 'Gaya-gaya', 'Tungko', 'Road 2'];
+    final List<String> areas = [
+      'Not assigned',
+      'Gaya-gaya',
+      'Tungko',
+      'Road 2',
+    ];
 
     String currentArea = data['assignedArea']?.toString() ?? 'Not assigned';
 

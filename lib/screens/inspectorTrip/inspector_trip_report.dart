@@ -75,10 +75,7 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
 
       availableVehicles = vehiclesSnapshot.docs.map((doc) {
         final data = doc.data();
-        return {
-          'vehicleId': doc.id,
-          'data': data,
-        };
+        return {'vehicleId': doc.id, 'data': data};
       }).toList();
 
       // Get drivers scheduled for today
@@ -88,16 +85,19 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
           .where('status', isEqualTo: true)
           .get();
 
-      todayDrivers = driversSnapshot.docs.where((doc) {
-        final schedule = doc.data()['schedule'] as String?;
-        return schedule != null && schedule.contains(today);
-      }).map((doc) {
-        return {
-          'uid': doc.id,
-          'name': doc.data()['name'] ?? 'Unknown',
-          'data': doc.data(),
-        };
-      }).toList();
+      todayDrivers = driversSnapshot.docs
+          .where((doc) {
+            final schedule = doc.data()['schedule'] as String?;
+            return schedule != null && schedule.contains(today);
+          })
+          .map((doc) {
+            return {
+              'uid': doc.id,
+              'name': doc.data()['name'] ?? 'Unknown',
+              'data': doc.data(),
+            };
+          })
+          .toList();
 
       // Get conductors scheduled for today
       final conductorsSnapshot = await FirebaseFirestore.instance
@@ -106,17 +106,19 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
           .where('status', isEqualTo: true)
           .get();
 
-      todayConductors = conductorsSnapshot.docs.where((doc) {
-        final schedule = doc.data()['schedule'] as String?;
-        return schedule != null && schedule.contains(today);
-      }).map((doc) {
-        return {
-          'uid': doc.id,
-          'name': doc.data()['name'] ?? 'Unknown',
-          'data': doc.data(),
-        };
-      }).toList();
-
+      todayConductors = conductorsSnapshot.docs
+          .where((doc) {
+            final schedule = doc.data()['schedule'] as String?;
+            return schedule != null && schedule.contains(today);
+          })
+          .map((doc) {
+            return {
+              'uid': doc.id,
+              'name': doc.data()['name'] ?? 'Unknown',
+              'data': doc.data(),
+            };
+          })
+          .toList();
     } catch (e) {
       print('Error loading dropdown data: $e');
     } finally {
@@ -277,8 +279,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                         _buildDropdownField(
                           'Unit number',
                           selectedUnitNumber,
-                          availableVehicles.map((v) => v['vehicleId'] as String).toList(),
-                              (value) {
+                          availableVehicles
+                              .map((v) => v['vehicleId'] as String)
+                              .toList(),
+                          (value) {
                             setState(() {
                               selectedUnitNumber = value;
                             });
@@ -291,7 +295,7 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                           'Name of Driver',
                           selectedDriverName,
                           todayDrivers.map((d) => d['name'] as String).toList(),
-                              (value) {
+                          (value) {
                             setState(() {
                               selectedDriverName = value;
                             });
@@ -303,8 +307,10 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                         _buildDropdownField(
                           'Name of Conductor',
                           selectedConductorName,
-                          todayConductors.map((c) => c['name'] as String).toList(),
-                              (value) {
+                          todayConductors
+                              .map((c) => c['name'] as String)
+                              .toList(),
+                          (value) {
                             setState(() {
                               selectedConductorName = value;
                             });
@@ -456,8 +462,11 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                                       TextInputType.number,
                                                   maxLength: 10,
                                                   onTap: () {
-                                                    if (ticketRow[colIndex].text == '0') {
-                                                      ticketRow[colIndex].clear();
+                                                    if (ticketRow[colIndex]
+                                                            .text ==
+                                                        '0') {
+                                                      ticketRow[colIndex]
+                                                          .clear();
                                                     }
                                                   },
                                                   decoration:
@@ -627,12 +636,12 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
   }
 
   Widget _buildDropdownField(
-      String label,
-      String? value,
-      List<String> items,
-      Function(String?) onChanged,
-      String hint,
-      ) {
+    String label,
+    String? value,
+    List<String> items,
+    Function(String?) onChanged,
+    String hint,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -667,22 +676,22 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
           items: items.isEmpty
               ? null
               : items.map((item) {
-            return DropdownMenuItem<String>(
-              value: item,
-              child: Text(
-                item,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-            );
-          }).toList(),
+                  return DropdownMenuItem<String>(
+                    value: item,
+                    child: Text(
+                      item,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  );
+                }).toList(),
           onChanged: items.isEmpty ? null : onChanged,
           hint: items.isEmpty
               ? Text(
-            'No options available for today',
-            style: TextStyle(color: Colors.grey[600]),
-            overflow: TextOverflow.ellipsis,
-          )
+                  'No options available for today',
+                  style: TextStyle(color: Colors.grey[600]),
+                  overflow: TextOverflow.ellipsis,
+                )
               : null,
         ),
       ],

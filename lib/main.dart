@@ -67,7 +67,11 @@ class JeepezApp extends StatelessWidget {
 
                 if (!userSnapshot.data!.exists) {
                   return const Scaffold(
-                    body: Center(child: Text("User profile not found. Please contact admin.")),
+                    body: Center(
+                      child: Text(
+                        "User profile not found. Please contact admin.",
+                      ),
+                    ),
                   );
                 }
 

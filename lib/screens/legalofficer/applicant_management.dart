@@ -791,27 +791,20 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
     try {
       final uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {
-        await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No app available to open this link'),
-            ),
+            const SnackBar(content: Text('No app available to open this link')),
           );
         }
       }
     } catch (e) {
       debugPrint('Error opening URL: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error opening resume: $e'),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error opening resume: $e')));
       }
     }
   }
@@ -992,16 +985,17 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
   }
 
   Widget _buildRequirementItem(
-      String title,
-      bool isChecked,
-      Function(bool) onChanged,
-      bool isMobile, {
-        Candidate? candidate,
-      }) {
+    String title,
+    bool isChecked,
+    Function(bool) onChanged,
+    bool isMobile, {
+    Candidate? candidate,
+  }) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       color: isChecked ? Colors.green[50] : null,
-      child: Column(  // Changed from ListTile to Column for better mobile control
+      child: Column(
+        // Changed from ListTile to Column for better mobile control
         children: [
           ListTile(
             contentPadding: EdgeInsets.symmetric(
@@ -1043,109 +1037,113 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
               ),
               child: candidate.resumeUrl == null
                   ? SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.upload, size: 14),
-                  label: Text(
-                    'Upload Resume',
-                    style: TextStyle(fontSize: isMobile ? 11 : 12),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _uploadResume(candidate);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D2364),
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isMobile ? 8 : 12,
-                      vertical: isMobile ? 8 : 10,
-                    ),
-                  ),
-                ),
-              )
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.upload, size: 14),
+                        label: Text(
+                          'Upload Resume',
+                          style: TextStyle(fontSize: isMobile ? 11 : 12),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _uploadResume(candidate);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0D2364),
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isMobile ? 8 : 12,
+                            vertical: isMobile ? 8 : 10,
+                          ),
+                        ),
+                      ),
+                    )
                   : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Filename row
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        color: Colors.green,
-                        size: isMobile ? 14 : 16,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          candidate.resumeFileName ?? 'Resume uploaded',
-                          style: TextStyle(
-                            fontSize: isMobile ? 11 : 12,
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Action buttons row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: Icon(
-                            Icons.visibility,
-                            size: isMobile ? 14 : 16,
-                          ),
-                          label: Text(
-                            'View',
-                            style: TextStyle(fontSize: isMobile ? 11 : 12),
-                          ),
-                          onPressed: () {
-                            if (candidate.resumeUrl != null) {
-                              _viewResumeInBrowser(candidate.resumeUrl!);
-                            }
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.blue,
-                            side: const BorderSide(color: Colors.blue),
-                            padding: EdgeInsets.symmetric(
-                              vertical: isMobile ? 8 : 10,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Filename row
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              color: Colors.green,
+                              size: isMobile ? 14 : 16,
                             ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: Icon(
-                            Icons.upload,
-                            size: isMobile ? 14 : 16,
-                          ),
-                          label: Text(
-                            'Reupload',
-                            style: TextStyle(fontSize: isMobile ? 11 : 12),
-                          ),
-                          onPressed: () {
-                            Navigator.pop(context);
-                            _uploadResume(candidate);
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.orange,
-                            side: const BorderSide(color: Colors.orange),
-                            padding: EdgeInsets.symmetric(
-                              vertical: isMobile ? 8 : 10,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                candidate.resumeFileName ?? 'Resume uploaded',
+                                style: TextStyle(
+                                  fontSize: isMobile ? 11 : 12,
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                        const SizedBox(height: 8),
+                        // Action buttons row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                icon: Icon(
+                                  Icons.visibility,
+                                  size: isMobile ? 14 : 16,
+                                ),
+                                label: Text(
+                                  'View',
+                                  style: TextStyle(
+                                    fontSize: isMobile ? 11 : 12,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  if (candidate.resumeUrl != null) {
+                                    _viewResumeInBrowser(candidate.resumeUrl!);
+                                  }
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.blue,
+                                  side: const BorderSide(color: Colors.blue),
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: isMobile ? 8 : 10,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                icon: Icon(
+                                  Icons.upload,
+                                  size: isMobile ? 14 : 16,
+                                ),
+                                label: Text(
+                                  'Reupload',
+                                  style: TextStyle(
+                                    fontSize: isMobile ? 11 : 12,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  _uploadResume(candidate);
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.orange,
+                                  side: const BorderSide(color: Colors.orange),
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: isMobile ? 8 : 10,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
             ),
           ],
         ],
@@ -1286,10 +1284,7 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
           thumbVisibility: true,
           child: ScrollConfiguration(
             behavior: ScrollConfiguration.of(context).copyWith(
-              dragDevices: {
-                PointerDeviceKind.touch,
-                PointerDeviceKind.mouse,
-              },
+              dragDevices: {PointerDeviceKind.touch, PointerDeviceKind.mouse},
               scrollbars: true,
             ),
             child: SingleChildScrollView(
@@ -1298,7 +1293,8 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
               child: Scrollbar(
                 controller: _horizontalScrollController,
                 thumbVisibility: true,
-                notificationPredicate: (notification) => notification.depth == 1,
+                notificationPredicate: (notification) =>
+                    notification.depth == 1,
                 child: SingleChildScrollView(
                   controller: _horizontalScrollController,
                   scrollDirection: Axis.horizontal,
@@ -1307,7 +1303,9 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                     horizontalMargin: 12,
                     dataRowMinHeight: 50,
                     dataRowMaxHeight: 60,
-                    headingRowColor: WidgetStateProperty.all(const Color(0xFF0D2364)),
+                    headingRowColor: WidgetStateProperty.all(
+                      const Color(0xFF0D2364),
+                    ),
                     columns: [
                       DataColumn(
                         label: SizedBox(
@@ -1461,7 +1459,8 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                             SizedBox(
                               width: 80,
                               child: InkWell(
-                                onTap: () => _showRequirementsChecklist(candidate),
+                                onTap: () =>
+                                    _showRequirementsChecklist(candidate),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 8,

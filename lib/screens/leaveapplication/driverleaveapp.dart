@@ -41,7 +41,8 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
       if (!userDoc.exists) return;
 
       final userData = userDoc.data()!;
-      final assignedVehicleId = userData['assignedVehicle']?.toString() ?? 'N/A';
+      final assignedVehicleId =
+          userData['assignedVehicle']?.toString() ?? 'N/A';
       setState(() {
         _vehicleId = assignedVehicleId;
       });

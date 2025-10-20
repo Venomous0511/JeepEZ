@@ -52,10 +52,7 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_errorMessage),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(_errorMessage), backgroundColor: Colors.red),
         );
       }
     }
@@ -66,7 +63,9 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(value ? 'Enable Maintenance Mode' : 'Disable Maintenance Mode'),
+          title: Text(
+            value ? 'Enable Maintenance Mode' : 'Disable Maintenance Mode',
+          ),
           content: Text(
             value
                 ? 'This will prevent all users (except administrators) from accessing the app. Do you want to continue?'
@@ -102,9 +101,7 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            value
-                ? 'Maintenance mode enabled'
-                : 'Maintenance mode disabled',
+            value ? 'Maintenance mode enabled' : 'Maintenance mode disabled',
           ),
           backgroundColor: value ? Colors.orange : Colors.green,
         ),
@@ -115,9 +112,7 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -139,14 +134,14 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
               _buildErrorWidget()
             else ...[
               _buildDropdownSetting(
-                'Select Version',
+                'History Version',
                 _selectedVersion,
                 _releases.map((r) => r.version).toList(),
-                    (value) {
+                (value) {
                   setState(() {
                     _selectedVersion = value!;
                     final release = _releases.firstWhere(
-                          (r) => r.version == value,
+                      (r) => r.version == value,
                       orElse: () => _releases.first,
                     );
                     _selectedChangelog = release.tagName;
@@ -215,11 +210,11 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
   }
 
   Widget _buildSwitchSetting(
-      String title,
-      String subtitle,
-      bool value,
-      Function(bool) onChanged,
-      ) {
+    String title,
+    String subtitle,
+    bool value,
+    Function(bool) onChanged,
+  ) {
     return SwitchListTile(
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
       subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
@@ -230,11 +225,11 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
   }
 
   Widget _buildDropdownSetting(
-      String title,
-      String value,
-      List<String> options,
-      Function(String?) onChanged,
-      ) {
+    String title,
+    String value,
+    List<String> options,
+    Function(String?) onChanged,
+  ) {
     return DropdownButtonFormField(
       decoration: InputDecoration(
         labelText: title,
@@ -249,11 +244,11 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
   }
 
   Widget _buildActionButton(
-      String text,
-      IconData icon,
-      Function() onPressed, {
-        bool isDestructive = false,
-      }) {
+    String text,
+    IconData icon,
+    Function() onPressed, {
+    bool isDestructive = false,
+  }) {
     return ElevatedButton.icon(
       icon: Icon(
         icon,
@@ -285,7 +280,7 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
     }
 
     final release = _releases.firstWhere(
-          (r) => r.tagName == _selectedChangelog,
+      (r) => r.tagName == _selectedChangelog,
       orElse: () => _releases.first,
     );
 
@@ -336,7 +331,7 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
 
   void _updateApp() {
     final release = _releases.firstWhere(
-          (r) => r.version == _selectedVersion,
+      (r) => r.version == _selectedVersion,
       orElse: () => _releases.first,
     );
 

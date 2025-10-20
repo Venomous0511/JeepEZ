@@ -148,7 +148,7 @@ class _PersonalDetailsState extends State<PersonalDetails> {
         MaterialPageRoute(
           builder: (context) => LoginScreen(),
         ), // Use your actual LoginScreen widget
-            (Route<dynamic> route) => false, // This removes all previous routes
+        (Route<dynamic> route) => false, // This removes all previous routes
       );
     } catch (e) {
       if (!mounted) return;
@@ -183,13 +183,13 @@ class _PersonalDetailsState extends State<PersonalDetails> {
               },
               child: _isLoggingOut
                   ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
                   : const Text("Log Out"),
             ),
           ],
@@ -290,7 +290,7 @@ class _PersonalDetailsState extends State<PersonalDetails> {
                       _buildSection(
                         title: "Change Password",
                         children: [
-                            _buildPasswordField(
+                          _buildPasswordField(
                             controller: _currentPasswordController,
                             label: "Current Password",
                             showPassword: _showCurrentPassword,
@@ -301,7 +301,7 @@ class _PersonalDetailsState extends State<PersonalDetails> {
                             },
                           ),
                           const SizedBox(height: 16),
-                            _buildPasswordField(
+                          _buildPasswordField(
                             controller: _newPasswordController,
                             label: "New Password",
                             showPassword: _showNewPassword,

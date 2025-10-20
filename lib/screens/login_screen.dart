@@ -66,10 +66,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       // Sign in with Firebase Auth directly to check email verification
-      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      final userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
 
       final firebaseUser = userCredential.user;
 
@@ -112,9 +110,9 @@ class _LoginScreenState extends State<LoginScreen> {
           .collection('users')
           .doc(firebaseUser.uid)
           .update({
-        'emailVerified': true,
-        'lastLogin': FieldValue.serverTimestamp(),
-      });
+            'emailVerified': true,
+            'lastLogin': FieldValue.serverTimestamp(),
+          });
 
       // Get user data from your auth service
       final user = await AuthService().login(email, password);
@@ -127,7 +125,8 @@ class _LoginScreenState extends State<LoginScreen> {
           await FirebaseAuth.instance.signOut();
           setState(() {
             loading = false;
-            error = "Your account has been deactivated. Please contact the administrator.";
+            error =
+                "Your account has been deactivated. Please contact the administrator.";
           });
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -167,12 +166,11 @@ class _LoginScreenState extends State<LoginScreen> {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      ChangePasswordScreen(
-                        user: firebaseUser,
-                        userData: userData,
-                        isFirstLogin: true,
-                      ),
+                  builder: (_) => ChangePasswordScreen(
+                    user: firebaseUser,
+                    userData: userData,
+                    isFirstLogin: true,
+                  ),
                 ),
               );
             }
@@ -270,10 +268,7 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const Text(
                 'Your email address has not been verified yet.',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -309,8 +304,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 12),
                     const Text(
                       '• Check your spam/junk folder\n'
-                          '• Make sure the email address is correct\n'
-                          '• Click "Resend Email" below',
+                      '• Make sure the email address is correct\n'
+                      '• Click "Resend Email" below',
                       style: TextStyle(fontSize: 13, height: 1.5),
                     ),
                   ],
@@ -332,7 +327,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Verification email sent! Please check your inbox.'),
+                      content: Text(
+                        'Verification email sent! Please check your inbox.',
+                      ),
                       backgroundColor: Colors.green,
                       duration: Duration(seconds: 3),
                     ),
@@ -375,9 +372,7 @@ class _LoginScreenState extends State<LoginScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                "Enter admin code to bypass maintenance mode:",
-              ),
+              const Text("Enter admin code to bypass maintenance mode:"),
               const SizedBox(height: 16),
               TextField(
                 controller: adminCodeCtrl,
@@ -495,11 +490,7 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.construction,
-            size: 80,
-            color: Colors.orange[700],
-          ),
+          Icon(Icons.construction, size: 80, color: Colors.orange[700]),
           const SizedBox(height: 24),
           Text(
             'Under Maintenance',
@@ -513,34 +504,21 @@ class _LoginScreenState extends State<LoginScreen> {
           const Text(
             'We are currently performing scheduled maintenance to improve your experience.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
-              height: 1.5,
-            ),
+            style: TextStyle(fontSize: 16, color: Colors.grey, height: 1.5),
           ),
           const SizedBox(height: 24),
           const Text(
             'Please check back later.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
           const SizedBox(height: 32),
           ElevatedButton.icon(
             icon: const Icon(Icons.refresh, color: Colors.white),
-            label: const Text(
-              'Retry',
-              style: TextStyle(color: Colors.white),
-            ),
+            label: const Text('Retry', style: TextStyle(color: Colors.white)),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0D2364),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 14,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
             ),
             onPressed: () {
               setState(() {
@@ -610,9 +588,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
                   icon: Icon(
-                    showPassword
-                        ? Icons.visibility
-                        : Icons.visibility_off,
+                    showPassword ? Icons.visibility : Icons.visibility_off,
                     color: Colors.grey,
                   ),
                   onPressed: () {
@@ -659,10 +635,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: _performLogin,
                   child: const Text(
                     "Login",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
                 ),
               ),
@@ -698,10 +671,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const Expanded(
                     child: Text(
                       'New users must verify their email before logging in',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.black87,
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.black87),
                     ),
                   ),
                 ],
@@ -797,9 +767,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 8),
                           const Text(
                             '1. Check your email inbox (and spam folder)\n'
-                                '2. Click the password reset link\n'
-                                '3. Create a new password\n'
-                                '4. Return to login with new password',
+                            '2. Click the password reset link\n'
+                            '3. Create a new password\n'
+                            '4. Return to login with new password',
                             style: TextStyle(fontSize: 13, height: 1.5),
                           ),
                         ],
@@ -810,7 +780,9 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: sending ? null : () => Navigator.of(dialogContext).pop(),
+                  onPressed: sending
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
                   child: const Text("Cancel"),
                 ),
                 ElevatedButton.icon(
@@ -823,32 +795,36 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   onPressed: sending
                       ? null
-                      : () async  {
-                    final email = emailController.text.trim();
-                    if (email.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Please enter your email address"),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                      return;
-                    }
-                    setDialogState(() {
-                      sending = true;
-                    });
+                      : () async {
+                          final email = emailController.text.trim();
+                          if (email.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Please enter your email address",
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          setDialogState(() {
+                            sending = true;
+                          });
 
-                    await _sendResetLinkAsync(email, dialogContext);
-                  },
+                          await _sendResetLinkAsync(email, dialogContext);
+                        },
                   icon: sending
                       ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
                       : const Icon(Icons.send, size: 18, color: Colors.white),
                   label: Text(
                     sending ? "Sending..." : "Send Reset Link",
@@ -870,9 +846,14 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  Future<void> _sendResetLinkAsync(String email, BuildContext dialogContext) async {
+  Future<void> _sendResetLinkAsync(
+    String email,
+    BuildContext dialogContext,
+  ) async {
     // Validate email format
-    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    final emailRegex = RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    );
     if (!emailRegex.hasMatch(email)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -931,10 +912,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _sendResetLink(
-      String email,
-      BuildContext dialogContext,
-      Function setDialogState,
-      ) async {
+    String email,
+    BuildContext dialogContext,
+    Function setDialogState,
+  ) async {
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -946,7 +927,9 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     // Validate email format
-    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    final emailRegex = RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    );
     if (!emailRegex.hasMatch(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1074,7 +1057,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.info_outline, color: Colors.orange[700], size: 20),
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.orange[700],
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         const Text(
                           'Next Steps:',
@@ -1085,9 +1072,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 8),
                     const Text(
                       '1. Check your email inbox (and spam folder)\n'
-                          '2. Click the password reset link in the email\n'
-                          '3. Create a new secure password\n'
-                          '4. Return here and log in with your new password',
+                      '2. Click the password reset link in the email\n'
+                      '3. Create a new secure password\n'
+                      '4. Return here and log in with your new password',
                       style: TextStyle(fontSize: 13, height: 1.5),
                     ),
                   ],
@@ -1106,12 +1093,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.timer_outlined, color: Colors.grey[700], size: 20),
+                    Icon(
+                      Icons.timer_outlined,
+                      color: Colors.grey[700],
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
                         'The password reset link will expire in 1 hour',
-                        style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
                     ),
                   ],
@@ -1130,7 +1124,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.lightbulb_outline, color: Colors.yellow[800], size: 20),
+                    Icon(
+                      Icons.lightbulb_outline,
+                      color: Colors.yellow[800],
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
@@ -1151,10 +1149,7 @@ class _LoginScreenState extends State<LoginScreen> {
               backgroundColor: const Color(0xFF0D2364),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-            child: const Text(
-              'Got It',
-              style: TextStyle(color: Colors.white),
-            ),
+            child: const Text('Got It', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1263,9 +1258,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           .collection('users')
           .doc(widget.user.uid)
           .update({
-        'tempPassword': FieldValue.delete(),
-        'passwordChangedAt': FieldValue.serverTimestamp(),
-      });
+            'tempPassword': FieldValue.delete(),
+            'passwordChangedAt': FieldValue.serverTimestamp(),
+          });
 
       if (!mounted) return;
 
@@ -1294,11 +1289,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => RoleBasedDashboard(user: user),
-        ),
+        MaterialPageRoute(builder: (_) => RoleBasedDashboard(user: user)),
       );
-
     } on FirebaseAuthException catch (e) {
       String errorMessage = 'Failed to change password';
 
@@ -1581,23 +1573,23 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                         ),
                         child: _isLoading
                             ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          ),
-                        )
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
                             : const Text(
-                          'Change Password',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                                'Change Password',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
 

@@ -84,13 +84,14 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
   Future<String?> _fetchViolatorEmployeeId(String name, String position) async {
     try {
       // Normalize input: remove commas, extra spaces, lowercase, split and sort
-      List<String> inputWords = name
-          .toLowerCase()
-          .replaceAll(',', '')
-          .replaceAll(RegExp(r'\s+'), ' ')
-          .trim()
-          .split(' ')
-        ..sort();
+      List<String> inputWords =
+          name
+              .toLowerCase()
+              .replaceAll(',', '')
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim()
+              .split(' ')
+            ..sort();
 
       // Search by role first
       final querySnapshot = await FirebaseFirestore.instance
@@ -104,13 +105,14 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
         final dbName = data['name']?.toString() ?? '';
 
         // Normalize database name the same way
-        List<String> dbWords = dbName
-            .toLowerCase()
-            .replaceAll(',', '')
-            .replaceAll(RegExp(r'\s+'), ' ')
-            .trim()
-            .split(' ')
-          ..sort();
+        List<String> dbWords =
+            dbName
+                .toLowerCase()
+                .replaceAll(',', '')
+                .replaceAll(RegExp(r'\s+'), ' ')
+                .trim()
+                .split(' ')
+              ..sort();
 
         // Compare sorted word lists
         if (inputWords.join(' ') == dbWords.join(' ')) {

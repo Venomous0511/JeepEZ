@@ -693,13 +693,10 @@ class _InspectorReportHistoryScreenState
       controller: _reportTableScrollController,
       thumbVisibility: isDesktop || isTablet,
       child: ScrollConfiguration(
-          behavior: ScrollConfiguration.of(context).copyWith(
-            dragDevices: {
-              PointerDeviceKind.touch,
-              PointerDeviceKind.mouse,
-            },
-            scrollbars: true,
-          ),
+        behavior: ScrollConfiguration.of(context).copyWith(
+          dragDevices: {PointerDeviceKind.touch, PointerDeviceKind.mouse},
+          scrollbars: true,
+        ),
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Container(

@@ -115,13 +115,13 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
         .snapshots()
         .map(
           (snapshot) => snapshot.docs.isNotEmpty ? snapshot.docs.first : null,
-    );
+        );
   }
 
   // ----------------- NOTIFICATIONS -----------------
   Stream<QuerySnapshot<Map<String, dynamic>>> getNotificationsStream(
-      String role,
-      ) {
+    String role,
+  ) {
     final collection = FirebaseFirestore.instance.collection('notifications');
     if (role == 'super_admin' || role == 'admin') {
       return collection
@@ -374,7 +374,7 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
                               if (timestamp != null) {
                                 final time = timestamp.toDate();
                                 tripTime =
-                                "${time.hour % 12 == 0 ? 12 : time.hour % 12}:${time.minute.toString().padLeft(2, '0')} ${time.hour >= 12 ? 'PM' : 'AM'}";
+                                    "${time.hour % 12 == 0 ? 12 : time.hour % 12}:${time.minute.toString().padLeft(2, '0')} ${time.hour >= 12 ? 'PM' : 'AM'}";
                               }
                             } else if (snapshot.connectionState ==
                                 ConnectionState.waiting) {
@@ -395,7 +395,7 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
                               ),
                               child: Row(
                                 mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   _buildCountBox(passengerCount, isMobile),
                                   _buildCountBox(tripTime, isMobile),
