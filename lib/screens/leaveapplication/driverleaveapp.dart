@@ -11,6 +11,7 @@ class LeaveApplicationScreen extends StatefulWidget {
 
 class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
   final _formKey = GlobalKey<FormState>();
+  String? _vehicleId;
   String? _selectedLeaveType;
   final TextEditingController _reasonController = TextEditingController();
   DateTime? _startDate;
@@ -24,6 +25,29 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
   void initState() {
     super.initState();
     _checkTodaySubmission();
+    _fetchAssignedVehicle();
+  }
+
+  Future<void> _fetchAssignedVehicle() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!userDoc.exists) return;
+
+      final userData = userDoc.data()!;
+      final assignedVehicleId = userData['assignedVehicle']?.toString() ?? 'N/A';
+      setState(() {
+        _vehicleId = assignedVehicleId;
+      });
+    } catch (e) {
+      debugPrint('Error fetching assigned vehicle: $e');
+    }
   }
 
   Future<void> _checkTodaySubmission() async {
@@ -505,6 +529,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
 
   String get _submitButtonText {
     if (_isCheckingSubmission) return 'Checking...';
+    if (_vehicleId == 'N/A' || _vehicleId == null) return 'No Vehicle Assigned';
     if (_hasSubmittedToday) return 'Already Submitted Today';
     return 'Submit Leave Application';
   }
@@ -811,6 +836,19 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
+                            ),
+                          ),
+                        if (_vehicleId == 'N/A' || _vehicleId == null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Text(
+                              '⚠️ No vehicle assigned. Please contact admin to submit leave applications.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.red[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
                       ],

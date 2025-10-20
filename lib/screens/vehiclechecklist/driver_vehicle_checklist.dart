@@ -28,16 +28,23 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
             .doc(user.uid)
             .get();
         if (userDoc.exists && userDoc.data()!.containsKey('assignedVehicle')) {
+          final vehicleId = userDoc['assignedVehicle']?.toString() ?? 'N/A';
           setState(() {
-            _assignedVehicle = userDoc['assignedVehicle'].toString();
+            _assignedVehicle = vehicleId;
             _isLoadingVehicle = false;
           });
         } else {
-          setState(() => _isLoadingVehicle = false);
+          setState(() {
+            _assignedVehicle = 'N/A';
+            _isLoadingVehicle = false;
+          });
         }
       }
     } catch (e) {
-      setState(() => _isLoadingVehicle = false);
+      setState(() {
+        _assignedVehicle = 'N/A';
+        _isLoadingVehicle = false;
+      });
       debugPrint('Error fetching vehicle: $e');
     }
   }
@@ -204,7 +211,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
 
               if (_isLoadingVehicle)
                 const CircularProgressIndicator()
-              else if (_assignedVehicle != null)
+              else if (_assignedVehicle != null && _assignedVehicle != 'N/A')
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12.0),
                   child: Text(
@@ -217,9 +224,17 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                   ),
                 )
               else
-                const Text(
-                  'No assigned vehicle found.',
-                  style: TextStyle(color: Colors.red),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: Text(
+                    '⚠️ No vehicle assigned. Please contact admin.',
+                    style: TextStyle(
+                      fontSize: isMobile ? 14 : 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red[700],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
 
               SizedBox(height: isMobile ? 5 : 20),
@@ -416,11 +431,15 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                     width: double.infinity,
                     height: isMobile ? 45 : 50,
                     child: ElevatedButton(
-                      onPressed: _defectsController.text.length <= 100
+                      onPressed: _defectsController.text.length <= 100 &&
+                          _assignedVehicle != null &&
+                          _assignedVehicle != 'N/A'
                           ? _submitForm
                           : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _defectsController.text.length <= 100
+                        backgroundColor: _defectsController.text.length <= 100 &&
+                            _assignedVehicle != null &&
+                            _assignedVehicle != 'N/A'
                             ? const Color(0xFF0D2364)
                             : Colors.grey,
                         shape: RoundedRectangleBorder(
@@ -428,7 +447,9 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                         ),
                       ),
                       child: Text(
-                        'Save & Submit',
+                        _assignedVehicle == 'N/A' || _assignedVehicle == null
+                            ? 'No Vehicle Assigned'
+                            : 'Save & Submit',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: isMobile ? 14 : 16,

@@ -27,14 +27,27 @@ class InspectorTripScreen extends StatefulWidget {
 }
 
 class InspectorTripScreenState extends State<InspectorTripScreen> {
-  final TextEditingController unitNumberController = TextEditingController();
-  final TextEditingController driverNameController = TextEditingController();
-  final TextEditingController conductorNameController = TextEditingController();
+  String? selectedUnitNumber;
+  String? selectedDriverName;
+  String? selectedConductorName;
   final TextEditingController inspectionTimeController =
       TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController noOfPassController = TextEditingController();
   final TextEditingController noOfTripsController = TextEditingController();
+
+  // Add new lists for dropdown data
+  List<Map<String, dynamic>> availableVehicles = [];
+  List<Map<String, dynamic>> todayDrivers = [];
+  List<Map<String, dynamic>> todayConductors = [];
+
+  bool isLoadingData = false;
+
+  String _getTodayDayName() {
+    final now = DateTime.now();
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return days[now.weekday - 1];
+  }
 
   // Single row of ticket data
   late List<TextEditingController> ticketRow;
@@ -46,6 +59,69 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
   void initState() {
     super.initState();
     ticketRow = List.generate(6, (index) => TextEditingController(text: '0'));
+    _loadDropdownData();
+  }
+
+  Future<void> _loadDropdownData() async {
+    setState(() => isLoadingData = true);
+
+    try {
+      final today = _getTodayDayName();
+
+      // Get all vehicles
+      final vehiclesSnapshot = await FirebaseFirestore.instance
+          .collection('vehicles')
+          .get();
+
+      availableVehicles = vehiclesSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'vehicleId': doc.id,
+          'data': data,
+        };
+      }).toList();
+
+      // Get drivers scheduled for today
+      final driversSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: 'driver')
+          .where('status', isEqualTo: true)
+          .get();
+
+      todayDrivers = driversSnapshot.docs.where((doc) {
+        final schedule = doc.data()['schedule'] as String?;
+        return schedule != null && schedule.contains(today);
+      }).map((doc) {
+        return {
+          'uid': doc.id,
+          'name': doc.data()['name'] ?? 'Unknown',
+          'data': doc.data(),
+        };
+      }).toList();
+
+      // Get conductors scheduled for today
+      final conductorsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: 'conductor')
+          .where('status', isEqualTo: true)
+          .get();
+
+      todayConductors = conductorsSnapshot.docs.where((doc) {
+        final schedule = doc.data()['schedule'] as String?;
+        return schedule != null && schedule.contains(today);
+      }).map((doc) {
+        return {
+          'uid': doc.id,
+          'name': doc.data()['name'] ?? 'Unknown',
+          'data': doc.data(),
+        };
+      }).toList();
+
+    } catch (e) {
+      print('Error loading dropdown data: $e');
+    } finally {
+      setState(() => isLoadingData = false);
+    }
   }
 
   @override
@@ -53,9 +129,6 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
     for (var controller in ticketRow) {
       controller.dispose();
     }
-    unitNumberController.dispose();
-    driverNameController.dispose();
-    conductorNameController.dispose();
     inspectionTimeController.dispose();
     locationController.dispose();
     noOfPassController.dispose();
@@ -201,38 +274,42 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                         const SizedBox(height: 20),
 
                         // Form fields
-                        _buildFormField(
+                        _buildDropdownField(
                           'Unit number',
-                          unitNumberController,
-                          'Enter unit number',
-                          textColor: const Color(0xFF0D2364),
-                          validator: _validateUnitNumber,
-                          keyboardType: TextInputType.number,
-                          maxLength: 36,
+                          selectedUnitNumber,
+                          availableVehicles.map((v) => v['vehicleId'] as String).toList(),
+                              (value) {
+                            setState(() {
+                              selectedUnitNumber = value;
+                            });
+                          },
+                          'Select unit number',
                         ),
                         const SizedBox(height: 15),
 
-                        _buildFormField(
+                        _buildDropdownField(
                           'Name of Driver',
-                          driverNameController,
-                          'Enter driver name',
-                          textColor: const Color(0xFF0D2364),
-                          validator: (value) =>
-                              _validateName(value, 'Driver name'),
-                          keyboardType: TextInputType.text,
-                          maxLength: 36,
+                          selectedDriverName,
+                          todayDrivers.map((d) => d['name'] as String).toList(),
+                              (value) {
+                            setState(() {
+                              selectedDriverName = value;
+                            });
+                          },
+                          'Select driver',
                         ),
                         const SizedBox(height: 15),
 
-                        _buildFormField(
+                        _buildDropdownField(
                           'Name of Conductor',
-                          conductorNameController,
-                          'Enter conductor name',
-                          textColor: const Color(0xFF0D2364),
-                          validator: (value) =>
-                              _validateName(value, 'Conductor name'),
-                          keyboardType: TextInputType.text,
-                          maxLength: 36,
+                          selectedConductorName,
+                          todayConductors.map((c) => c['name'] as String).toList(),
+                              (value) {
+                            setState(() {
+                              selectedConductorName = value;
+                            });
+                          },
+                          'Select conductor',
                         ),
                         const SizedBox(height: 15),
 
@@ -378,6 +455,11 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
                                                   keyboardType:
                                                       TextInputType.number,
                                                   maxLength: 10,
+                                                  onTap: () {
+                                                    if (ticketRow[colIndex].text == '0') {
+                                                      ticketRow[colIndex].clear();
+                                                    }
+                                                  },
                                                   decoration:
                                                       const InputDecoration(
                                                         border:
@@ -539,6 +621,69 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
               ),
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdownField(
+      String label,
+      String? value,
+      List<String> items,
+      Function(String?) onChanged,
+      String hint,
+      ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0D2364),
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: value,
+          isExpanded: true,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: Colors.grey[600]),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[400]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFF0D2364)),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 15,
+              vertical: 15,
+            ),
+          ),
+          items: items.isEmpty
+              ? null
+              : items.map((item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(
+                item,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            );
+          }).toList(),
+          onChanged: items.isEmpty ? null : onChanged,
+          hint: items.isEmpty
+              ? Text(
+            'No options available for today',
+            style: TextStyle(color: Colors.grey[600]),
+            overflow: TextOverflow.ellipsis,
+          )
+              : null,
         ),
       ],
     );
@@ -771,15 +916,6 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
     }
 
     // Validate all fields
-    final unitNumberError = _validateUnitNumber(unitNumberController.text);
-    final driverNameError = _validateName(
-      driverNameController.text,
-      'Driver name',
-    );
-    final conductorNameError = _validateName(
-      conductorNameController.text,
-      'Conductor name',
-    );
     final noOfPassError = _validateNumber(
       noOfPassController.text,
       'Number of passengers',
@@ -790,10 +926,7 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
       'Number of trips',
     );
 
-    if (unitNumberError != null ||
-        driverNameError != null ||
-        conductorNameError != null ||
-        noOfPassError != null ||
+    if (noOfPassError != null ||
         locationError != null ||
         noOfTripsError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -805,16 +938,30 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
       return;
     }
 
-    if (unitNumberController.text.isEmpty ||
-        driverNameController.text.isEmpty ||
-        conductorNameController.text.isEmpty ||
-        inspectionTimeController.text.isEmpty ||
-        noOfPassController.text.isEmpty ||
-        locationController.text.isEmpty ||
-        noOfTripsController.text.isEmpty) {
+    if (selectedUnitNumber == null || selectedUnitNumber!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill in all required fields'),
+          content: Text('Please select a unit number'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (selectedDriverName == null || selectedDriverName!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a driver'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (selectedConductorName == null || selectedConductorName!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a conductor'),
           backgroundColor: Colors.red,
         ),
       );
@@ -833,9 +980,9 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
     };
 
     Map<String, dynamic> formData = {
-      'unitNumber': unitNumberController.text,
-      'driverName': driverNameController.text,
-      'conductorName': conductorNameController.text,
+      'unitNumber': selectedUnitNumber,
+      'driverName': selectedDriverName,
+      'conductorName': selectedConductorName,
       'inspectionTime': inspectionTimeController.text,
       'noOfPass': noOfPassController.text,
       'location': locationController.text,
@@ -851,9 +998,6 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
           .add(formData);
 
       // Clear form
-      unitNumberController.clear();
-      driverNameController.clear();
-      conductorNameController.clear();
       inspectionTimeController.clear();
       noOfPassController.clear();
       locationController.clear();
@@ -861,6 +1005,9 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
 
       // Reset ticket row
       setState(() {
+        selectedUnitNumber = null;
+        selectedDriverName = null;
+        selectedConductorName = null;
         for (var controller in ticketRow) {
           controller.text = '0';
         }

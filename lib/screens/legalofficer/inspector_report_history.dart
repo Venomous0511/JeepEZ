@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -21,6 +22,7 @@ class _InspectorReportHistoryScreenState
   String _selectedFilter = 'All Time';
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
+  final ScrollController _reportTableScrollController = ScrollController();
 
   @override
   void initState() {
@@ -41,6 +43,7 @@ class _InspectorReportHistoryScreenState
   void dispose() {
     _searchController.dispose();
     _debounce?.cancel();
+    _reportTableScrollController.dispose();
     super.dispose();
   }
 
@@ -684,282 +687,296 @@ class _InspectorReportHistoryScreenState
   Widget _buildReportTable(BuildContext context, List<DocumentSnapshot> trips) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600 && screenWidth < 1024;
+    final isDesktop = screenWidth >= 1024;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Container(
-        constraints: BoxConstraints(minWidth: isTablet ? 800 : 900),
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(
-            const Color(0xFF0D2364),
-          ), // Blue color for header
-          headingTextStyle: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white, // White text for better contrast
-            fontSize: isTablet ? 12 : 13,
+    return Scrollbar(
+      controller: _reportTableScrollController,
+      thumbVisibility: isDesktop || isTablet,
+      child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(
+            dragDevices: {
+              PointerDeviceKind.touch,
+              PointerDeviceKind.mouse,
+            },
+            scrollbars: true,
           ),
-          dataTextStyle: TextStyle(
-            fontSize: isTablet ? 11 : 12,
-            color: Colors.black87,
-          ),
-          dataRowColor: WidgetStateProperty.resolveWith<Color>((states) {
-            if (states.contains(WidgetState.selected)) {
-              return Theme.of(context).colorScheme.primary.withAlpha(8);
-            }
-            return Colors.white;
-          }),
-          columnSpacing: 60,
-          horizontalMargin: 0,
-          dataRowMinHeight: 50,
-          dataRowMaxHeight: 50,
-          columns: [
-            DataColumn(
-              label: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  'Trip No',
-                  style: TextStyle(
-                    color: Colors.white, // White text for header
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Container(
+            constraints: BoxConstraints(minWidth: isTablet ? 800 : 900),
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(
+                const Color(0xFF0D2364),
+              ), // Blue color for header
+              headingTextStyle: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white, // White text for better contrast
+                fontSize: isTablet ? 12 : 13,
               ),
-            ),
-            DataColumn(
-              label: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  'Inspector Name',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+              dataTextStyle: TextStyle(
+                fontSize: isTablet ? 11 : 12,
+                color: Colors.black87,
               ),
-            ),
-            DataColumn(
-              label: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  'Date',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  'Unit Number',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  'Driver Name',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  'Conductor Name',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  'Ticket Time',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  'Passengers',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  'Location',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  'Action',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ],
-          rows: trips.map((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
-            final inspectorUid = data['uid']?.toString() ?? '';
-            final noOfTrips = data['noOfTrips']?.toString() ?? doc.id;
-
-            return DataRow(
-              cells: [
-                DataCell(
-                  Container(
+              dataRowColor: WidgetStateProperty.resolveWith<Color>((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return Theme.of(context).colorScheme.primary.withAlpha(8);
+                }
+                return Colors.white;
+              }),
+              columnSpacing: 60,
+              horizontalMargin: 0,
+              dataRowMinHeight: 50,
+              dataRowMaxHeight: 50,
+              columns: [
+                DataColumn(
+                  label: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Text(
-                      noOfTrips,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    width: 100,
-                    child: FutureBuilder<String>(
-                      future: _getInspectorName(inspectorUid),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Text(
-                            'Loading...',
-                            overflow: TextOverflow.ellipsis,
-                          );
-                        }
-                        return Text(
-                          snapshot.data ?? 'Unknown',
-                          overflow: TextOverflow.ellipsis,
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(
-                      timestamp != null
-                          ? '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}'
-                          : 'N/A',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(
-                      data['unitNumber']?.toString() ?? 'N/A',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    width: 100,
-                    child: Text(
-                      data['driverName']?.toString() ?? 'N/A',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    width: 100,
-                    child: Text(
-                      data['conductorName']?.toString() ?? 'N/A',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(
-                      data['inspectionTime']?.toString() ?? 'N/A',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(
-                      data['noOfPass']?.toString() ?? 'N/A',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(
-                      data['location']?.toString() ?? 'N/A',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.visibility,
-                        size: 18,
-                        color: Color(0xFF0D2364),
+                      'Trip No',
+                      style: TextStyle(
+                        color: Colors.white, // White text for header
+                        fontWeight: FontWeight.bold,
                       ),
-                      onPressed: () =>
-                          _showTicketInspectionDetails(context, data),
-                      tooltip: 'View Ticket Details',
-                      padding: EdgeInsets.zero,
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      'Inspector Name',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      'Date',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      'Unit Number',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      'Driver Name',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      'Conductor Name',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      'Ticket Time',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      'Passengers',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      'Location',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      'Action',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
               ],
-            );
-          }).toList(),
+              rows: trips.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
+                final inspectorUid = data['uid']?.toString() ?? '';
+                final noOfTrips = data['noOfTrips']?.toString() ?? doc.id;
+
+                return DataRow(
+                  cells: [
+                    DataCell(
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          noOfTrips,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        width: 100,
+                        child: FutureBuilder<String>(
+                          future: _getInspectorName(inspectorUid),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Text(
+                                'Loading...',
+                                overflow: TextOverflow.ellipsis,
+                              );
+                            }
+                            return Text(
+                              snapshot.data ?? 'Unknown',
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          timestamp != null
+                              ? '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}'
+                              : 'N/A',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          data['unitNumber']?.toString() ?? 'N/A',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        width: 100,
+                        child: Text(
+                          data['driverName']?.toString() ?? 'N/A',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        width: 100,
+                        child: Text(
+                          data['conductorName']?.toString() ?? 'N/A',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          data['inspectionTime']?.toString() ?? 'N/A',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          data['noOfPass']?.toString() ?? 'N/A',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          data['location']?.toString() ?? 'N/A',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.visibility,
+                            size: 18,
+                            color: Color(0xFF0D2364),
+                          ),
+                          onPressed: () =>
+                              _showTicketInspectionDetails(context, data),
+                          tooltip: 'View Ticket Details',
+                          padding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
         ),
       ),
     );

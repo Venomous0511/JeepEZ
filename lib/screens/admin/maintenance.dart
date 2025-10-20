@@ -59,6 +59,14 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
+      await FirebaseFirestore.instance
+          .collection('vehicles')
+          .doc(vehicleId)
+          .update({
+        'isUnderRepair': newStatus == 'In Repair',
+        'availableForAssignment': newStatus != 'In Repair',
+      });
+
       _loadMaintenanceData(vehicleId);
     } catch (e) {
       debugPrint('Error updating status: $e');
