@@ -196,45 +196,49 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
-      List<TicketReportData> allReports = [];
+          List<TicketReportData> allReports = [];
 
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
+          for (var doc in snapshot.docs) {
+            final data = doc.data();
 
-        final timestamp = (data['timestamp'] as Timestamp).toDate();
-        final openingTickets = (data['openingTickets'] as List?) ?? [];
-        final closingTickets = (data['closingTickets'] as List?) ?? [];
+            final timestamp = (data['timestamp'] as Timestamp).toDate();
+            final openingTickets = (data['openingTickets'] as List?) ?? [];
+            final closingTickets = (data['closingTickets'] as List?) ?? [];
 
-        // ✅ Create a record for opening if available
-        if (openingTickets.isNotEmpty) {
-          allReports.add(
-            TicketReportData(
-              timestamp: timestamp,
-              openingTickets: List<Map<String, dynamic>>.from(openingTickets),
-              closingTickets: [],
-              type: 'opening',
-            ),
-          );
-        }
+            // ✅ Create a record for opening if available
+            if (openingTickets.isNotEmpty) {
+              allReports.add(
+                TicketReportData(
+                  timestamp: timestamp,
+                  openingTickets: List<Map<String, dynamic>>.from(
+                    openingTickets,
+                  ),
+                  closingTickets: [],
+                  type: 'opening',
+                ),
+              );
+            }
 
-        // ✅ Create a record for closing if available
-        if (closingTickets.isNotEmpty) {
-          allReports.add(
-            TicketReportData(
-              timestamp: timestamp,
-              openingTickets: [],
-              closingTickets: List<Map<String, dynamic>>.from(closingTickets),
-              type: 'closing',
-            ),
-          );
-        }
-      }
+            // ✅ Create a record for closing if available
+            if (closingTickets.isNotEmpty) {
+              allReports.add(
+                TicketReportData(
+                  timestamp: timestamp,
+                  openingTickets: [],
+                  closingTickets: List<Map<String, dynamic>>.from(
+                    closingTickets,
+                  ),
+                  type: 'closing',
+                ),
+              );
+            }
+          }
 
-      // Sort so most recent comes first
-      allReports.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          // Sort so most recent comes first
+          allReports.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-      return allReports;
-    });
+          return allReports;
+        });
   }
 
   void _showReportHistory() {
@@ -345,10 +349,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
         ),
         title: Text(
           '${report.type.toUpperCase()} Ticket Report',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: customBlueColor,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: customBlueColor),
         ),
         subtitle: Text(
           _formatDate(report.timestamp),
@@ -406,10 +407,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
   }
 
   Widget _buildTicketDetail(String label, String value) {
-    return Text(
-      '$label: $value',
-      style: const TextStyle(fontSize: 12),
-    );
+    return Text('$label: $value', style: const TextStyle(fontSize: 12));
   }
 
   String _formatDate(DateTime date) {
@@ -435,10 +433,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
             if (user != null)
               Text(
                 'Unit No: ${user['assignedVehicle'] ?? 'N/A'}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.white70,
-                ),
+                style: const TextStyle(fontSize: 14, color: Colors.white70),
               ),
           ],
         ),
@@ -464,7 +459,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                         gradient: LinearGradient(
                           colors: [
                             customBlueColor,
-                            customBlueColor.withOpacity(0.8)
+                            customBlueColor.withAlpha(8),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -472,7 +467,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: customBlueColor.withOpacity(0.3),
+                            color: customBlueColor.withAlpha(3),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -483,7 +478,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withAlpha(2),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Icon(
@@ -507,7 +502,8 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  user?['assignedVehicle'].toString() ?? 'Not Assigned',
+                                  user?['assignedVehicle'].toString() ??
+                                      'Not Assigned',
                                   style: const TextStyle(
                                     fontSize: 24,
                                     color: Colors.white,
@@ -758,12 +754,12 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
   }
 
   Widget _buildStatusIndicator(
-      String label,
-      bool isSubmitted,
-      Color color,
-      IconData iconSubmitted,
-      IconData iconPending,
-      ) {
+    String label,
+    bool isSubmitted,
+    Color color,
+    IconData iconSubmitted,
+    IconData iconPending,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -778,10 +774,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
           children: [
             Text(
               label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             Text(
               isSubmitted ? 'Submitted' : 'Pending',
@@ -798,14 +791,14 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
   }
 
   Widget _buildTicketSection(
-      String title,
-      List<List<TextEditingController>> ticketRows,
-      VoidCallback onAddRow,
-      Function(int) onRemoveRow,
-      bool isSmallScreen,
-      Color iconColor,
-      IconData icon,
-      ) {
+    String title,
+    List<List<TextEditingController>> ticketRows,
+    VoidCallback onAddRow,
+    Function(int) onRemoveRow,
+    bool isSmallScreen,
+    Color iconColor,
+    IconData icon,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -905,16 +898,16 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                             ),
                           ),
                         ),
-                        for (int colIndex = 0;
-                        colIndex < ticketRows[rowIndex].length;
-                        colIndex++)
+                        for (
+                          int colIndex = 0;
+                          colIndex < ticketRows[rowIndex].length;
+                          colIndex++
+                        )
                           Container(
                             width: 80,
                             decoration: BoxDecoration(
                               border: Border(
-                                right: BorderSide(
-                                  color: Colors.grey[400]!,
-                                ),
+                                right: BorderSide(color: Colors.grey[400]!),
                               ),
                             ),
                             child: Padding(
@@ -937,23 +930,24 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                                   color: Colors.black,
                                 ),
                                 onTap: () {
-                                  if (ticketRows[rowIndex][colIndex].text == '0') {
+                                  if (ticketRows[rowIndex][colIndex].text ==
+                                      '0') {
                                     ticketRows[rowIndex][colIndex].clear();
                                   }
                                 },
                                 onChanged: (value) {
                                   if (value.isNotEmpty &&
                                       !RegExp(r'^[0-9]*$').hasMatch(value)) {
-                                    ticketRows[rowIndex][colIndex].text = value.replaceAll(
-                                      RegExp(r'[^0-9]'),
-                                      '',
+                                    ticketRows[rowIndex][colIndex].text = value
+                                        .replaceAll(RegExp(r'[^0-9]'), '');
+                                    ticketRows[rowIndex][colIndex]
+                                        .selection = TextSelection.fromPosition(
+                                      TextPosition(
+                                        offset: ticketRows[rowIndex][colIndex]
+                                            .text
+                                            .length,
+                                      ),
                                     );
-                                    ticketRows[rowIndex][colIndex].selection =
-                                        TextSelection.fromPosition(
-                                          TextPosition(
-                                            offset: ticketRows[rowIndex][colIndex].text.length,
-                                          ),
-                                        );
                                   }
                                   // If field becomes empty, reset to '0'
                                   if (value.isEmpty) {

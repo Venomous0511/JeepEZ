@@ -511,10 +511,10 @@ class _DriverDashboardState extends State<DriverDashboard>
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withAlpha(1),
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
+                              color: Colors.white.withAlpha(3),
                               width: 1,
                             ),
                           ),
@@ -575,7 +575,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                                     return Text(
                                       "Error loading logs",
                                       style: TextStyle(
-                                        color: Colors.white.withOpacity(0.7),
+                                        color: Colors.white.withAlpha(7),
                                         fontSize: isMobile ? 12 : 14,
                                       ),
                                     );
@@ -590,9 +590,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                                         Text(
                                           "No time logs for today",
                                           style: TextStyle(
-                                            color: Colors.white.withOpacity(
-                                              0.7,
-                                            ),
+                                            color: Colors.white.withAlpha(7),
                                             fontSize: isMobile ? 14 : 16,
                                           ),
                                         ),
@@ -610,7 +608,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                                                   "--:--",
                                                   style: TextStyle(
                                                     color: Colors.white
-                                                        .withOpacity(0.5),
+                                                        .withAlpha(5),
                                                     fontSize: isMobile
                                                         ? 14
                                                         : 16,
@@ -622,7 +620,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                                                   "--:--",
                                                   style: TextStyle(
                                                     color: Colors.white
-                                                        .withOpacity(0.5),
+                                                        .withAlpha(5),
                                                     fontSize: isMobile
                                                         ? 14
                                                         : 16,
@@ -639,7 +637,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                                                   "Tap In",
                                                   style: TextStyle(
                                                     color: Colors.white
-                                                        .withOpacity(0.5),
+                                                        .withAlpha(5),
                                                     fontSize: isMobile
                                                         ? 14
                                                         : 16,
@@ -650,7 +648,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                                                   "Tap Out",
                                                   style: TextStyle(
                                                     color: Colors.white
-                                                        .withOpacity(0.5),
+                                                        .withAlpha(5),
                                                     fontSize: isMobile
                                                         ? 14
                                                         : 16,

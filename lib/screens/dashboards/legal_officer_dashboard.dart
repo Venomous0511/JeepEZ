@@ -769,10 +769,10 @@ class _LegalOfficerDashboardScreenState
             ),
             trailing: _isLoggingOut
                 ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : null,
             onTap: _isLoggingOut ? null : _signOut,
           ),
@@ -829,7 +829,7 @@ class _LegalOfficerDashboardScreenState
     return Container(
       margin: const EdgeInsets.only(left: 16, right: 8, bottom: 4),
       decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFF0D2364).withOpacity(0.1) : null,
+        color: isSelected ? const Color(0xFF0D2364).withAlpha(1) : null,
         borderRadius: BorderRadius.circular(4),
       ),
       child: ListTile(
@@ -876,7 +876,7 @@ class _LegalOfficerDashboardScreenState
         ),
       ),
       selected: isSelected,
-      selectedTileColor: const Color(0xFF0D2364).withOpacity(0.1),
+      selectedTileColor: const Color(0xFF0D2364).withAlpha(1),
       onTap: onTap,
     );
   }

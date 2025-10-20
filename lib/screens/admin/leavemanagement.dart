@@ -543,7 +543,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withAlpha(1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -590,7 +590,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: _getStatusColor(status).withOpacity(0.1),
+                              color: _getStatusColor(status).withAlpha(1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
@@ -770,7 +770,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withAlpha(1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -828,7 +828,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                         '${request['role'] ?? 'No role'} • ID: ${request['employeeId'] ?? 'N/A'}',
                         style: TextStyle(
                           fontSize: 9,
-                          color: _getStatusTextColor(status).withOpacity(0.8),
+                          color: _getStatusTextColor(status).withAlpha(8),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -839,7 +839,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: _getStatusColor(status).withOpacity(0.1),
+                          color: _getStatusColor(status).withAlpha(1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(

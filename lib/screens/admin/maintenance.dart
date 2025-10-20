@@ -268,7 +268,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                                         decoration: BoxDecoration(
                                           color: _getStatusColor(
                                             issue['status'],
-                                          ).withOpacity(0.1),
+                                          ).withAlpha(1),
                                           borderRadius: BorderRadius.circular(
                                             4,
                                           ),

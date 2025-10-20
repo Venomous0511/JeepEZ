@@ -504,7 +504,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     borderRadius: BorderRadius.circular(8),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.grey.withOpacity(0.1),
+                                        color: Colors.grey.withAlpha(1),
                                         blurRadius: 2,
                                         offset: const Offset(0, 1),
                                       ),
@@ -519,7 +519,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                         decoration: BoxDecoration(
                                           color: _getColorForType(
                                             type,
-                                          ).withOpacity(0.1),
+                                          ).withAlpha(1),
                                           shape: BoxShape.circle,
                                         ),
                                         child: Icon(
@@ -1383,7 +1383,7 @@ class _HomeScreenState extends State<HomeScreen>
                   horizontal: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withAlpha(1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Row(
@@ -1469,7 +1469,7 @@ class _HomeScreenState extends State<HomeScreen>
                             horizontal: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
+                            color: Colors.white.withAlpha(05),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(

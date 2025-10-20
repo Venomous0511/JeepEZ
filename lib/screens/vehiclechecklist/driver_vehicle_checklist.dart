@@ -278,7 +278,7 @@ class _VehicleChecklistScreenState extends State<VehicleChecklistScreen> {
                             ),
                             borderRadius: BorderRadius.circular(8),
                             color: isChecked
-                                ? const Color(0xFF0D2364).withOpacity(0.1)
+                                ? const Color(0xFF0D2364).withAlpha(1)
                                 : Colors.transparent,
                           ),
                           child: CheckboxListTile(

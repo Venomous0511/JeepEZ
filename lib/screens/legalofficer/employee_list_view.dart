@@ -253,9 +253,9 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: valueColor != null
                     ? BoxDecoration(
-                        color: valueColor.withOpacity(0.1),
+                        color: valueColor.withAlpha(1),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: valueColor.withOpacity(0.3)),
+                        border: Border.all(color: valueColor.withAlpha(3)),
                       )
                     : null,
                 child: Text(
@@ -363,10 +363,10 @@ class _EmployeeListViewScreenState extends State<EmployeeListViewScreen> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: roleColor.withOpacity(0.1),
+                                  color: roleColor.withAlpha(1),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: roleColor.withOpacity(0.3),
+                                    color: roleColor.withAlpha(3),
                                   ),
                                 ),
                                 child: Text(

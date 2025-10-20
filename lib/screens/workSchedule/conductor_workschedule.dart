@@ -164,10 +164,10 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
+                              color: Colors.white.withAlpha(1),
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.3),
+                                color: Colors.white.withAlpha(3),
                                 width: 1,
                               ),
                             ),
@@ -182,7 +182,7 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
                                   Text(
                                     "No schedule found",
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.7),
+                                      color: Colors.white.withAlpha(7),
                                       fontSize: isMobile ? 14 : 16,
                                     ),
                                   )

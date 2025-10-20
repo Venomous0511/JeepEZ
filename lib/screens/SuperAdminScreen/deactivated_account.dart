@@ -50,7 +50,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
+                        color: Colors.grey.withAlpha(1),
                         blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),
@@ -146,7 +146,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withAlpha(1),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -214,7 +214,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withAlpha(1),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -308,7 +308,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
                       color: Color(0xFF0D2364),
                       fontSize: 14,
                     ),
-                    dataRowMinHeight: 60,
+                    dataRowHeight: 60,
                     columnSpacing: 20,
                     horizontalMargin: 16,
                     columns: const [
@@ -429,7 +429,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
                                   decoration: BoxDecoration(
                                     color: _getRoleColor(
                                       data['role'],
-                                    ).withOpacity(0.1),
+                                    ).withAlpha(1),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: _getRoleColor(data['role']),
@@ -459,7 +459,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
                                     vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.red.withOpacity(0.1),
+                                    color: Colors.red.withAlpha(1),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(color: Colors.red),
                                   ),
@@ -572,7 +572,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Colors.grey.withAlpha(1),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -611,7 +611,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
+                              color: Colors.red.withAlpha(1),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: Colors.red),
                             ),
@@ -910,7 +910,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
       onPressed: onPressed,
       tooltip: tooltip,
       style: IconButton.styleFrom(
-        backgroundColor: color.withOpacity(0.1),
+        backgroundColor: color.withAlpha(1),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         padding: const EdgeInsets.all(8),
       ),
@@ -928,7 +928,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
       label: Text(text, style: const TextStyle(fontSize: 12)),
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: color.withOpacity(0.1),
+        backgroundColor: color.withAlpha(1),
         foregroundColor: color,
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),

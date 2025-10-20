@@ -1111,7 +1111,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 Row(
                   children: [
                     CircleAvatar(
-                      backgroundColor: roleColor.withOpacity(0.2),
+                      backgroundColor: roleColor.withAlpha(2),
                       child: Text(
                         data['name']?.toString().isNotEmpty == true
                             ? data['name']
@@ -1160,8 +1160,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: data['status'] == true
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.red.withOpacity(0.1),
+                            ? Colors.green.withAlpha(1)
+                            : Colors.red.withAlpha(1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: data['status'] == true
@@ -1217,7 +1217,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.1),
+                              color: Colors.orange.withAlpha(1),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(color: Colors.orange),
                             ),
@@ -1269,7 +1269,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     if (!isEmailVerified) ...[
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.1),
+                          color: Colors.orange.withAlpha(1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: Colors.orange),
                         ),
@@ -1289,7 +1289,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     // Edit button
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
+                        color: Colors.blue.withAlpha(1),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.blue),
                       ),
@@ -1303,7 +1303,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     // Delete button
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withAlpha(1),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.red),
                       ),
@@ -1505,8 +1505,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: data['status'] == true
-                  ? Colors.green.withOpacity(0.1)
-                  : Colors.red.withOpacity(0.1),
+                  ? Colors.green.withAlpha(1)
+                  : Colors.red.withAlpha(1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: data['status'] == true ? Colors.green : Colors.red,
@@ -1549,9 +1549,9 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: roleColor.withOpacity(0.1),
+              color: roleColor.withAlpha(1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: roleColor.withOpacity(0.3)),
+              border: Border.all(color: roleColor.withAlpha(3)),
             ),
             child: Text(
               _capitalizeRole(role),
@@ -1579,7 +1579,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   message: 'Resend verification email',
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
+                      color: Colors.orange.withAlpha(1),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.orange),
                     ),
@@ -1605,9 +1605,9 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
+                      color: Colors.green.withAlpha(1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.green.withOpacity(0.3)),
+                      border: Border.all(color: Colors.green.withAlpha(3)),
                     ),
                     child: Icon(
                       Icons.verified,
@@ -1623,7 +1623,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 message: 'Send password reset email',
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.1),
+                    color: Colors.purple.withAlpha(1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.purple),
                   ),
@@ -1644,7 +1644,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
               // Edit button
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: Colors.blue.withAlpha(1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.blue),
                 ),
@@ -1664,7 +1664,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
               // Delete button
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
+                  color: Colors.red.withAlpha(1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.red),
                 ),
@@ -1975,7 +1975,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: roleColor.withOpacity(0.1),
+                                  color: roleColor.withAlpha(1),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Row(

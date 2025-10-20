@@ -48,7 +48,6 @@ class _InspectorReportHistoryScreenState
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
-    final isTablet = screenWidth >= 600 && screenWidth < 1024;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
