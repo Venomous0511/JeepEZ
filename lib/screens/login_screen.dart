@@ -160,6 +160,26 @@ class _LoginScreenState extends State<LoginScreen> {
         if (userDoc.exists) {
           final userData = userDoc.data()!;
 
+          // Check for reactivated account
+          if (userData['requiresPasswordReset'] == true) {
+            if (updatedUser != null && !updatedUser.emailVerified) {
+              await updatedUser.sendEmailVerification();
+              await FirebaseAuth.instance.signOut();
+
+              if (mounted) {
+                _showReactivatedAccountDialog();
+              }
+              return;
+            }
+            // If verified but still needs password reset
+            await FirebaseAuth.instance.signOut();
+            setState(() {
+              loading = false;
+              error = "Please use the password reset link sent to your email.";
+            });
+            return;
+          }
+
           if (userData['tempPassword'] != null) {
             // Redirect to change password screen
             if (mounted) {
@@ -354,6 +374,29 @@ class _LoginScreenState extends State<LoginScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0D2364),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReactivatedAccountDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Account Reactivated'),
+        content: const Text(
+            'Your account has been reactivated.\n\n'
+                'Steps:\n'
+                '1. Verify your email (check inbox or spam)\n'
+                '2. Use password reset link sent to you\n'
+                '3. Set new password\n'
+                '4. Login with new credentials'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
           ),
         ],
       ),

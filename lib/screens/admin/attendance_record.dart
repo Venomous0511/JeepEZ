@@ -19,6 +19,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
+  String _normalizeName(String name) {
+    return name.trim().toLowerCase();
+  }
+
   /// Pick custom date
   void _pickDate() async {
     final DateTime? picked = await showDatePicker(
@@ -79,7 +83,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ).format(DateTime.parse(log['timestamp']).toLocal());
 
             if (logDate == filterDate) {
-              final name = log['name']?.toString() ?? 'Unknown';
+              final rawName = log['name']?.toString() ?? 'Unknown';
+              final name = _normalizeName(rawName);
               groupedByName.putIfAbsent(name, () => []).add(log);
             }
           } catch (e) {
@@ -193,13 +198,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   // Get employee data with ID mapping
   Map<String, Map<String, dynamic>> _getEmployeeMap(
-    List<QueryDocumentSnapshot> docs,
-  ) {
+      List<QueryDocumentSnapshot> docs,
+      ) {
     final employeeMap = <String, Map<String, dynamic>>{};
     for (var doc in docs) {
       final user = doc.data() as Map<String, dynamic>;
-      final name = user['name']?.toString() ?? '';
-      if (name.isNotEmpty) {
+      final rawName = user['name']?.toString() ?? '';
+      if (rawName.isNotEmpty) {
+        final name = _normalizeName(rawName);
         employeeMap[name] = user;
       }
     }
@@ -212,10 +218,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     Map<String, Map<String, dynamic>> employeeMap,
   ) {
     return attendanceData.map((attendance) {
-      final name = attendance['name']?.toString() ?? '';
+      final rawName = attendance['name']?.toString() ?? '';
+      final name = _normalizeName(rawName);
       final employeeData = employeeMap[name] ?? {};
       return {
         ...attendance,
+        'name': rawName,
         'employeeId': employeeData['employeeId']?.toString() ?? 'N/A',
         'assignedVehicle': employeeData['assignedVehicle']?.toString() ?? 'N/A',
         'employmentType': employeeData['employmentType']?.toString() ?? 'N/A',

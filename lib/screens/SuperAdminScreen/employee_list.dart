@@ -11,13 +11,6 @@ class EmployeeListScreen extends StatefulWidget {
 }
 
 class _EmployeeListScreenState extends State<EmployeeListScreen> {
-  final emailCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
-  final nameCtrl = TextEditingController();
-  final employeeIdCtrl = TextEditingController();
-  String role = 'conductor';
-  bool loading = false;
-
   int _currentPage = 0;
   final int _pageSize = 10;
   String _searchQuery = '';
@@ -55,7 +48,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withAlpha(1),
+                        color: Colors.grey.withAlpha(25),
                         blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),
@@ -157,7 +150,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withAlpha(1),
+            color: Colors.grey.withAlpha(25),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -225,7 +218,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withAlpha(1),
+            color: Colors.grey.withAlpha(25),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -440,7 +433,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                   decoration: BoxDecoration(
                                     color: _getRoleColor(
                                       data['role'],
-                                    ).withAlpha(1),
+                                    ).withAlpha(25),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: _getRoleColor(data['role']),
@@ -470,7 +463,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                     vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.green.withAlpha(1),
+                                    color: Colors.green.withAlpha(25),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(color: Colors.green),
                                   ),
@@ -590,7 +583,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withAlpha(1),
+                      color: Colors.grey.withAlpha(25),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -629,7 +622,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.green.withAlpha(1),
+                              color: Colors.green.withAlpha(25),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: Colors.green),
                             ),
@@ -955,7 +948,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       onPressed: onPressed,
       tooltip: tooltip,
       style: IconButton.styleFrom(
-        backgroundColor: color.withAlpha(1),
+        backgroundColor: color.withAlpha(25),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         padding: const EdgeInsets.all(8),
       ),
@@ -973,7 +966,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       label: Text(text, style: const TextStyle(fontSize: 12)),
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: color.withAlpha(1),
+        backgroundColor: color.withAlpha(25),
         foregroundColor: color,
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -1035,78 +1028,81 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     final nameCtrl = TextEditingController(text: data['name']);
     final emailCtrl = TextEditingController(text: data['email']);
 
-    final updated = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Update User"),
-        content: SingleChildScrollView(
-          child: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: "Name",
-                    border: OutlineInputBorder(),
+    try {
+      final updated = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("Update User"),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Name",
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: emailCtrl,
-                  decoration: const InputDecoration(
-                    labelText: "Email",
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: emailCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Email",
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0D2364),
+              ),
+              child: const Text("Update"),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0D2364),
+      );
+
+      if (updated == true) {
+        await FirebaseFirestore.instance.collection('users').doc(docId).update({
+          "name": nameCtrl.text.trim(),
+          "email": emailCtrl.text.trim(),
+        });
+
+        await FirebaseFirestore.instance.collection('notifications').add({
+          'title': 'Updated Account',
+          'message': 'Updated account for ${nameCtrl.text.trim()}',
+          'time': FieldValue.serverTimestamp(),
+          'dismissed': false,
+          'type': 'updates',
+          'createdBy': widget.user.email,
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Successfully updated ${nameCtrl.text.trim()}'),
+              backgroundColor: Colors.green,
             ),
-            child: const Text("Update"),
-          ),
-        ],
-      ),
-    );
-
-    if (updated == true) {
-      await FirebaseFirestore.instance.collection('users').doc(docId).update({
-        "name": nameCtrl.text.trim(),
-        "email": emailCtrl.text.trim(),
-      });
-
-      await FirebaseFirestore.instance.collection('notifications').add({
-        'title': 'Updated Account',
-        'message': 'Updated account for ${nameCtrl.text.trim()}',
-        'time': FieldValue.serverTimestamp(),
-        'dismissed': false,
-        'type': 'updates',
-        'createdBy': widget.user.email,
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Successfully updated ${nameCtrl.text.trim()}'),
-            backgroundColor: Colors.green,
-          ),
-        );
+          );
+        }
       }
-    }
 
-    nameCtrl.dispose();
-    emailCtrl.dispose();
+    } finally {
+      nameCtrl.dispose();
+      emailCtrl.dispose();
+    }
   }
 
   /// ---------------- DELETE USER ----------------
@@ -1161,10 +1157,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
   @override
   void dispose() {
-    emailCtrl.dispose();
-    passCtrl.dispose();
-    nameCtrl.dispose();
-    employeeIdCtrl.dispose();
     super.dispose();
   }
 }

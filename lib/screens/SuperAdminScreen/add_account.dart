@@ -239,9 +239,10 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         'uid': newUid,
         'email': email,
         'employeeId': employeeId,
-        'firstName': firstName, // ✅ SAVE firstName
-        'middleName': middleName, // ✅ SAVE middleName
-        'lastName': lastName, // ✅ SAVE lastName
+        'firstName': firstName,
+        'middleName': middleName,
+        'lastName': lastName,
+        'name': displayName,
         'displayName': displayName,
         'role': role,
         'status': true,
@@ -270,8 +271,8 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
 
       if (mounted) {
         setState(() {
-          role = null; // Reset role selection
-          generatedPassword = password; // Keep the same password for reference
+          role = null;
+          generatedPassword = _generatePassword();
         });
       }
 
@@ -320,13 +321,13 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                 borderRadius: BorderRadius.circular(12.0),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withAlpha(128),
+                    color: Colors.grey.withAlpha(50),
                     spreadRadius: 1,
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
                   BoxShadow(
-                    color: Colors.grey.withAlpha(128),
+                    color: Colors.grey.withAlpha(30),
                     spreadRadius: 1,
                     blurRadius: 4,
                     offset: const Offset(0, 2),
@@ -599,5 +600,14 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    emailCtrl.dispose();
+    firstNameCtrl.dispose();
+    middleNameCtrl.dispose();
+    lastNameCtrl.dispose();
+    super.dispose();
   }
 }

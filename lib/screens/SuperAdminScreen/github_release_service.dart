@@ -6,25 +6,38 @@ class GitHubRelease {
   final String tagName;
   final String releaseDate;
   final String changelog;
-  final String downloadUrl;
   final bool isPrerelease;
+  final String htmlUrl;
+  final String? downloadUrl;
 
   GitHubRelease({
     required this.version,
     required this.tagName,
     required this.releaseDate,
     required this.changelog,
-    required this.downloadUrl,
     required this.isPrerelease,
+    required this.htmlUrl,
+    this.downloadUrl,
   });
 
   factory GitHubRelease.fromJson(Map<String, dynamic> json) {
+    String? apkUrl;
+    if (json['assets'] != null && (json['assets'] as List).isNotEmpty) {
+      final assets = json['assets'] as List;
+      final apkAsset = assets.firstWhere(
+            (asset) => asset['name'].toString().endsWith('.apk'),
+        orElse: () => null,
+      );
+      apkUrl = apkAsset?['browser_download_url'];
+    }
+
     return GitHubRelease(
       version: json['tag_name'] ?? 'Unknown',
       tagName: json['tag_name'] ?? '',
       releaseDate: json['published_at'] ?? '',
       changelog: json['body'] ?? 'No changelog provided',
-      downloadUrl: json['html_url'] ?? '',
+      downloadUrl: apkUrl,
+      htmlUrl: json['html_url'] ?? '',
       isPrerelease: json['prerelease'] ?? false,
     );
   }

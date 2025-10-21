@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -31,14 +33,23 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     _startAutoCleanup();
   }
 
+  Timer? _cleanupTimer;
+
   void _startAutoCleanup() {
     _cleanupOldLeaveApplications();
-    Future.delayed(const Duration(hours: 1), () {
+    _cleanupTimer = Timer.periodic(const Duration(hours: 1), (timer) {
       if (mounted) {
         _cleanupOldLeaveApplications();
-        _startAutoCleanup();
+      } else {
+        timer.cancel();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _cleanupTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _cleanupOldLeaveApplications() async {
@@ -234,27 +245,36 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
 
   Future<void> _approveRequest(int index) async {
     final req = _paginatedRequests[index];
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(req['userId'])
-        .collection('leave_application')
-        .doc(req['leaveId'])
-        .update({
-          'status': 'Approved',
-          'approvedAt': FieldValue.serverTimestamp(),
-        });
 
-    if (mounted) {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(req['userId'])
+          .collection('leave_application')
+          .doc(req['leaveId'])
+          .update({
+            'status': 'Approved',
+            'approvedAt': FieldValue.serverTimestamp(),
+          });
+
+      final previousPage = _currentPage;
       await _loadLeaveRequests();
       _filterRequests();
-    }
+      if (_currentPage < _totalPages) {
+        setState(() => _currentPage = previousPage);
+      }
 
-    if (mounted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("${req['name']}'s leave request has been approved"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("${req['name']}'s leave request has been approved"),
-          backgroundColor: Colors.green,
-        ),
+        SnackBar(content: Text('Failed to approve: $e'), backgroundColor: Colors.red),
       );
     }
   }
@@ -305,31 +325,37 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     if (result != null && result.isNotEmpty) {
       final req = _paginatedRequests[index];
 
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(req['userId'])
-          .collection('leave_application')
-          .doc(req['leaveId'])
-          .update({
-            'status': 'Rejected',
-            'rejectionReason': result,
-            'rejectedAt': FieldValue.serverTimestamp(),
-          });
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(req['userId'])
+            .collection('leave_application')
+            .doc(req['leaveId'])
+            .update({
+              'status': 'Rejected',
+              'rejectionReason': result,
+              'rejectedAt': FieldValue.serverTimestamp(),
+            });
 
-      if (mounted) {
-        await _loadLeaveRequests();
-        _filterRequests();
-      }
+        if (mounted) {
+          await _loadLeaveRequests();
+          _filterRequests();
+        }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "${req['name']}'s leave request has been declined. It will be automatically deleted after 5 days.",
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "${req['name']}'s leave request has been declined. It will be automatically deleted after 5 days.",
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
             ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to approve: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -543,7 +569,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withAlpha(1),
+            color: Colors.grey.withAlpha(25),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -714,6 +740,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                   ),
                   const SizedBox(height: 4),
                   Container(
+                    height: 40,
                     width: double.infinity,
                     constraints: const BoxConstraints(maxHeight: 60),
                     child: SingleChildScrollView(

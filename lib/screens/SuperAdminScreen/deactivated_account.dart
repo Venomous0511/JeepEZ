@@ -50,7 +50,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withAlpha(1),
+                        color: Colors.grey.withAlpha(25),
                         blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),
@@ -146,7 +146,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withAlpha(1),
+            color: Colors.grey.withAlpha(25),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -214,7 +214,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withAlpha(1),
+            color: Colors.grey.withAlpha(25),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -429,7 +429,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
                                   decoration: BoxDecoration(
                                     color: _getRoleColor(
                                       data['role'],
-                                    ).withAlpha(1),
+                                    ).withAlpha(25),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: _getRoleColor(data['role']),
@@ -459,7 +459,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
                                     vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.red.withAlpha(1),
+                                    color: Colors.red.withAlpha(25),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(color: Colors.red),
                                   ),
@@ -572,7 +572,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withAlpha(1),
+                      color: Colors.grey.withAlpha(25),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -611,7 +611,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.red.withAlpha(1),
+                              color: Colors.red.withAlpha(25),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: Colors.red),
                             ),
@@ -910,7 +910,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
       onPressed: onPressed,
       tooltip: tooltip,
       style: IconButton.styleFrom(
-        backgroundColor: color.withAlpha(1),
+        backgroundColor: color.withAlpha(25),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         padding: const EdgeInsets.all(8),
       ),
@@ -928,7 +928,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
       label: Text(text, style: const TextStyle(fontSize: 12)),
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: color.withAlpha(1),
+        backgroundColor: color.withAlpha(25),
         foregroundColor: color,
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -987,71 +987,37 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
 
   /// ------------ REACTIVATE USER FUNCTION ------------
   Future<void> _reactivateUser(String docId, Map<String, dynamic> data) async {
-    final emailCtrl = TextEditingController();
-    final passCtrl = TextEditingController();
-    final nameCtrl = TextEditingController();
-
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text("Reactivate User"),
-          content: SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.8,
-                maxHeight: MediaQuery.of(context).size.height * 0.6,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameCtrl,
-                    decoration: const InputDecoration(labelText: "Name"),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: emailCtrl,
-                    decoration: const InputDecoration(labelText: "Email"),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: passCtrl,
-                    obscureText: true,
-                    decoration: const InputDecoration(labelText: "Password"),
-                  ),
-                ],
-              ),
-            ),
+      builder: (context) => AlertDialog(
+        title: const Text("Reactivate User"),
+        content: Text("Are you sure you want to reactivate ${data['name']}?\n\nA password reset email will be sent to ${data['email']}."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text("Cancel"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text("Reactivate"),
-            ),
-          ],
-        ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Reactivate"),
+          ),
+        ],
       ),
     );
 
     if (confirmed == true) {
       try {
-        // 1. Create Firebase Auth account
-        final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: emailCtrl.text.trim(),
-          password: passCtrl.text.trim(),
+        // Create Firebase Auth account
+        await FirebaseAuth.instance.sendPasswordResetEmail(
+          email: data['email'],
         );
 
-        // 2. Update Firestore slot with new info
+        // Update Firestore slot with new info
         await FirebaseFirestore.instance.collection('users').doc(docId).update({
-          "name": nameCtrl.text.trim(),
-          "email": emailCtrl.text.trim(),
           "status": true,
-          "uid": cred.user?.uid,
+          "isReactivated": true,
+          "requiresPasswordReset": true,
+          "emailVerified": false,
           "reactivatedAt": FieldValue.serverTimestamp(),
           "reactivatedBy": widget.user.email,
         });
@@ -1059,8 +1025,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
         // 3. Add notification
         await FirebaseFirestore.instance.collection('notifications').add({
           'title': 'Reactivated Account',
-          'message':
-              'Reactivated and assigned to ${nameCtrl.text.trim()} (${emailCtrl.text.trim()})',
+          'message': 'Account reactivated for ${data['name']} (${data['email']})',
           'time': FieldValue.serverTimestamp(),
           'dismissed': false,
           'type': 'updates',
@@ -1070,7 +1035,7 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Account reactivated for ${nameCtrl.text.trim()}"),
+            content: Text("Account reactivated. Password reset email sent to ${data['email']}"),
           ),
         );
       } catch (e) {

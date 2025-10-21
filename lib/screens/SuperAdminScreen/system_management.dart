@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/app_user.dart';
 import '../../settings_service.dart';
 import 'github_release_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class SystemManagementScreen extends StatefulWidget {
   final AppUser user;
@@ -130,7 +132,28 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
 
             const SizedBox(height: 24),
             _buildSectionHeader('Update'),
-            if (_releases.isEmpty)
+            if (kIsWeb)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  border: Border.all(color: Colors.blue),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'App updates are only available on Android. Please access this feature from the mobile app.',
+                        style: TextStyle(color: Colors.blue),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (_releases.isEmpty)
               _buildErrorWidget()
             else ...[
               _buildDropdownSetting(
@@ -158,15 +181,15 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
               _buildActionButton('Update', Icons.update, () {
                 _updateApp();
               }),
-            ],
 
-            const SizedBox(height: 16),
-            _buildActionButton('Reload Releases', Icons.cloud_download, () {
-              setState(() {
-                _isLoading = true;
-              });
-              _loadGitHubReleases();
-            }),
+              const SizedBox(height: 16),
+              _buildActionButton('Reload Releases', Icons.cloud_download, () {
+                setState(() {
+                  _isLoading = true;
+                });
+                _loadGitHubReleases();
+              }),
+            ],
           ],
         ),
       ),
@@ -183,7 +206,7 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
       ),
       child: Column(
         children: [
-          Icon(Icons.error, color: Colors.red, size: 32),
+          const Icon(Icons.error, color: Colors.red, size: 32),
           const SizedBox(height: 8),
           Text(
             _errorMessage,
@@ -230,12 +253,18 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
     List<String> options,
     Function(String?) onChanged,
   ) {
+    if (options.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final selectedValue = (options.contains(value) && value.isNotEmpty) ? value : options.first;
+
     return DropdownButtonFormField(
       decoration: InputDecoration(
         labelText: title,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
       ),
-      value: options.contains(value) ? value : options.first,
+      value: selectedValue,
       items: options.map((String option) {
         return DropdownMenuItem(value: option, child: Text(option));
       }).toList(),
@@ -276,6 +305,12 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
 
   void _showChangelog() {
     if (_selectedChangelog == null || _releases.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No changelog available'),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
     }
 
@@ -316,10 +351,9 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
               child: const Text('Close'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(context).pop();
-                // Open release on GitHub
-                // You can use url_launcher package for this
+                await _openGitHubRelease(release.htmlUrl);
               },
               child: const Text('View on GitHub'),
             ),
@@ -329,11 +363,65 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
     );
   }
 
+  Future<void> _openGitHubRelease(String url) async {
+    if (url.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('GitHub URL not available'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        throw 'Could not launch URL';
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to open GitHub: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _updateApp() {
     final release = _releases.firstWhere(
       (r) => r.version == _selectedVersion,
       orElse: () => _releases.first,
     );
+
+    if (kIsWeb) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Not Available'),
+            content: const Text('App updates are only available on the Android version.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
 
     showDialog(
       context: context,
@@ -350,6 +438,25 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
                 'Released: ${GitHubReleaseService.formatDate(release.releaseDate)}',
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
+              const SizedBox(height: 12),
+              if (release.downloadUrl != null)
+                const Text(
+                  'This will download the APK file. You\'ll need to install it manually.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.orange,
+                  ),
+                )
+              else
+                const Text(
+                  'No APK file available for this release. You can view it on GitHub instead.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.red,
+                  ),
+                ),
             ],
           ),
           actions: [
@@ -357,26 +464,100 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Updating to version ${release.version}...'),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0D2364),
+            if (release.downloadUrl != null)
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await _downloadAndInstallUpdate(release);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0D2364),
+                ),
+                child: const Text(
+                  'Download',
+                  style: TextStyle(color: Colors.white),
+                ),
+              )
+            else
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await _openGitHubRelease(release.htmlUrl);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0D2364),
+                ),
+                child: const Text(
+                  'View on GitHub',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
-              child: const Text(
-                'Update',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
           ],
         );
       },
     );
+  }
+
+  Future<void> _downloadAndInstallUpdate(GitHubRelease release) async {
+    if (kIsWeb) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Downloads are not available on web. Please use the Android app.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (release.downloadUrl == null || release.downloadUrl!.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Download URL not available'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      final uri = Uri.parse(release.downloadUrl!);
+
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Downloading ${release.version}... Check your downloads folder.'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'OK',
+                textColor: Colors.white,
+                onPressed: () {},
+              ),
+            ),
+          );
+        }
+      } else {
+        throw 'Could not launch download URL';
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to download: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

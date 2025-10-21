@@ -56,20 +56,31 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      final today = DateTime.now();
-      final startOfDay = DateTime(today.year, today.month, today.day);
-      final endOfDay = DateTime(today.year, today.month, today.day, 23, 59, 59);
-
-      final querySnapshot = await FirebaseFirestore.instance
+      // Check for any pending applications
+      final pendingSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .collection('leave_application')
-          .where('submittedAt', isGreaterThanOrEqualTo: startOfDay)
-          .where('submittedAt', isLessThanOrEqualTo: endOfDay)
+          .where('status', isEqualTo: 'Pending')
+          .get();
+
+      // Check for approved applications in the current month
+      final now = DateTime.now();
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+      final approvedThisMonthSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('leave_application')
+          .where('status', isEqualTo: 'Approved')
+          .where('approvedAt', isGreaterThanOrEqualTo: startOfMonth)
+          .where('approvedAt', isLessThanOrEqualTo: endOfMonth)
           .get();
 
       setState(() {
-        _hasSubmittedToday = querySnapshot.docs.isNotEmpty;
+        _hasSubmittedToday = pendingSnapshot.docs.isNotEmpty ||
+            approvedThisMonthSnapshot.docs.isNotEmpty;
         _isCheckingSubmission = false;
       });
     } catch (e) {
@@ -146,7 +157,11 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
       if (_hasSubmittedToday) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('You can only submit one leave application per day.'),
+            content: Text(
+              'You already have a pending request or approved leave this month. '
+                  'You can submit again next month or after your current request is resolved.',
+            ),
+            duration: Duration(seconds: 4),
           ),
         );
         return;
@@ -261,6 +276,14 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
             if (daysSinceRejection >= 5) {
               shouldDelete = true;
               deleteReason = 'Rejected $daysSinceRejection days ago';
+            }
+          }
+
+          if (status == 'Approved' && endDate != null) {
+            final daysAfterEndDate = now.difference(endDate).inDays;
+            if (daysAfterEndDate >= 3) {
+              shouldDelete = true;
+              deleteReason = 'Leave ended ${_formatDate(endDate)} - archived after 3 days';
             }
           }
 
@@ -531,7 +554,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
   String get _submitButtonText {
     if (_isCheckingSubmission) return 'Checking...';
     if (_vehicleId == 'N/A' || _vehicleId == null) return 'No Vehicle Assigned';
-    if (_hasSubmittedToday) return 'Already Submitted Today';
+    if (_hasSubmittedToday) return 'Request Limit Reached';
     return 'Submit Leave Application';
   }
 
@@ -590,7 +613,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              'You have already submitted a leave application today',
+                              'You have a pending request or approved leave this month',
                               style: TextStyle(
                                 fontSize: isMobile ? 12 : 13,
                                 color: Colors.white,
