@@ -18,6 +18,14 @@ class AppUser {
   });
 
   factory AppUser.fromMap(String uid, Map<String, dynamic> data) {
+    // Helper function to safely parse assignedVehicle
+    int parseAssignedVehicle(dynamic value) {
+      if (value == null) return 0;
+      if (value is int) return value;
+      if (value is String) return int.tryParse(value) ?? 0;
+      return 0;
+    }
+
     return AppUser(
       uid: uid,
       employeeId: data['employeeId']?.toString() ?? '',
@@ -25,9 +33,7 @@ class AppUser {
       role: data['role'] ?? '',
       status: data['status'] ?? false,
       name: data['name'],
-      assignedVehicle: data['assignedVehicle'] != null
-          ? data['assignedVehicle'] as int
-          : 0,
+      assignedVehicle: parseAssignedVehicle(data['assignedVehicle']),
     );
   }
 

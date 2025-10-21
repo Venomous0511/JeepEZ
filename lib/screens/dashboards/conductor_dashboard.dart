@@ -45,16 +45,7 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
 
   // ----------------- FETCH PASSENGER COUNT -----------------
   Future<void> _fetchLatestPassengerCount() async {
-    dynamic assignedVehicle = widget.user.assignedVehicle;
-    int vehicleNumber;
-
-    if (assignedVehicle is int) {
-      vehicleNumber = assignedVehicle;
-    } else if (assignedVehicle is String) {
-      vehicleNumber = int.tryParse(assignedVehicle) ?? 0;
-    } else {
-      vehicleNumber = 0;
-    }
+    final vehicleNumber = widget.user.assignedVehicle;
 
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
@@ -90,16 +81,8 @@ class _ConductorDashboardState extends State<ConductorDashboard> {
 
   // ----------------- STREAM FOR LIVE PASSENGER COUNT -----------------
   Stream<DocumentSnapshot<Map<String, dynamic>>?> latestTripStream() {
-    dynamic assignedVehicle = widget.user.assignedVehicle;
-    int vehicleNumber;
+    final vehicleNumber = widget.user.assignedVehicle;
 
-    if (assignedVehicle is int) {
-      vehicleNumber = assignedVehicle;
-    } else if (assignedVehicle is String) {
-      vehicleNumber = int.tryParse(assignedVehicle) ?? 0;
-    } else {
-      vehicleNumber = 0;
-    }
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
     final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
