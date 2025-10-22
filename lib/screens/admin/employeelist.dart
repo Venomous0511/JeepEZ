@@ -1926,15 +1926,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                   return;
                                 }
 
-                                if (!_isValidGmail(value)) {
-                                  setState(() {
-                                    emailError =
-                                        'Only Gmail accounts are allowed';
-                                    isCheckingEmail = false;
-                                  });
-                                  return;
-                                }
-
                                 // Check if email already exists
                                 final exists = await _checkEmailExists(value);
                                 setState(() {
@@ -2278,20 +2269,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                         const SnackBar(
                                           content: Text(
                                             'Please enter a valid email address',
-                                          ),
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
-                                      return;
-                                    }
-
-                                    if (!_isValidGmail(email)) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Only Gmail accounts are allowed',
                                           ),
                                           backgroundColor: Colors.red,
                                         ),
@@ -2699,15 +2676,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Please enter email address'),
-                      ),
-                    );
-                    return;
-                  }
-
-                  if (!_isValidGmail(email)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Only Gmail accounts are allowed'),
                       ),
                     );
                     return;

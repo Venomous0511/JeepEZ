@@ -27,7 +27,6 @@ class ViolationReportForm extends StatefulWidget {
 }
 
 class _ViolationReportFormState extends State<ViolationReportForm> {
-  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _positionController = TextEditingController();
   final TextEditingController _violationController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
@@ -35,10 +34,22 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
   final TextEditingController _otherViolationController =
       TextEditingController();
 
+  String? selectedViolatorName;
+  List<Map<String, dynamic>> todayDrivers = [];
+  List<Map<String, dynamic>> todayConductors = [];
+  List<Map<String, dynamic>> availableViolators = [];
+  bool isLoadingData = false;
+
   String? _reportedEmployeeId;
   String? _reporterEmployeeId;
   bool _isLoading = false;
   String? _selectedViolationType; // For dropdown selection
+
+  String _getTodayDayName() {
+    final now = DateTime.now();
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return days[now.weekday - 1];
+  }
 
   // List of violation types for dropdown
   final List<String> _violationTypes = [
@@ -57,6 +68,81 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
   void initState() {
     super.initState();
     _fetchReporterEmployeeId();
+    _loadDropdownData();
+  }
+
+  Future<void> _loadDropdownData() async {
+    setState(() => isLoadingData = true);
+
+    try {
+      final today = _getTodayDayName();
+
+      // Get drivers scheduled for today
+      final driversSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: 'driver')
+          .where('status', isEqualTo: true)
+          .get();
+
+      todayDrivers = driversSnapshot.docs
+          .where((doc) {
+        final schedule = doc.data()['schedule'] as String?;
+        return schedule != null && schedule.contains(today);
+      })
+          .map((doc) {
+        return {
+          'uid': doc.id,
+          'name': doc.data()['name'] ?? doc.data()['displayName'] ??
+              '${doc.data()['firstName'] ?? ''} ${doc.data()['lastName'] ?? ''}'.trim(),
+          'employeeId': doc.data()['employeeId'] ?? '',
+          'data': doc.data(),
+        };
+      })
+          .toList();
+
+      // Get conductors scheduled for today
+      final conductorsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: 'conductor')
+          .where('status', isEqualTo: true)
+          .get();
+
+      todayConductors = conductorsSnapshot.docs
+          .where((doc) {
+        final schedule = doc.data()['schedule'] as String?;
+        return schedule != null && schedule.contains(today);
+      })
+          .map((doc) {
+        return {
+          'uid': doc.id,
+          'name': doc.data()['name'] ?? doc.data()['displayName'] ??
+              '${doc.data()['firstName'] ?? ''} ${doc.data()['lastName'] ?? ''}'.trim(),
+          'employeeId': doc.data()['employeeId'] ?? '',
+          'data': doc.data(),
+        };
+      })
+          .toList();
+
+      _updateAvailableViolators();
+    } catch (e) {
+      debugPrint('Error loading dropdown data: $e');
+    } finally {
+      setState(() => isLoadingData = false);
+    }
+  }
+
+  void _updateAvailableViolators() {
+    setState(() {
+      if (_positionController.text == 'Driver') {
+        availableViolators = todayDrivers;
+      } else if (_positionController.text == 'Conductor') {
+        availableViolators = todayConductors;
+      } else {
+        availableViolators = [];
+      }
+      // Reset selected name when position changes
+      selectedViolatorName = null;
+    });
   }
 
   /// Fetch the reporter's employeeId from users collection
@@ -83,67 +169,21 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
   /// Fetch employeeId for the violator based on name and position
   Future<String?> _fetchViolatorEmployeeId(String name, String position) async {
     try {
-      // Normalize input: remove commas, extra spaces, lowercase, split and sort
-      List<String> inputWords =
-          name
-              .toLowerCase()
-              .replaceAll(',', '')
-              .replaceAll(RegExp(r'\s+'), ' ')
-              .trim()
-              .split(' ')
-            ..sort();
+      // Find from the filtered lists based on position
+      final violatorList = position.toLowerCase() == 'driver'
+          ? todayDrivers
+          : todayConductors;
 
-      // Search by role first
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('role', isEqualTo: position.toLowerCase())
-          .get();
+      final violator = violatorList.firstWhere(
+            (v) => v['name'] == name,
+        orElse: () => {},
+      );
 
-      // Compare normalized names
-      for (var doc in querySnapshot.docs) {
-        final data = doc.data();
-        final dbName = data['name']?.toString() ?? '';
-
-        // Normalize database name the same way
-        List<String> dbWords =
-            dbName
-                .toLowerCase()
-                .replaceAll(',', '')
-                .replaceAll(RegExp(r'\s+'), ' ')
-                .trim()
-                .split(' ')
-              ..sort();
-
-        // Compare sorted word lists
-        if (inputWords.join(' ') == dbWords.join(' ')) {
-          final employeeId = data['employeeId']?.toString();
-          if (employeeId != null && employeeId.isNotEmpty) {
-            debugPrint('Found employee: $dbName with ID: $employeeId');
-            return employeeId;
-          }
-        }
-      }
-
-      debugPrint('No match found for: $name');
-      return null;
+      return violator['employeeId'] as String?;
     } catch (e) {
       debugPrint('Error fetching violator employeeId: $e');
       return null;
     }
-  }
-
-  // Validation functions
-  String? _validateName(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Name of violator is required';
-    }
-    if (!RegExp(r'^[a-zA-Z\s]*$').hasMatch(value)) {
-      return 'Only letters and spaces are allowed';
-    }
-    if (value.length > 36) {
-      return 'Maximum 36 letters only';
-    }
-    return null;
   }
 
   String? _validateViolation(String? value) {
@@ -196,7 +236,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Study according to the form on accurate and correct information.',
+                    'Kindly complete the form with accurate and detailed information.',
                     style: TextStyle(fontSize: 14, color: Colors.white70),
                   ),
                 ],
@@ -215,37 +255,48 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _nameController,
-                    maxLength: 36,
-                    validator: _validateName,
+                  DropdownButtonFormField<String>(
+                    value: selectedViolatorName,
+                    isExpanded: true,
                     decoration: InputDecoration(
+                      hintText: 'Select violator name',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(4),
+                        borderSide: BorderSide(color: Colors.grey.shade400),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 8,
                       ),
-                      hintText: 'Enter violator name',
-                      counterText: '',
                     ),
-                    onChanged: (value) {
-                      // Filter out numbers and allow only letters and spaces
-                      if (value.isNotEmpty &&
-                          !RegExp(r'^[a-zA-Z\s]*$').hasMatch(value)) {
-                        final filteredValue = value.replaceAll(
-                          RegExp(r'[^a-zA-Z\s]'),
-                          '',
-                        );
-                        _nameController.value = _nameController.value.copyWith(
-                          text: filteredValue,
-                          selection: TextSelection.collapsed(
-                            offset: filteredValue.length,
-                          ),
-                        );
-                      }
+                    items: availableViolators.isEmpty
+                        ? null
+                        : availableViolators.map((violator) {
+                      return DropdownMenuItem<String>(
+                        value: violator['name'] as String,
+                        child: Text(
+                          violator['name'] as String,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: availableViolators.isEmpty
+                        ? null
+                        : (value) {
+                      setState(() {
+                        selectedViolatorName = value;
+                      });
                     },
+                    hint: availableViolators.isEmpty
+                        ? Text(
+                      'Select position first or no violators available today',
+                      style: TextStyle(color: Colors.grey[600]),
+                      overflow: TextOverflow.ellipsis,
+                    )
+                        : null,
+                    validator: (value) =>
+                    value == null ? 'Please select violator name' : null,
                   ),
                 ],
               ),
@@ -278,6 +329,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                       onChanged: (String? newValue) {
                         setState(() {
                           _positionController.text = newValue ?? '';
+                          _updateAvailableViolators();
                         });
                       },
                       items: _positionOptions.map<DropdownMenuItem<String>>((
@@ -580,19 +632,6 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
   }
 
   void _saveAndSubmit() async {
-    // Validate all fields
-    final nameError = _validateName(_nameController.text);
-    final violationError = _validateViolation(_violationController.text);
-    final locationError = _validateLocation(_locationController.text);
-
-    if (nameError != null || violationError != null || locationError != null) {
-      _showDialog(
-        'Error',
-        'Please fix all validation errors before submitting',
-      );
-      return;
-    }
-
     // Validation for violation type field
     if (_selectedViolationType == null) {
       _showDialog('Error', 'Please select a violation type');
@@ -605,7 +644,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
       return;
     }
 
-    if (_nameController.text.isEmpty ||
+    if (selectedViolatorName == null ||
         _positionController.text.isEmpty ||
         _violationController.text.isEmpty ||
         _locationController.text.isEmpty ||
@@ -631,23 +670,9 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
 
       // Fetch violator's employeeId
       _reportedEmployeeId = await _fetchViolatorEmployeeId(
-        _nameController.text.trim(),
+        selectedViolatorName ?? '',
         _positionController.text.trim(),
       );
-
-      if (_reportedEmployeeId == null || _reportedEmployeeId!.isEmpty) {
-        final shouldContinue = await _showConfirmationDialog(
-          'Employee Not Found',
-          'The violator "${_nameController.text.trim()}" with position "${_positionController.text.trim()}" was not found in the system.\n\nDo you want to submit the report anyway?',
-        );
-
-        if (!shouldContinue) {
-          setState(() {
-            _isLoading = false;
-          });
-          return;
-        }
-      }
 
       // Determine the final violation type value
       String finalViolationType;
@@ -660,7 +685,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
 
       // Add to Firestore
       await FirebaseFirestore.instance.collection('violation_report').add({
-        'reportedName': _nameController.text.trim(),
+        'reportedName': selectedViolatorName ?? '',
         'reportedPosition': _positionController.text.trim(),
         'reportedEmployeeId': _reportedEmployeeId ?? '',
         'violationType': finalViolationType, // New field for violation type
@@ -673,10 +698,20 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
         'submittedAt': FieldValue.serverTimestamp(),
       });
 
-      _showDialog('Success', 'Violation report submitted successfully!');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Violation report submitted successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
 
       // Clear form
-      _nameController.clear();
+      setState(() {
+        selectedViolatorName = null;
+        availableViolators = [];
+      });
       _positionController.clear();
       _violationController.clear();
       _locationController.clear();
@@ -687,11 +722,20 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
         _selectedViolationType = null;
       });
     } catch (e) {
-      _showDialog('Error', 'Failed to submit report: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to submit report: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -715,36 +759,8 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
     );
   }
 
-  Future<bool> _showConfirmationDialog(String title, String message) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-              child: const Text('Continue'),
-            ),
-          ],
-        );
-      },
-    );
-    return result ?? false;
-  }
-
   @override
   void dispose() {
-    _nameController.dispose();
     _positionController.dispose();
     _violationController.dispose();
     _locationController.dispose();
