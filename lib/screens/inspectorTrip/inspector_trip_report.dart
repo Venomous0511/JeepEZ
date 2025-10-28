@@ -120,7 +120,7 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
           })
           .toList();
     } catch (e) {
-      print('Error loading dropdown data: $e');
+      debugPrint('Error loading dropdown data: $e');
     } finally {
       setState(() => isLoadingData = false);
     }
@@ -139,31 +139,31 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
   }
 
   // Validation functions
-  String? _validateUnitNumber(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Unit number is required';
-    }
-    if (!RegExp(r'^[0-9]*$').hasMatch(value)) {
-      return 'Only numbers are allowed';
-    }
-    if (value.length > 36) {
-      return 'Maximum 36 numbers only';
-    }
-    return null;
-  }
+  // String? _validateUnitNumber(String? value) {
+  //   if (value == null || value.isEmpty) {
+  //     return 'Unit number is required';
+  //   }
+  //   if (!RegExp(r'^[0-9]*$').hasMatch(value)) {
+  //     return 'Only numbers are allowed';
+  //   }
+  //   if (value.length > 36) {
+  //     return 'Maximum 36 numbers only';
+  //   }
+  //   return null;
+  // }
 
-  String? _validateName(String? value, String fieldName) {
-    if (value == null || value.isEmpty) {
-      return '$fieldName is required';
-    }
-    if (!RegExp(r'^[a-zA-Z\s]*$').hasMatch(value)) {
-      return 'Only letters and spaces are allowed';
-    }
-    if (value.length > 36) {
-      return 'Maximum 36 letters only';
-    }
-    return null;
-  }
+  // String? _validateName(String? value, String fieldName) {
+  //   if (value == null || value.isEmpty) {
+  //     return '$fieldName is required';
+  //   }
+  //   if (!RegExp(r'^[a-zA-Z\s]*$').hasMatch(value)) {
+  //     return 'Only letters and spaces are allowed';
+  //   }
+  //   if (value.length > 36) {
+  //     return 'Maximum 36 letters only';
+  //   }
+  //   return null;
+  // }
 
   String? _validateNumber(
     String? value,
@@ -655,7 +655,7 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          initialValue: value,
+          value: value,
           isExpanded: true,
           decoration: InputDecoration(
             hintText: hint,

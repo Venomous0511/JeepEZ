@@ -436,7 +436,7 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
 
                       // Position Dropdown
                       DropdownButtonFormField<String>(
-                        initialValue: selectedPosition,
+                        value: selectedPosition,
                         onChanged: (String? newValue) {
                           setDialogState(() {
                             selectedPosition = newValue!;
@@ -1677,7 +1677,7 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: _selectedFilter,
+                    value: _selectedFilter,
                     onChanged: (value) {
                       setState(() {
                         _selectedFilter = value!;
@@ -1745,7 +1745,7 @@ class _ApplicantManagementScreenState extends State<ApplicantManagementScreen> {
                   Expanded(
                     flex: 1,
                     child: DropdownButtonFormField<String>(
-                      initialValue: _selectedFilter,
+                      value: _selectedFilter,
                       onChanged: (value) {
                         setState(() {
                           _selectedFilter = value!;
