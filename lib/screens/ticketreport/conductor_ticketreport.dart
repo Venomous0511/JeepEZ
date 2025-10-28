@@ -41,10 +41,16 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
 
     // Start with only one row for each section
     openingTicketRows = [
-      List.generate(6, (index) => TextEditingController(text: '0')),
+      List.generate(
+        6,
+        (index) => TextEditingController(text: '#'),
+      ), // Changed from '0' to '#'
     ];
     closingTicketRows = [
-      List.generate(6, (index) => TextEditingController(text: '0')),
+      List.generate(
+        6,
+        (index) => TextEditingController(text: '#'),
+      ), // Changed from '0' to '#'
     ];
   }
 
@@ -109,7 +115,10 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
     if (openingTicketRows.length < 4) {
       setState(() {
         openingTicketRows.add(
-          List.generate(6, (index) => TextEditingController(text: '0')),
+          List.generate(
+            6,
+            (index) => TextEditingController(text: '#'),
+          ), // Changed from '0' to '#'
         );
       });
     } else {
@@ -144,7 +153,10 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
     if (closingTicketRows.length < 4) {
       setState(() {
         closingTicketRows.add(
-          List.generate(6, (index) => TextEditingController(text: '0')),
+          List.generate(
+            6,
+            (index) => TextEditingController(text: '#'),
+          ), // Changed from '0' to '#'
         );
       });
     } else {
@@ -387,12 +399,12 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                           spacing: 12,
                           runSpacing: 4,
                           children: [
-                            _buildTicketDetail('20', ticket['20'] ?? '0'),
-                            _buildTicketDetail('15', ticket['15'] ?? '0'),
-                            _buildTicketDetail('10', ticket['10'] ?? '0'),
-                            _buildTicketDetail('5', ticket['5'] ?? '0'),
-                            _buildTicketDetail('2', ticket['2'] ?? '0'),
-                            _buildTicketDetail('1', ticket['1'] ?? '0'),
+                            _buildTicketDetail('20', ticket['20'] ?? '#'),
+                            _buildTicketDetail('15', ticket['15'] ?? '#'),
+                            _buildTicketDetail('10', ticket['10'] ?? '#'),
+                            _buildTicketDetail('5', ticket['5'] ?? '#'),
+                            _buildTicketDetail('2', ticket['2'] ?? '#'),
+                            _buildTicketDetail('1', ticket['1'] ?? '#'),
                           ],
                         ),
                       ],
@@ -957,7 +969,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                                   border: InputBorder.none,
                                   contentPadding: EdgeInsets.zero,
                                   isDense: true,
-                                  hintText: '0',
+                                  hintText: '#', // Changed from '0' to '#'
                                 ),
                                 style: TextStyle(
                                   fontSize: isSmallScreen ? 12 : 14,
@@ -965,7 +977,7 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                                 ),
                                 onTap: () {
                                   if (ticketRows[rowIndex][colIndex].text ==
-                                      '0') {
+                                      '#') {
                                     ticketRows[rowIndex][colIndex].clear();
                                   }
                                 },
@@ -983,9 +995,9 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
                                       ),
                                     );
                                   }
-                                  // If field becomes empty, reset to '0'
+                                  // If field becomes empty, reset to '#'
                                   if (value.isEmpty) {
-                                    ticketRows[rowIndex][colIndex].text = '0';
+                                    ticketRows[rowIndex][colIndex].text = '#';
                                     ticketRows[rowIndex][colIndex].selection =
                                         TextSelection.fromPosition(
                                           const TextPosition(offset: 1),
@@ -1022,7 +1034,9 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
       List<Map<String, dynamic>> ticketData = openingTicketRows.map((row) {
         Map<String, dynamic> ticket = {};
         for (int i = 0; i < ticketHeaders.length; i++) {
-          ticket[ticketHeaders[i]] = row[i].text.trim();
+          String value = row[i].text.trim();
+          // Convert '#' to '0' when submitting
+          ticket[ticketHeaders[i]] = value == '#' ? '0' : value;
         }
         return ticket;
       }).toList();
@@ -1076,7 +1090,9 @@ class _TicketReportScreenState extends State<TicketReportScreen> {
       List<Map<String, dynamic>> ticketData = closingTicketRows.map((row) {
         Map<String, dynamic> ticket = {};
         for (int i = 0; i < ticketHeaders.length; i++) {
-          ticket[ticketHeaders[i]] = row[i].text.trim();
+          String value = row[i].text.trim();
+          // Convert '#' to '0' when submitting
+          ticket[ticketHeaders[i]] = value == '#' ? '0' : value;
         }
         return ticket;
       }).toList();

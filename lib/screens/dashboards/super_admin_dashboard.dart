@@ -183,7 +183,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: selectedType,
+                    initialValue: selectedType,
                     decoration: const InputDecoration(
                       labelText: "Type",
                       border: OutlineInputBorder(),
@@ -430,22 +430,20 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                             color: const Color(0xFF0D2364),
                           ),
                         ),
+                        // Replaced number count with bell icon
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
+                            horizontal: 12,
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
                             color: const Color(0xFF0D2364),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: Text(
-                            '${_allNotifications.length}${_hasMoreNotifications ? '+' : ''}',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: isMobile ? 14 : 16,
-                            ),
+                          child: Icon(
+                            Icons.notifications,
+                            color: Colors.white,
+                            size: isMobile ? 20 : 24,
                           ),
                         ),
                       ],
@@ -759,84 +757,32 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                           selected: _selectedIndex == 2,
                           onTap: () => _navigateToScreen(2),
                         ),
-                        // Deactivated Account with notification badge
-                        Stack(
-                          children: [
-                            ListTile(
-                              leading: Icon(
-                                Icons.person_off,
-                                color: Colors.red[700],
-                                size: 24,
-                              ),
-                              title: Text(
-                                'Deactivated Account',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.red[700],
-                                ),
-                              ),
-                              selected: _selectedIndex == 3,
-                              onTap: () => _navigateToScreen(3),
+                        // Deactivated Account with bell icon
+                        ListTile(
+                          leading: Icon(
+                            Icons.person_off,
+                            color: Colors.red[700],
+                            size: 24,
+                          ),
+                          title: Text(
+                            'Deactivated Account',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: Colors.red[700],
                             ),
-                            if (_deactivationNotificationCount > 0)
-                              Positioned(
-                                right: 8,
-                                top: 8,
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  constraints: const BoxConstraints(
-                                    minWidth: 16,
-                                    minHeight: 16,
-                                  ),
-                                  child: Text(
-                                    _deactivationNotificationCount > 99
-                                        ? '99+'
-                                        : _deactivationNotificationCount
-                                              .toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                          ],
+                          ),
+                          trailing: _deactivationNotificationCount > 0
+                              ? Icon(
+                                  Icons.notifications_active,
+                                  color: Colors.red,
+                                  size: 20,
+                                )
+                              : null,
+                          selected: _selectedIndex == 3,
+                          onTap: () => _navigateToScreen(3),
                         ),
                       ],
                     ),
-                    if (_deactivationNotificationCount > 0)
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 16,
-                            minHeight: 16,
-                          ),
-                          child: Text(
-                            _deactivationNotificationCount > 99
-                                ? '99+'
-                                : _deactivationNotificationCount.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
                   ],
                 ),
 
@@ -895,41 +841,17 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
         backgroundColor: const Color(0xFF0D2364),
         foregroundColor: Colors.white,
         actions: [
+          // Bell button for deactivation notifications
           if (_deactivationNotificationCount > 0 && _selectedIndex != 3)
-            Stack(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.notifications),
-                  onPressed: () =>
-                      _navigateToScreen(3), // Navigate to deactivated accounts
-                ),
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      _deactivationNotificationCount > 99
-                          ? '99+'
-                          : _deactivationNotificationCount.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              ],
+            IconButton(
+              icon: Icon(
+                Icons.notifications_active,
+                color: Colors.white,
+                size: 28,
+              ),
+              onPressed: () =>
+                  _navigateToScreen(3), // Navigate to deactivated accounts
+              tooltip: 'Deactivation Notifications',
             ),
         ],
       ),

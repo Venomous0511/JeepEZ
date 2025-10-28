@@ -79,7 +79,8 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
           .get();
 
       setState(() {
-        _hasSubmittedToday = pendingSnapshot.docs.isNotEmpty ||
+        _hasSubmittedToday =
+            pendingSnapshot.docs.isNotEmpty ||
             approvedThisMonthSnapshot.docs.isNotEmpty;
         _isCheckingSubmission = false;
       });
@@ -159,7 +160,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
           const SnackBar(
             content: Text(
               'You already have a pending request or approved leave this month. '
-                  'You can submit again next month or after your current request is resolved.',
+              'You can submit again next month or after your current request is resolved.',
             ),
             duration: Duration(seconds: 4),
           ),
@@ -283,7 +284,8 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
             final daysAfterEndDate = now.difference(endDate).inDays;
             if (daysAfterEndDate >= 3) {
               shouldDelete = true;
-              deleteReason = 'Leave ended ${_formatDate(endDate)} - archived after 3 days';
+              deleteReason =
+                  'Leave ended ${_formatDate(endDate)} - archived after 3 days';
             }
           }
 
@@ -656,7 +658,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen> {
                           label: 'Type of Leave',
                           isMobile: isMobile,
                           child: DropdownButtonFormField<String>(
-                            value: _selectedLeaveType,
+                            initialValue: _selectedLeaveType,
                             decoration: InputDecoration(
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8.0),

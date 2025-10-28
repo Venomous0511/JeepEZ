@@ -198,8 +198,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   // Get employee data with ID mapping
   Map<String, Map<String, dynamic>> _getEmployeeMap(
-      List<QueryDocumentSnapshot> docs,
-      ) {
+    List<QueryDocumentSnapshot> docs,
+  ) {
     final employeeMap = <String, Map<String, dynamic>>{};
     for (var doc in docs) {
       final user = doc.data() as Map<String, dynamic>;

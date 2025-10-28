@@ -25,7 +25,7 @@ class GitHubRelease {
     if (json['assets'] != null && (json['assets'] as List).isNotEmpty) {
       final assets = json['assets'] as List;
       final apkAsset = assets.firstWhere(
-            (asset) => asset['name'].toString().endsWith('.apk'),
+        (asset) => asset['name'].toString().endsWith('.apk'),
         orElse: () => null,
       );
       apkUrl = apkAsset?['browser_download_url'];
@@ -47,25 +47,26 @@ class GitHubReleaseService {
   // Replace with your GitHub username and repository name
   static const String _owner = 'Venomous0511';
   static const String _repo = 'JeepEZ';
-  static const String _baseUrl = 'https://api.github.com/repos/$_owner/$_repo/releases';
+  static const String _baseUrl =
+      'https://api.github.com/repos/$_owner/$_repo/releases';
 
   /// Fetch all releases from GitHub
   static Future<List<GitHubRelease>> fetchReleases() async {
     try {
-      final response = await http.get(
-        Uri.parse(_baseUrl),
-        headers: {
-          'Accept': 'application/vnd.github.v3+json',
-          // Optional: Add GitHub token for higher rate limits
-          // 'Authorization': 'token YOUR_GITHUB_TOKEN',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse(_baseUrl),
+            headers: {
+              'Accept': 'application/vnd.github.v3+json',
+              // Optional: Add GitHub token for higher rate limits
+              // 'Authorization': 'token YOUR_GITHUB_TOKEN',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        return data
-            .map((json) => GitHubRelease.fromJson(json))
-            .toList();
+        return data.map((json) => GitHubRelease.fromJson(json)).toList();
       } else if (response.statusCode == 404) {
         throw Exception('Repository not found');
       } else {
@@ -79,12 +80,12 @@ class GitHubReleaseService {
   /// Fetch latest release
   static Future<GitHubRelease?> fetchLatestRelease() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/latest'),
-        headers: {
-          'Accept': 'application/vnd.github.v3+json',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse('$_baseUrl/latest'),
+            headers: {'Accept': 'application/vnd.github.v3+json'},
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         return GitHubRelease.fromJson(json.decode(response.body));

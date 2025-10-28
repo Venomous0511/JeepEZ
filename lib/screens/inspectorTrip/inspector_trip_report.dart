@@ -655,7 +655,7 @@ class InspectorTripScreenState extends State<InspectorTripScreen> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: value,
+          initialValue: value,
           isExpanded: true,
           decoration: InputDecoration(
             hintText: hint,

@@ -2002,7 +2002,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: DropdownButtonFormField<String>(
-                                value: role,
+                                initialValue: role,
                                 decoration: const InputDecoration(
                                   labelText: 'Role *',
                                   border: InputBorder.none,
@@ -2074,7 +2074,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                 role == "inspector") ...[
                               const SizedBox(height: 12),
                               DropdownButtonFormField<String>(
-                                value: employmentType,
+                                initialValue: employmentType,
                                 items: const [
                                   DropdownMenuItem(
                                     value: "full_time",
@@ -2618,7 +2618,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       role == 'inspector') ...[
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: employmentType,
+                      initialValue: employmentType,
                       items: const [
                         DropdownMenuItem(
                           value: "full_time",

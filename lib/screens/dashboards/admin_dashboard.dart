@@ -81,7 +81,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       case 3:
         return 'Leave Management';
       case 4:
-        return 'Driver & Conductor Management';
+        return 'Schedule Management';
       case 5:
         return 'Vehicle Maintenance';
       default:
@@ -891,11 +891,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   _drawerItem('Employee Account Management', 1, Icons.people),
                   _drawerItem('Attendance Records', 2, Icons.calendar_today),
                   _drawerItem('Leave Management', 3, Icons.event_busy),
-                  _drawerItem(
-                    'Driver & Conductor Management',
-                    4,
-                    Icons.directions_car,
-                  ),
+                  _drawerItem('Schedule Management', 4, Icons.directions_car),
                   _drawerItem('Vehicle Maintenance', 5, Icons.build),
                 ],
               ),

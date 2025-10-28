@@ -227,7 +227,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     });
   }
 
-  // Rest of your existing methods remain the same...
   List<Map<String, dynamic>> get _paginatedRequests {
     final startIndex = _currentPage * _itemsPerPage;
     final endIndex = startIndex + _itemsPerPage;
@@ -254,7 +253,8 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
           .doc(req['leaveId'])
           .update({
             'status': 'Approved',
-            'approvedAt': FieldValue.serverTimestamp(),
+            'approvedAt':
+                FieldValue.serverTimestamp(), // ADDED: Store approval timestamp
           });
 
       final previousPage = _currentPage;
@@ -274,7 +274,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to approve: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Failed to approve: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -355,7 +358,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to approve: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Failed to approve: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -554,9 +560,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     );
   }
 
-  // ... (rest of your UI builder methods remain exactly the same)
   Widget _buildNotificationTile(Map<String, dynamic> request, int index) {
-    // Your existing _buildNotificationTile implementation
     final status = request['status'] ?? 'Pending';
     final leaveType = request['leaveType'] ?? '';
     final reason = request['reason'] ?? 'No reason provided';
@@ -580,7 +584,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ... (your existing mobile tile implementation)
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -729,6 +732,51 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
+
+                // ADDED: Show approval date for approved requests
+                if (status == 'Approved' && request['approvedAt'] != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          size: 14,
+                          color: Colors.green[600],
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Approved on ${_formatDateTime(request['approvedAt'])}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.green[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // ADDED: Show rejection date for rejected requests
+                if (status == 'Rejected' && request['rejectedAt'] != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.cancel, size: 14, color: Colors.red[600]),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Rejected on ${_formatDateTime(request['rejectedAt'])}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.red[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 if (reason.isNotEmpty) ...[
                   const Text(
                     'REASON:',
@@ -785,13 +833,14 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
   }
 
   Widget _buildLeaveTile(Map<String, dynamic> request, int index) {
-    // Your existing _buildLeaveTile implementation
     final status = request['status'] ?? 'Pending';
     final leaveType = request['leaveType'] ?? '';
     final reason = request['reason'] ?? 'No reason provided';
 
     return Container(
-      constraints: const BoxConstraints(maxHeight: 280),
+      constraints: const BoxConstraints(
+        maxHeight: 300,
+      ), // Increased height to accommodate new info
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -984,6 +1033,56 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                     ],
                   ),
                   const SizedBox(height: 6),
+
+                  // ADDED: Approval/Rejection date display
+                  if (status == 'Approved' && request['approvedAt'] != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            size: 10,
+                            color: Colors.green[600],
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              'Approved: ${_formatDateTime(request['approvedAt'])}',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: Colors.green[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  if (status == 'Rejected' && request['rejectedAt'] != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        children: [
+                          Icon(Icons.cancel, size: 10, color: Colors.red[600]),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              'Rejected: ${_formatDateTime(request['rejectedAt'])}',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: Colors.red[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                   Container(
                     height: 35,
                     width: double.infinity,
@@ -1125,12 +1224,18 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
                 'Reason',
                 request['reason'] ?? 'No reason provided',
               ),
+              // ADDED: Approval date for approved requests
+              if (request['approvedAt'] != null)
+                _buildDetailRow(
+                  'Approved On',
+                  _formatDateTime(request['approvedAt']),
+                ),
               if (request['rejectionReason'] != null)
                 _buildDetailRow('Rejection Reason', request['rejectionReason']),
               if (request['rejectedAt'] != null)
                 _buildDetailRow(
                   'Rejected On',
-                  _formatDate(request['rejectedAt']),
+                  _formatDateTime(request['rejectedAt']),
                 ),
             ],
           ),
@@ -1234,6 +1339,16 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen> {
     if (timestamp is Timestamp) {
       final date = timestamp.toDate();
       return '${date.day}/${date.month}/${date.year}';
+    }
+    return timestamp.toString();
+  }
+
+  // ADDED: New method to format date and time
+  String _formatDateTime(dynamic timestamp) {
+    if (timestamp == null) return 'N/A';
+    if (timestamp is Timestamp) {
+      final date = timestamp.toDate();
+      return '${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     }
     return timestamp.toString();
   }

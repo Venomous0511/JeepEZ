@@ -1098,7 +1098,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           );
         }
       }
-
     } finally {
       nameCtrl.dispose();
       emailCtrl.dispose();

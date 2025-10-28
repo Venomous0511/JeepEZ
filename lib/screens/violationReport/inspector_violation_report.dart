@@ -86,18 +86,21 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
 
       todayDrivers = driversSnapshot.docs
           .where((doc) {
-        final schedule = doc.data()['schedule'] as String?;
-        return schedule != null && schedule.contains(today);
-      })
+            final schedule = doc.data()['schedule'] as String?;
+            return schedule != null && schedule.contains(today);
+          })
           .map((doc) {
-        return {
-          'uid': doc.id,
-          'name': doc.data()['name'] ?? doc.data()['displayName'] ??
-              '${doc.data()['firstName'] ?? ''} ${doc.data()['lastName'] ?? ''}'.trim(),
-          'employeeId': doc.data()['employeeId'] ?? '',
-          'data': doc.data(),
-        };
-      })
+            return {
+              'uid': doc.id,
+              'name':
+                  doc.data()['name'] ??
+                  doc.data()['displayName'] ??
+                  '${doc.data()['firstName'] ?? ''} ${doc.data()['lastName'] ?? ''}'
+                      .trim(),
+              'employeeId': doc.data()['employeeId'] ?? '',
+              'data': doc.data(),
+            };
+          })
           .toList();
 
       // Get conductors scheduled for today
@@ -109,18 +112,21 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
 
       todayConductors = conductorsSnapshot.docs
           .where((doc) {
-        final schedule = doc.data()['schedule'] as String?;
-        return schedule != null && schedule.contains(today);
-      })
+            final schedule = doc.data()['schedule'] as String?;
+            return schedule != null && schedule.contains(today);
+          })
           .map((doc) {
-        return {
-          'uid': doc.id,
-          'name': doc.data()['name'] ?? doc.data()['displayName'] ??
-              '${doc.data()['firstName'] ?? ''} ${doc.data()['lastName'] ?? ''}'.trim(),
-          'employeeId': doc.data()['employeeId'] ?? '',
-          'data': doc.data(),
-        };
-      })
+            return {
+              'uid': doc.id,
+              'name':
+                  doc.data()['name'] ??
+                  doc.data()['displayName'] ??
+                  '${doc.data()['firstName'] ?? ''} ${doc.data()['lastName'] ?? ''}'
+                      .trim(),
+              'employeeId': doc.data()['employeeId'] ?? '',
+              'data': doc.data(),
+            };
+          })
           .toList();
 
       _updateAvailableViolators();
@@ -175,7 +181,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
           : todayConductors;
 
       final violator = violatorList.firstWhere(
-            (v) => v['name'] == name,
+        (v) => v['name'] == name,
         orElse: () => {},
       );
 
@@ -256,7 +262,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: selectedViolatorName,
+                    initialValue: selectedViolatorName,
                     isExpanded: true,
                     decoration: InputDecoration(
                       hintText: 'Select violator name',
@@ -272,31 +278,31 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                     items: availableViolators.isEmpty
                         ? null
                         : availableViolators.map((violator) {
-                      return DropdownMenuItem<String>(
-                        value: violator['name'] as String,
-                        child: Text(
-                          violator['name'] as String,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      );
-                    }).toList(),
+                            return DropdownMenuItem<String>(
+                              value: violator['name'] as String,
+                              child: Text(
+                                violator['name'] as String,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            );
+                          }).toList(),
                     onChanged: availableViolators.isEmpty
                         ? null
                         : (value) {
-                      setState(() {
-                        selectedViolatorName = value;
-                      });
-                    },
+                            setState(() {
+                              selectedViolatorName = value;
+                            });
+                          },
                     hint: availableViolators.isEmpty
                         ? Text(
-                      'Select position first or no violators available today',
-                      style: TextStyle(color: Colors.grey[600]),
-                      overflow: TextOverflow.ellipsis,
-                    )
+                            'Select position first or no violators available today',
+                            style: TextStyle(color: Colors.grey[600]),
+                            overflow: TextOverflow.ellipsis,
+                          )
                         : null,
                     validator: (value) =>
-                    value == null ? 'Please select violator name' : null,
+                        value == null ? 'Please select violator name' : null,
                   ),
                 ],
               ),
@@ -323,7 +329,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                       borderRadius: BorderRadius.circular(4.0),
                     ),
                     child: DropdownButtonFormField<String>(
-                      value: _positionController.text.isNotEmpty
+                      initialValue: _positionController.text.isNotEmpty
                           ? _positionController.text
                           : null,
                       onChanged: (String? newValue) {
@@ -394,7 +400,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                       borderRadius: BorderRadius.circular(4.0),
                     ),
                     child: DropdownButtonFormField<String>(
-                      value: _selectedViolationType,
+                      initialValue: _selectedViolationType,
                       onChanged: (String? newValue) {
                         setState(() {
                           _selectedViolationType = newValue;

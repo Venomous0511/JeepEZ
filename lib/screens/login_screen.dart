@@ -386,12 +386,12 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Account Reactivated'),
         content: const Text(
-            'Your account has been reactivated.\n\n'
-                'Steps:\n'
-                '1. Verify your email (check inbox or spam)\n'
-                '2. Use password reset link sent to you\n'
-                '3. Set new password\n'
-                '4. Login with new credentials'
+          'Your account has been reactivated.\n\n'
+          'Steps:\n'
+          '1. Verify your email (check inbox or spam)\n'
+          '2. Use password reset link sent to you\n'
+          '3. Set new password\n'
+          '4. Login with new credentials',
         ),
         actions: [
           TextButton(

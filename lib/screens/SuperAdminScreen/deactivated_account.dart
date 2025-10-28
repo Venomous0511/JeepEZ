@@ -991,7 +991,9 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Reactivate User"),
-        content: Text("Are you sure you want to reactivate ${data['name']}?\n\nA password reset email will be sent to ${data['email']}."),
+        content: Text(
+          "Are you sure you want to reactivate ${data['name']}?\n\nA password reset email will be sent to ${data['email']}.",
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -1025,7 +1027,8 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
         // 3. Add notification
         await FirebaseFirestore.instance.collection('notifications').add({
           'title': 'Reactivated Account',
-          'message': 'Account reactivated for ${data['name']} (${data['email']})',
+          'message':
+              'Account reactivated for ${data['name']} (${data['email']})',
           'time': FieldValue.serverTimestamp(),
           'dismissed': false,
           'type': 'updates',
@@ -1035,7 +1038,9 @@ class _DeactivatedAccountScreenState extends State<DeactivatedAccountScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Account reactivated. Password reset email sent to ${data['email']}"),
+            content: Text(
+              "Account reactivated. Password reset email sent to ${data['email']}",
+            ),
           ),
         );
       } catch (e) {

@@ -8,6 +8,7 @@ import '../Personaldetailed/driver.dart';
 import '../violationReport/inspector_violation_report.dart';
 import '../inspectorTrip/inspector_trip_report.dart';
 import '../leaveapplication/inspector_leaveapp.dart';
+import '../workSchedule/inspector_workschedule.dart'; // ADDED IMPORT
 
 class InspectorDashboard extends StatefulWidget {
   final AppUser user;
@@ -38,6 +39,7 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
     // Initialize screens here where context is available
     _screens = [
       _buildHomeScreen(),
+      const WorkScheduleScreen(), // ADDED SCHEDULE SCREEN (Index 1)
       _buildTripScreen(),
       _buildViolationReportForm(),
       const LeaveApplicationScreen(),
@@ -317,21 +319,19 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Logo section at the top - UPDATED WITH YOUR SPECIFIC JPG FILE
+              // Logo section at the top
               Container(
                 width: double.infinity,
                 color: const Color(0xFF0D2364),
                 padding: EdgeInsets.symmetric(vertical: isMobile ? 20 : 30),
                 child: Column(
                   children: [
-                    // Your specific logo file
                     Image.asset(
                       'assets/images/a47c2721-58f7-4dc7-a395-082ab4b753e0.jpg',
                       width: 120,
                       height: 120,
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) {
-                        // Fallback if image fails to load
                         return Column(
                           children: [
                             Icon(
@@ -449,7 +449,7 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
 
               const SizedBox(height: 32),
 
-              // Date Container - maintained from original inspector dashboard
+              // Date Container
               Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: isMobile ? 16.0 : 24.0,
@@ -474,7 +474,7 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
               ),
               SizedBox(height: isMobile ? 16 : 20),
 
-              // Route Preview Map Placeholder - maintained from original inspector dashboard
+              // Route Preview Map Placeholder
               Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: isMobile ? 10.0 : 24.0,
@@ -550,7 +550,7 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
       'Saturday',
       'Sunday',
     ];
-    final dayName = days[now.weekday - 1]; // Convert 1-7 to 0-6 index
+    final dayName = days[now.weekday - 1];
     final formattedDate =
         '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
     return 'Today | $dayName | $formattedDate';
@@ -583,6 +583,11 @@ class _InspectorDashboardState extends State<InspectorDashboard> {
         unselectedFontSize: 11,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(
+            // ADDED SCHEDULE TAB (Index 1)
+            icon: Icon(Icons.schedule),
+            label: 'Schedule',
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.directions_walk),
             label: 'Trip',

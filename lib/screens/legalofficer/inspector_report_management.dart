@@ -633,7 +633,7 @@ class _IncidentReportManagementScreenState
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: selectedStatus,
+                      initialValue: selectedStatus,
                       items: ['In Progress', 'Resolved', 'Closed'].map((
                         String status,
                       ) {

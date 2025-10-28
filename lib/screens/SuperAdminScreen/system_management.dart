@@ -257,14 +257,16 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
       return const SizedBox.shrink();
     }
 
-    final selectedValue = (options.contains(value) && value.isNotEmpty) ? value : options.first;
+    final selectedValue = (options.contains(value) && value.isNotEmpty)
+        ? value
+        : options.first;
 
     return DropdownButtonFormField(
       decoration: InputDecoration(
         labelText: title,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
       ),
-      value: selectedValue,
+      initialValue: selectedValue,
       items: options.map((String option) {
         return DropdownMenuItem(value: option, child: Text(option));
       }).toList(),
@@ -379,10 +381,7 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
     try {
       final uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {
-        await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         throw 'Could not launch URL';
       }
@@ -410,7 +409,9 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
         builder: (BuildContext context) {
           return AlertDialog(
             title: const Text('Not Available'),
-            content: const Text('App updates are only available on the Android version.'),
+            content: const Text(
+              'App updates are only available on the Android version.',
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -503,7 +504,9 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Downloads are not available on web. Please use the Android app.'),
+            content: Text(
+              'Downloads are not available on web. Please use the Android app.',
+            ),
             backgroundColor: Colors.orange,
           ),
         );
@@ -527,15 +530,14 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
       final uri = Uri.parse(release.downloadUrl!);
 
       if (await canLaunchUrl(uri)) {
-        await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Downloading ${release.version}... Check your downloads folder.'),
+              content: Text(
+                'Downloading ${release.version}... Check your downloads folder.',
+              ),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 5),
               action: SnackBarAction(

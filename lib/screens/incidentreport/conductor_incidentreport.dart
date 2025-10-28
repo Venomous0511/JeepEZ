@@ -202,7 +202,7 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
                                 borderRadius: BorderRadius.circular(8.0),
                               ),
                               child: DropdownButtonFormField<String>(
-                                value: _selectedAccidentType,
+                                initialValue: _selectedAccidentType,
                                 onChanged: (String? newValue) {
                                   setState(() {
                                     _selectedAccidentType = newValue;
