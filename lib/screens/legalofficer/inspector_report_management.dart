@@ -351,12 +351,15 @@ class _IncidentReportManagementScreenState
                   ),
                   const SizedBox(height: 12),
 
-                  // Action button
+                  // Action button - CHANGED: Updated icon to edit
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton.icon(
                       onPressed: () => _showIncidentDetails(context, incident),
-                      icon: const Icon(Icons.more_horiz, size: 18),
+                      icon: const Icon(
+                        Icons.edit,
+                        size: 18,
+                      ), // CHANGED: from more_horiz to edit
                       label: const Text('View Details'),
                       style: TextButton.styleFrom(
                         foregroundColor: const Color(0xFF0D2364),
@@ -421,11 +424,12 @@ class _IncidentReportManagementScreenState
             horizontalMargin: isTablet ? 12 : 16,
             dataRowMinHeight: 48,
             dataRowMaxHeight: 56,
-            headingRowColor: WidgetStateProperty.all(Colors.grey.shade200),
+            // CHANGED: Set the header row color to Color(0xFF0D2364)
+            headingRowColor: WidgetStateProperty.all(const Color(0xFF0D2364)),
             headingTextStyle: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: isTablet ? 13 : 14,
-              color: Colors.black87,
+              color: Colors.white, // Changed to white for better contrast
             ),
             dataTextStyle: TextStyle(fontSize: isTablet ? 12 : 14),
             columns: const [
@@ -478,8 +482,9 @@ class _IncidentReportManagementScreenState
                   ),
                   DataCell(
                     IconButton(
+                      // CHANGED: from more_vert to edit
                       icon: Icon(
-                        Icons.more_vert,
+                        Icons.edit,
                         size: isTablet ? 18 : 20,
                         color: const Color(0xFF0D2364),
                       ),
