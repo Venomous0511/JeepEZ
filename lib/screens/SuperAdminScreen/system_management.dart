@@ -266,7 +266,7 @@ class _SystemManagementScreenState extends State<SystemManagementScreen> {
         labelText: title,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
       ),
-      initialValue: selectedValue,
+      value: selectedValue,
       items: options.map((String option) {
         return DropdownMenuItem(value: option, child: Text(option));
       }).toList(),

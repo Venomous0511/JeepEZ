@@ -100,12 +100,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     return emailRegex.hasMatch(email);
   }
 
-  /// ----------- VALIDATE GMAIL FUNCTION -----------
-  bool _isValidGmail(String email) {
-    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@gmail\.com$');
-    return emailRegex.hasMatch(email);
-  }
-
   /// ----------- CHECK IF EMAIL EXISTS -----------
   Future<bool> _checkEmailExists(String email) async {
     try {
@@ -2002,7 +1996,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: DropdownButtonFormField<String>(
-                                initialValue: role,
+                                value: role,
                                 decoration: const InputDecoration(
                                   labelText: 'Role *',
                                   border: InputBorder.none,
@@ -2074,7 +2068,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                                 role == "inspector") ...[
                               const SizedBox(height: 12),
                               DropdownButtonFormField<String>(
-                                initialValue: employmentType,
+                                value: employmentType,
                                 items: const [
                                   DropdownMenuItem(
                                     value: "full_time",
@@ -2618,7 +2612,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                       role == 'inspector') ...[
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      initialValue: employmentType,
+                      value: employmentType,
                       items: const [
                         DropdownMenuItem(
                           value: "full_time",

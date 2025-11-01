@@ -262,7 +262,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    initialValue: selectedViolatorName,
+                    value: selectedViolatorName,
                     isExpanded: true,
                     decoration: InputDecoration(
                       hintText: 'Select violator name',
@@ -329,7 +329,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                       borderRadius: BorderRadius.circular(4.0),
                     ),
                     child: DropdownButtonFormField<String>(
-                      initialValue: _positionController.text.isNotEmpty
+                      value: _positionController.text.isNotEmpty
                           ? _positionController.text
                           : null,
                       onChanged: (String? newValue) {
@@ -400,7 +400,7 @@ class _ViolationReportFormState extends State<ViolationReportForm> {
                       borderRadius: BorderRadius.circular(4.0),
                     ),
                     child: DropdownButtonFormField<String>(
-                      initialValue: _selectedViolationType,
+                      value: _selectedViolationType,
                       onChanged: (String? newValue) {
                         setState(() {
                           _selectedViolationType = newValue;
